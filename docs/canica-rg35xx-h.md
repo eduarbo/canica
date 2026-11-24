@@ -68,9 +68,13 @@ sha256sum /userdata/system/configs/emulationstation/resume/emulatorlauncher
 
 On the reference RG35XX H, all 382 installed RC30 kit and adapter files matched their packaged hashes, including the running frontend. An isolated test on the handheld used a small Game Boy program, restored a chosen slot, preserved a newer in-game save and generated a card from a separate test screenshot. These checks used no owner ROMs or RomM account.
 
-RC30.1 keeps 377 of RC30’s 381 packaged files byte for byte, including the frontend, the launcher and every theme asset. It replaces the notices, the theme guide, the inventory and the checksum the service seals, and adds three license files. On a computer, the public installer placed it on an empty card folder and over RC27.1, RC27.2, RC28, RC29.1 and RC30, and every file matched the new inventory. The service checks passed in a disposable ARM64 Linux environment built from the Scarab image. On the reference RG35XX H, the installer then upgraded RC30 to RC30.1. After a restart the service started Canica, and all 385 installed kit and adapter files matched their packaged hashes, including the running frontend.
+RC30.1 keeps 377 of RC30’s 381 packaged files byte for byte, including the frontend, the launcher and every theme asset. It replaces the notices, the theme guide, the inventory and the checksum the service seals, and adds three license files. On a computer, the public installer placed it on an empty card folder and over RC27.1, RC27.2, RC28, RC29.1 and RC30, and every file matched the new inventory. The service checks passed in a disposable ARM64 Linux environment built from the Scarab image. On the reference RG35XX H, the installer then upgraded RC30 to RC30.1. After a restart the service started Canica, and all 385 installed kit and adapter files matched their packaged hashes, including the running frontend. RC31 reached that handheld through the signed update channel: its updater verified the manifest and ran the installer by itself, and afterwards all 385 files matched again.
 
 The compiled frontend in this kit is the RC30 binary, SHA-256 `e01811482186db924a2c855f81084c800d6782621445b43a2cdc2600ba812c4f`. The [source build guide](../tools/canica/README.md#rebuild-the-theme-and-sealed-archives) includes the verified commands and all three archive digests.
+
+## Update
+
+Download the newer installer and open it again from Tools. It replaces only the files an earlier Canica installed and keeps any you edited. My own console takes new kits by itself: a [signed channel](https://github.com/eduarbo/knulli-console-bundles#canica-kit-updates) names the next installer and a small updater on the handheld runs it when the menu is free. That updater is not packaged for other consoles yet.
 
 ## Return to the previous menu
 
