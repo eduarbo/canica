@@ -672,6 +672,25 @@ def apply(tool, root, console):
     return len(files), custom_adapter, cards_failed
 
 
+def check(tool, root, console):
+    """Would this kit install here? Writes nothing. Returns how many files it would write, or
+    None when an interrupted installation has to be undone first (the install does that)."""
+    console.check()
+    root = root.resolve()
+    work = root / 'system/.canica-installer-v1'
+    if work.parent.resolve() != work.parent:
+        raise ValueError('Se conserva la ruta alternativa de configuración.')
+    if work.is_symlink() or (work.exists() and not work.is_dir()):
+        raise ValueError('La ruta temporal de Canica ya está ocupada.')
+    with read_package(tool) as (archive, adapter):
+        if work.exists():
+            return None
+        files, _ = changes(root, archive, adapter)
+    if shutil.disk_usage(work.parent).free < space_needed(root, files) + 1024 * 1024:
+        raise ValueError('Libera espacio en la tarjeta de datos y vuelve a intentarlo.')
+    return len(files)
+
+
 def install(tool, root, console):
     _, custom_adapter, cards_failed = apply(tool, root, console)
     message = 'Canica está listo. Reinicia la consola y elige es-theme-canica en los ajustes de interfaz.'
@@ -682,11 +701,14 @@ def install(tool, root, console):
     return message
 
 
+def space_needed(root, files):
+    return sum(size + ((root/name).stat().st_size if old else 0) for name, old, new, size in files)
+
+
 def commit_files(root, work, console, archive, adapter, files):
     enabled = 'canica' in console.services()
     if files or not enabled:
-        needed = sum(size + ((root/name).stat().st_size if old else 0) for name, old, new, size in files)
-        if shutil.disk_usage(work.parent).free < needed + 1024 * 1024:
+        if shutil.disk_usage(work.parent).free < space_needed(root, files) + 1024 * 1024:
             raise ValueError('Libera espacio en la tarjeta de datos y vuelve a intentarlo.')
         work.mkdir(mode=0o700)
         try:
@@ -745,10 +767,12 @@ def main():
     --ota      the kit updater runs it unattended: no message box, and the last output line is
                a JSON result. Exit 3: the kit is in place but its card backgrounds failed;
                75: another installer holds the lock.
+    --check    the kit updater asks before offering this kit: would it install here? Writes
+               nothing; the last output line is a JSON result.
     --recover  only undo an interrupted installation."""
     mode = sys.argv[1] if len(sys.argv) > 1 else ''
-    if mode not in ('', '--ota', '--recover') or len(sys.argv) > 2:
-        print('uso: Instalar Canica.sh [--ota | --recover]', file=sys.stderr)
+    if mode not in ('', '--ota', '--check', '--recover') or len(sys.argv) > 2:
+        print('uso: Instalar Canica.sh [--ota | --check | --recover]', file=sys.stderr)
         return 2
     quiet = mode != ''
     try:
@@ -765,6 +789,8 @@ def main():
                 root = ROOT.resolve()
                 recover(root, root / 'system/.canica-installer-v1', Console())
                 result = dict(ok=True, recovered=True)
+            elif mode == '--check':
+                result = dict(ok=True, check=True, files=check(Path(sys.argv[0]).resolve(), ROOT, Console()))
             elif quiet:
                 written, adapter_kept, cards_failed = apply(Path(sys.argv[0]).resolve(), ROOT, Console())
                 result = dict(ok=True, written=written, adapter_kept=adapter_kept, cards_failed=cards_failed)

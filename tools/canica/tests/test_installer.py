@@ -7,6 +7,7 @@ import multiprocessing
 import os
 from pathlib import Path
 import runpy
+import shutil
 import sys
 from tempfile import TemporaryDirectory
 import unittest
@@ -190,6 +191,31 @@ class InstallerTest(unittest.TestCase):
         self.assertIn('archivo modificado', result['reason'])
         boxes.assert_not_called()
         self.assertEqual(self.theme.read_bytes(), b'custom')
+
+    def test_check_says_whether_the_kit_would_install_and_writes_nothing(self):
+        self.assertEqual(self.unattended('--check')[:2], (0, dict(ok=True, check=True, files=4)))
+        self.assertFalse(self.theme.exists())
+        self.assertFalse((self.root / 'system/.canica-installer-v1').exists())
+        self.assertNotIn('canica', self.console.services())
+        self.theme.parent.mkdir(parents=True)
+        self.theme.write_bytes(b'custom')
+        status, result, boxes = self.unattended('--check')
+        self.assertEqual((status, result['ok']), (1, False))
+        self.assertIn('archivo modificado', result['reason'])
+        boxes.assert_not_called()
+        self.assertEqual(self.theme.read_bytes(), b'custom')
+        self.theme.unlink()
+        self.unattended('--ota')
+        self.assertEqual(self.unattended('--check')[1], dict(ok=True, check=True, files=0))
+        with patch.object(shutil, 'disk_usage', return_value=Mock(free=10)):
+            self.theme.unlink()
+            self.assertIn('Libera espacio', self.unattended('--check')[1]['reason'])
+        # an interrupted run is left for the install to undo
+        work = self.root / 'system/.canica-installer-v1'
+        work.mkdir()
+        (work / 'installer-v1').touch()
+        self.assertEqual(self.unattended('--check')[1], dict(ok=True, check=True, files=None))
+        self.assertTrue((work / 'installer-v1').exists())
 
     def test_unattended_run_yields_to_another_installer(self):
         with open(self.root.parent / 'installer.lock', 'a') as held:
