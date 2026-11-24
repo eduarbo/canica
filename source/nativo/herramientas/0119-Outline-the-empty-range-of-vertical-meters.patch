@@ -1,0 +1,78 @@
+diff --git a/es-core/src/ThemeData.cpp b/es-core/src/ThemeData.cpp
+index e360d74..99f4f74 100644
+--- a/es-core/src/ThemeData.cpp
++++ b/es-core/src/ThemeData.cpp
+@@ -251,6 +251,7 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
+ 		{ "backgroundColor", COLOR },
+ 		{ "borderColor", COLOR },
+ 		{ "trackColor", COLOR },
++		{ "trackBorderColor", COLOR },
+ 		{ "fillColor", COLOR },
+ 		{ "cornerSize", FLOAT },
+ 		{ "iconPath", PATH },
+diff --git a/es-core/src/Window.cpp b/es-core/src/Window.cpp
+index 0d7c0a5..b3da394 100644
+--- a/es-core/src/Window.cpp
++++ b/es-core/src/Window.cpp
+@@ -1579,6 +1579,9 @@ static Window::PopupStyle readPopupStyle(const ThemeData::ThemeElement* elem)
+ 	if (elem->has("borderColor"))
+ 		style.borderColor = elem->get<unsigned int>("borderColor");
+ 
++	if (elem->has("trackBorderColor"))
++		style.trackBorderColor = elem->get<unsigned int>("trackBorderColor");
++
+ 	if (elem->has("trackColor"))
+ 		style.trackColor = elem->get<unsigned int>("trackColor");
+ 
+diff --git a/es-core/src/Window.h b/es-core/src/Window.h
+index 28316b2..145fa2b 100644
+--- a/es-core/src/Window.h
++++ b/es-core/src/Window.h
+@@ -125,7 +125,7 @@ public:
+ 	struct PopupStyle
+ 	{
+ 		PopupStyle() : enabled(false), vertical(false), origin(0, 0), color(0xFFFFFFFF), backgroundColor(0x0D1A2BF2), borderColor(0),
+-			trackColor(0xFFFFFF40), fillColor(0xFFFFFFFF), cornerRadius(0), iconSize(0), spacing(0), maxCount(0) {}
++			trackColor(0xFFFFFF40), trackBorderColor(0), fillColor(0xFFFFFFFF), cornerRadius(0), iconSize(0), spacing(0), maxCount(0) {}
+ 
+ 		bool enabled;
+ 		bool vertical;
+@@ -138,6 +138,7 @@ public:
+ 		unsigned int backgroundColor;
+ 		unsigned int borderColor;
+ 		unsigned int trackColor;
++		unsigned int trackBorderColor;
+ 		unsigned int fillColor;
+ 		float cornerRadius;
+ 		float iconSize;
+diff --git a/es-core/src/components/VolumeInfoComponent.cpp b/es-core/src/components/VolumeInfoComponent.cpp
+index 7d955cd..59b93df 100644
+--- a/es-core/src/components/VolumeInfoComponent.cpp
++++ b/es-core/src/components/VolumeInfoComponent.cpp
+@@ -264,10 +264,25 @@ void VolumeInfoComponent::render(const Transform4x4f& parentTrans)
+ 
+ 		if (mWindow->getMeterStyle().vertical)
+ 		{
+-			const float width = Math::round(mSize.x() * 0.25f);
++			const auto outline = mWindow->getMeterStyle().trackBorderColor;
++			const float width = Math::round(mSize.x() * ((outline & 0xFF) ? 0.35f : 0.25f));
+ 			const float x = Math::round((mSize.x() - width) / 2);
+ 			const float y = Math::round(mGlyph->getSize().y());
+ 			const float length = std::max(1.0f, mLabel->getPosition().y() - y);
++			if ((outline & 0xFF) && width >= 6 && length >= 6)
++			{
++				const float inset = 2;
++				const float inner = length - 2 * inset;
++				const float level = Math::max(0, Math::min(100, mVolume)) / 100.0f;
++				const float filled = level > 0 ? std::max(1.0f, Math::round(inner * level)) : 0;
++				Renderer::drawSolidRectangle(x, y, width, length, withOpacity(outline), 0, 0, 4);
++				Renderer::drawSolidRectangle(x + inset, y + inset, width - 2 * inset, inner, withOpacity(mTrackColor), 0, 0, 2);
++				if (filled > 0)
++					Renderer::drawSolidRectangle(x + inset, y + length - inset - filled, width - 2 * inset, filled,
++						withOpacity(mFillColor), 0, 0, 0);
++				GuiComponent::renderChildren(trans);
++				return;
++			}
+ 			const float fill = Math::round(length * Math::max(0, Math::min(100, mVolume)) / 100.0f);
+ 			Renderer::drawSolidRectangle(x, y, width, length, withOpacity(mTrackColor), 0, 0, width / 2);
+ 			if (fill > 0)

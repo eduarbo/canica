@@ -1,0 +1,274 @@
+diff --git a/es-app/src/SystemData.cpp b/es-app/src/SystemData.cpp
+index ec56049..edb83f8 100644
+--- a/es-app/src/SystemData.cpp
++++ b/es-app/src/SystemData.cpp
+@@ -2434,38 +2434,45 @@ bool SystemData::usesRandomCollectionPreview()
+ 		mTheme && mTheme->getVariable("esRandomCollectionPreview") == "true";
+ }
+ 
+-bool SystemData::rotatesCollectionPreview()
++bool SystemData::rotatesHomePreview()
+ {
+-	return isCollection() && (getName() == "all" || getName() == "favorites" || getName() == "recent") &&
+-		mTheme && mTheme->getVariable("esRotateCollectionPreview") == "true";
++	if (!mTheme)
++		return false;
++	if (isCollection())
++		return (getName() == "all" || getName() == "favorites" || getName() == "recent") &&
++			mTheme->getVariable("esRotateCollectionPreview") == "true";
++	if (mTheme->getVariable("esRotateConsolePreview") != "true" || !isGameSystem() || isUtilitySystem(this))
++		return false;
++	auto info = getGameCountInfo();
++	return info && !info->lastPlayedPath.empty();
+ }
+ 
+-bool SystemData::hasOtherCollectionPreview() const
++bool SystemData::hasOtherHomePreview() const
+ {
+ 	return mHistoryPreviews.size() > 1 || mCollectionPreviews.size() > 1;
+ }
+ 
+-void SystemData::enterCollectionPreview()
++void SystemData::enterHomePreview()
+ {
+-	if (getName() == "recent")
++	if (getName() == "recent" || !isCollection())
+ 	{
+-		collectionPreview(false);
++		homePreview(false);
+ 		mHistoryPreviewIndex = 0;
+ 		return;
+ 	}
+ 
+-	auto pick = collectionPreview(true);
+-	if (pick && pick->getPath() == mCollectionLatestPath && hasOtherCollectionPreview())
+-		collectionPreview(true);
++	auto pick = homePreview(true);
++	if (pick && pick->getPath() == mCollectionLatestPath && hasOtherHomePreview())
++		homePreview(true);
+ }
+ 
+ // The deck stores collection paths, never pointers. Refresh only when the library changes.
+-FileData* SystemData::collectionPreview(bool advance)
++FileData* SystemData::homePreview(bool advance)
+ {
+ 	if (mRootFolder == nullptr)
+ 		return nullptr;
+ 
+-	bool history = getName() == "recent";
++	bool history = getName() == "recent" || !isCollection();
+ 	if (mCollectionPreviewsDirty)
+ 	{
+ 		std::vector<std::string> candidates;
+@@ -2480,7 +2487,13 @@ FileData* SystemData::collectionPreview(bool advance)
+ 				(getName() == "favorites" && !source->getFavorite()) || !seen.insert(source->getPath()).second)
+ 				continue;
+ 			if (history)
+-				dated.push_back({game->getPath(), source->getName(), source->getMetadata(MetaDataId::LastPlayed)});
++			{
++				auto date = source->getMetadata(MetaDataId::LastPlayed);
++				if (date.size() >= 15 && date[8] == 'T')
++					dated.push_back({game->getPath(), source->getName(), date});
++				else if (!isCollection())
++					candidates.push_back(game->getPath());
++			}
+ 			else if (latest && source->getPath() == latest->getPath())
+ 				mCollectionLatestPath = game->getPath();
+ 			else
+@@ -2488,14 +2501,27 @@ FileData* SystemData::collectionPreview(bool advance)
+ 		}
+ 		if (history)
+ 		{
++			auto previousFirst = mHistoryPreviews.empty() ? std::string() : mHistoryPreviews.front();
+ 			auto previous = mHistoryPreviews.empty() ? std::string() : mHistoryPreviews[mHistoryPreviewIndex];
+ 			mHistoryPreviews = HomeSlides::newestFirst(dated, dated.size());
++			auto last = getLastPlayedGame();
++			if (last)
++			{
++				auto first = std::find(mHistoryPreviews.begin(), mHistoryPreviews.end(), last->getPath());
++				if (first != mHistoryPreviews.end())
++					std::rotate(mHistoryPreviews.begin(), first, first + 1);
++			}
++			if (!isCollection() && mHistoryPreviews.size() < 2)
++			{
++				std::shuffle(candidates.begin(), candidates.end(), homeRandom());
++				mHistoryPreviews.insert(mHistoryPreviews.end(), candidates.begin(), candidates.end());
++			}
+ 			auto it = std::find(mHistoryPreviews.begin(), mHistoryPreviews.end(), previous);
+-			mHistoryPreviewIndex = it == mHistoryPreviews.end() ? 0 : it - mHistoryPreviews.begin();
++			mHistoryPreviewIndex = it == mHistoryPreviews.end() || previousFirst != mHistoryPreviews.front() ? 0 : it - mHistoryPreviews.begin();
+ 		}
+ 		else
+ 		{
+-			if (!mCollectionLatestPath.empty() && (candidates.empty() || rotatesCollectionPreview()))
++			if (!mCollectionLatestPath.empty() && (candidates.empty() || rotatesHomePreview()))
+ 				candidates.push_back(mCollectionLatestPath);
+ 			mCollectionPreviews.reset(candidates, homeRandom());
+ 		}
+@@ -2516,8 +2542,8 @@ FileData* SystemData::collectionPreview(bool advance)
+ 
+ FileData* SystemData::getContinueGame()
+ {
+-	if (usesRandomCollectionPreview() || rotatesCollectionPreview())
+-		return collectionPreview(false);
++	if (usesRandomCollectionPreview() || rotatesHomePreview())
++		return homePreview(false);
+ 	return isUtilitySystem(this) ? nullptr : getLastPlayedGame(true);
+ }
+ 
+@@ -2727,6 +2753,13 @@ BindableProperty SystemData::getProperty(const std::string& name)
+ 	if (name == "hasLastPlayed")
+ 		return getLastPlayedGame() != nullptr;
+ 
++	if (name == "previewIsLatest")
++	{
++		auto latest = getLastPlayedGame();
++		auto shown = getContinueGame();
++		return latest && shown && latest->getPath() == shown->getPath();
++	}
++
+ 	if (name == "randomCollectionPreview")
+ 		return usesRandomCollectionPreview();
+ 
+diff --git a/es-app/src/SystemData.h b/es-app/src/SystemData.h
+index dd0468f..ee9d952 100644
+--- a/es-app/src/SystemData.h
++++ b/es-app/src/SystemData.h
+@@ -119,10 +119,10 @@ public:
+ 	// What X continues: getLastPlayedGame(true), nothing on a utility system
+ 	FileData* getContinueGame();
+ 	bool usesRandomCollectionPreview();
+-	bool rotatesCollectionPreview();
+-	void enterCollectionPreview();
+-	bool hasOtherCollectionPreview() const;
+-	FileData* collectionPreview(bool advance);
++	bool rotatesHomePreview();
++	void enterHomePreview();
++	bool hasOtherHomePreview() const;
++	FileData* homePreview(bool advance);
+ 	static bool isUtilitySystem(SystemData* system);
+ 	// The game played last on the console (tools and screenshots left out)
+ 	static FileData* getConsoleLastPlayedGame();
+diff --git a/es-app/src/views/SystemView.cpp b/es-app/src/views/SystemView.cpp
+index 3ab7b6a..0bf13b2 100644
+--- a/es-app/src/views/SystemView.cpp
++++ b/es-app/src/views/SystemView.cpp
+@@ -778,7 +778,7 @@ bool SystemView::input(InputConfig* config, Input input)
+ 			FileData* game = system != nullptr ? system->getContinueGame() : nullptr;
+ 
+ 			// If a library change invalidated the visible pick, rebind before accepting X.
+-			if (system != nullptr && (system->usesRandomCollectionPreview() || system->rotatesCollectionPreview()) &&
++			if (system != nullptr && (system->usesRandomCollectionPreview() || system->rotatesHomePreview()) &&
+ 				(system != mShownSystem || game == nullptr || game->getPath() != mShownContinue))
+ 			{
+ 				updateExtraTextBinding();
+@@ -986,11 +986,11 @@ void SystemView::update(int deltaTime)
+ 		mSuggestionEnded = nullptr;
+ 		if (system == getSelected() && system == mShownSystem && mEndedPreviewPath == mShownContinue)
+ 		{
+-			if (system->rotatesCollectionPreview())
++			if (system->rotatesHomePreview())
+ 			{
+-				if (collectionPanelActive() && system->hasOtherCollectionPreview())
++				if (homePanelActive() && system->hasOtherHomePreview())
+ 				{
+-					system->collectionPreview(true);
++					system->homePreview(true);
+ 					updateExtraTextBinding();
+ 				}
+ 			}
+@@ -999,7 +999,7 @@ void SystemView::update(int deltaTime)
+ 		}
+ 	}
+ 	// An image-only or unplayable entry has no EOF. Give its still eight visible seconds.
+-	if (mCollectionPlayback && collectionPanelActive() && mShownSystem->hasOtherCollectionPreview())
++	if (mHomePreviewPlayback && homePanelActive() && mShownSystem->hasOtherHomePreview())
+ 	{
+ 		mStillElapsed += deltaTime;
+ 		if (mStillElapsed >= 8000)
+@@ -1007,7 +1007,7 @@ void SystemView::update(int deltaTime)
+ 			mStillElapsed = 0;
+ 			if (mShownVideo.empty() || !Utils::FileSystem::exists(mShownVideo) || VideoComponent::isUnplayable(mShownVideo))
+ 			{
+-				mShownSystem->collectionPreview(true);
++				mShownSystem->homePreview(true);
+ 				updateExtraTextBinding();
+ 			}
+ 		}
+@@ -1040,7 +1040,7 @@ void SystemView::update(int deltaTime)
+ // MIN_SUGGESTION_MS: a video that ends at once loops until then rather than start VLC again every few frames.
+ static const unsigned int MIN_SUGGESTION_MS = 5000;
+ 
+-bool SystemView::collectionPanelActive()
++bool SystemView::homePanelActive()
+ {
+ 	return mShownSystem && mShownSystem == getSelected() && isShowing() && (!hasColumns() || mColumnLevel == 2) &&
+ 		!mScreensaverActive && !GuiComponent::isLaunchTransitionRunning && mWindow->peekGui() == ViewController::get() &&
+@@ -1049,10 +1049,10 @@ bool SystemView::collectionPanelActive()
+ 
+ bool SystemView::onContinueVideoEnded(SystemData* system, VideoComponent* video)
+ {
+-	if (system && system->rotatesCollectionPreview())
++	if (system && system->rotatesHomePreview())
+ 	{
+-		if (!collectionPanelActive() || system != mShownSystem || !mCollectionPlayback ||
+-			video->getVideoPath() != mShownVideo || !system->hasOtherCollectionPreview())
++		if (!homePanelActive() || system != mShownSystem || !mHomePreviewPlayback ||
++			video->getVideoPath() != mShownVideo || !system->hasOtherHomePreview())
+ 			return true;
+ 		mSuggestionEnded = system;
+ 		mEndedPreviewPath = mShownContinue;
+@@ -1085,8 +1085,8 @@ void SystemView::updateExtraTextBinding()
+ 	Utils::FileSystem::FileSystemCacheActivator fsc;
+ 	SystemData::FindPass findPass;
+ 
+-	if (system != mShownSystem && (system->rotatesCollectionPreview() || system->usesRandomCollectionPreview()))
+-		system->enterCollectionPreview();
++	if (system != mShownSystem && (system->rotatesHomePreview() || system->usesRandomCollectionPreview()))
++		system->enterHomePreview();
+ 
+ 	for (auto extra : mEntries[mCursor].backgroundExtras)
+ 		BindingManager::updateBindings(extra, system);
+@@ -1094,9 +1094,9 @@ void SystemView::updateExtraTextBinding()
+ 	// The game the panel now shows, for X, and since when
+ 	FileData* shown = system->getContinueGame();
+ 	std::string path = shown != nullptr ? shown->getPath() : "";
+-	mCollectionPlayback = shown && system->rotatesCollectionPreview() &&
++	mHomePreviewPlayback = shown && system->rotatesHomePreview() &&
+ 		system->getTheme()->getVariable("animateSystems") == "1";
+-	mShownVideo = mCollectionPlayback ? shown->getVideoPath() : "";
++	mShownVideo = mHomePreviewPlayback ? shown->getVideoPath() : "";
+ 	if (system != mShownSystem || path != mShownContinue)
+ 	{
+ 		mShownSystem = system;
+@@ -1447,7 +1447,7 @@ void SystemView::setColumnLevel(int level, bool animate)
+ 	{
+ 		mSuggestionEnded = nullptr;
+ 		mStillElapsed = 0;
+-		if (level == 2 && getSelected() && getSelected()->rotatesCollectionPreview())
++		if (level == 2 && getSelected() && getSelected()->rotatesHomePreview())
+ 			mShownSystem = nullptr;
+ 	}
+ 	mColumnLevel = level;
+diff --git a/es-app/src/views/SystemView.h b/es-app/src/views/SystemView.h
+index ce271d7..2e49b4c 100644
+--- a/es-app/src/views/SystemView.h
++++ b/es-app/src/views/SystemView.h
+@@ -148,7 +148,7 @@ private:
+ 	void	 renderInPlace(const Transform4x4f& screen, ColumnLayout::Role role);
+ 	ColumnLayout::Role columnRole(GuiComponent* extra);
+ 	bool	 onContinueVideoEnded(SystemData* system, VideoComponent* video);
+-	bool	 collectionPanelActive();
++	bool	 homePanelActive();
+ 
+ 	void	 renderCarousel(const Transform4x4f& parentTrans);
+ 	void	 renderExtras(const Transform4x4f& parentTrans, float lower, float upper);
+@@ -202,7 +202,7 @@ private:
+ 	std::string mEndedPreviewPath;
+ 	std::string mShownVideo;
+ 	int mStillElapsed = 0;
+-	bool mCollectionPlayback = false;
++	bool mHomePreviewPlayback = false;
+ 	SystemData*							mShownSystem;
+ 	std::string							mShownContinue;
+ 	unsigned int						mContinueShownAt;

@@ -1,0 +1,47 @@
+# Reconstruir Canica
+
+El directorio `knulli/39-canica` contiene el generador del tema. Los directorios vecinos sólo contienen los recursos que consume. La carpeta `nativo/fuente` contiene el código de EmulationStation que utiliza la candidata RC31, con los parches específicos ya aplicados. El binario incluido se identifica por SHA-256 `e01811482186db924a2c855f81084c800d6782621445b43a2cdc2600ba812c4f`.
+
+## Origen del frontend
+
+El motor de la candidata está en la rama `main` del fork de EmulationStation. Sobre la serie de Scarab para RG35XX H, la revisión `4215ca1` añade las tarjetas de partidas y permite usar capturas con el tratamiento visual de cada sistema. La compilación del kit aplica además los cuatro parches de empaquetado de KNULLI. La carpeta `nativo/herramientas` conserva los últimos quince diffs y `nativo/fuente` contiene el resultado aplicado. [Fork del frontend](https://github.com/eduarbo/batocera-emulationstation) · [Revisiones y compilación](https://github.com/eduarbo/canica/blob/main/tools/canica/README.md)
+
+Existe también un fork del firmware para cambios de sistema como suspensión y ahorro de energía. El instalable de Canica usa la imagen oficial de Scarab y añade el frontend mediante un servicio reversible. El tercer repositorio compila y distribuye paquetes de correcciones de la consola. [Fork de KNULLI](https://github.com/eduarbo/knulli-linux) · [Paquetes de la consola](https://github.com/eduarbo/knulli-console-bundles)
+
+## Tema
+
+Con Python 3.9 o posterior, ImageMagick 7 y librsvg instalados, ejecuta desde la raíz de las fuentes:
+
+```sh
+python3 -B knulli/39-canica/build.py salida
+python3 -B knulli/39-canica/validate.py salida/canica-1.0.1-rc31.zip
+```
+
+## Frontend
+
+Se necesitan Docker con ejecución Linux ARM64, Git y la imagen oficial `knulli-h700-rg35xx-h-scarab-20260511.img.gz`. El script usa Debian Bookworm y las bibliotecas de esa imagen. La imagen de firmware se obtiene por separado. Antes de compilar, comprueba que su SHA-256 es `c28a96f88b07e3adb4ea76b9874cd18ae177ec216bec2dac87c68795fb81291c`. [Versiones de KNULLI](https://github.com/knulli-cfw/distribution/releases)
+
+Desde la raíz de las fuentes, con una copia de trabajo temporal:
+
+```sh
+tmp_src=$(mktemp -d)
+cp -R nativo/fuente/. "$tmp_src/"
+git -C "$tmp_src" init -q
+git -C "$tmp_src" add locale
+DOCKER_DEFAULT_PLATFORM=linux/arm64 bash nativo/herramientas/build-es.sh /ruta/knulli-h700-rg35xx-h-scarab-20260511.img.gz "$tmp_src" "$PWD/salida/bin"
+```
+
+El binario incorpora la hora de compilación. La comparación del ZIP del tema se puede hacer byte a byte con las mismas versiones de las herramientas. Las pruebas del frontend y del servicio se documentan en `PRUEBAS.md`.
+
+## Reempaquetar la candidata
+
+Para reproducir los dos ZIP con el ejecutable cualificado, recupera ese archivo del instalable y ejecuta el empaquetador desde la raíz de estas fuentes:
+
+```sh
+unzip -p /ruta/canica-1.0.1-rc31-rg35xx-h.zip share/system/canica/bin/emulationstation > nativo/emulationstation
+python3 -B knulli/39-canica/release.py nativo salida/canica-1.0.1-rc31.zip distribucion
+```
+
+## Probar el instalable
+
+Desde la raíz de estas fuentes, ejecuta en la computadora `bash knulli/39-canica/release/tests/probar-servicio.sh /ruta/knulli-h700-rg35xx-h-scarab-20260511.img.gz /ruta/canica-1.0.1-rc31-rg35xx-h.zip nativo/herramientas/fat_extract.py`. El ensayo crea un entorno Linux ARM64 descartable, comprueba el cambio de ejecutable y prueba la decisión de reiniciar con respuestas HTTP simuladas.

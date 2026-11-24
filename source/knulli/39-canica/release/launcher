@@ -1,0 +1,5 @@
+#!/bin/sh
+export ES_PATCHED_ROOT=/var/run/canica
+export ES_PATCHED_STOCK=/var/run/canica/emulationstation.stock
+export ES_PATCHED_LOG=/userdata/system/logs/canica.log
+exec /bin/bash /var/run/canica/watchdog.sh "$@"

@@ -1,0 +1,109 @@
+#!/bin/bash
+# KNULLI calls user services with bash, including files transferred over SMB.
+set -eu
+pack=/userdata/system/canica
+run=/var/run/canica
+target=/usr/bin/emulationstation
+stock=$run/emulationstation.stock
+sha_stock=d02c1f349952151ba5cd5b67125e848e95279483230d1582203efd44cf37af64
+version='scarab 2026/05/11 00:09'
+api=http://127.0.0.1:1234
+log() { echo "Canica: $*" >&2; logger -t canica -- "$*" || true; }
+die() {
+    log "$*"
+    curl -fs -m 1 -o /dev/null -H 'Content-Type: text/plain' --data-binary "Canica: $*" "$api/notify" || true
+    exit 1
+}
+same() { test -e "$1" && test "$1" -ef "$2"; }
+digest() { sha256sum "$1" | cut -d' ' -f1; }
+
+start() {
+    [ "$(tr -d '\000' </proc/device-tree/model)" = "Anbernic RG35XX-H" ] || die "Modelo incompatible"
+    [ "$(cat /usr/share/knulli/knulli.version)" = "$version" ] || die "Versión de Scarab incompatible"
+    services=$(knulli-settings-get system.services) || die "No se pudieron leer los servicios de KNULLI"
+    case " $services " in
+        *" fosforo "*|*" es_patched "*) die "Otro servicio controla el menú. Desactívalo en Servicios y reinicia." ;;
+    esac
+    mkdir -p "$run"
+    if [ "$(knulli-settings-get system.quickresume || true)" = 0 ]; then
+        rm -f "$run/resume.enabled"
+    else
+        touch "$run/resume.enabled"
+    fi
+    if same "$run/launcher" "$target"; then return 0; fi
+    [ "$(digest "$target")" = "$sha_stock" ] || die "El frontend de fábrica no coincide"
+    # Check the whole transfer before taking over. Settings and library data stay outside this manifest.
+    [ "$(digest "$pack/SHA256SUMS")" = "@INVENTORY_SHA256@" ] || die "Índice de archivos incompleto"
+    (cd /userdata && sha256sum -c "$pack/SHA256SUMS" >/dev/null) || die "Copia incompleta o modificada"
+    mkdir -p "$run/bin" "$run/state"
+    for file in bin/emulationstation launcher watchdog.sh manifest; do
+        if [ -x "$run/$file" ] && cmp -s "$pack/$file" "$run/$file"; then continue; fi
+        cp "$pack/$file" "$run/$file.new"
+        chmod 755 "$run/$file.new"
+        cmp -s "$pack/$file" "$run/$file.new" || die "Error al copiar $file"
+        mv -f "$run/$file.new" "$run/$file"
+    done
+    if ! grep -Fq " $stock " /proc/mounts; then
+        touch "$stock"
+        mount --bind "$target" "$stock" || die "No se pudo conservar el frontend de fábrica"
+    fi
+    [ "$(digest "$stock")" = "$sha_stock" ] || die "La copia de recuperación no coincide"
+    ticket=$(mktemp "$run/restart.XXXXXX")
+    mount --bind "$run/launcher" "$target" || die "No se pudo activar Canica"
+    log "Preparado para el siguiente arranque de EmulationStation"
+    # A boot may start ES before user services. Wait for the stock menu before requesting a clean restart.
+    # Its current process retains the original inode across the bind mount.
+    (
+        exec 9>&-
+        trap 'rm -f "$ticket"' EXIT
+        for ((i=0; i<120; i++)); do
+            [ -f "$ticket" ] && same "$run/launcher" "$target" || exit 0
+            for pid in $(pidof emulationstation || true); do
+                same "/proc/$pid/exe" "$stock" || continue
+                code=$(curl -s -m 1 -o /dev/null -w '%{http_code}' "$api/runningGame") || continue
+                [ "$code" = 201 ] || exit 0
+                [ -e /var/run/emulationstation-standalone ] || exit 0
+                # Serialize the final decision with a stop or a subsequent activation.
+                exec 9>/var/run/canica-service.lock
+                flock -x 9
+                [ -f "$ticket" ] && same "$run/launcher" "$target" && same "/proc/$pid/exe" "$stock" || exit 0
+                curl -fs -m 3 -o /dev/null "$api/quit" || true
+                exit 0
+            done
+            for pid in $(pidof emulationstation || true); do
+                same "/proc/$pid/exe" "$run/bin/emulationstation" && exit 0
+            done
+            sleep 1
+        done
+    ) </dev/null >/dev/null 2>&1 &
+}
+
+stop() {
+    rm -f "$run"/restart.* "$run/resume.enabled"
+    if same "$run/launcher" "$target"; then umount "$target"; fi
+    # A running watchdog may still need the stock inode. KNULLI clears /var/run on reboot.
+}
+
+status() {
+    local active=no
+    for pid in $(pidof emulationstation || true); do
+        if same "/proc/$pid/exe" "$run/bin/emulationstation"; then active=yes; break; fi
+    done
+    if same "$run/launcher" "$target"; then
+        if [ "$active" = yes ]; then echo "Canica en ejecución"; else echo "Canica preparado para el siguiente inicio del menú"; fi
+    elif [ "$active" = yes ]; then
+        echo "Canica sigue en ejecución hasta que reinicies el menú"
+    else
+        echo "Servicio Canica inactivo"
+    fi
+}
+
+case "${1:-}" in
+    start|stop)
+        exec 9>/var/run/canica-service.lock
+        flock -x 9
+        "$1"
+        ;;
+    status) status ;;
+    *) exit 2 ;;
+esac

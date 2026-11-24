@@ -1,0 +1,42 @@
+<theme><view name="screen">
+			<stackpanel name="system-indicators" extra="true">
+				<visible>false</visible>
+			</stackpanel>
+			<stackpanel name="u37Indicators" extra="true">
+				<pos>0.59375 0.0125</pos>
+				<size>0.3875 0.02917</size>
+				<orientation>horizontal</orientation>
+				<reverse>true</reverse>
+				<separator>7</separator>
+				<zIndex>55</zIndex>
+				<clock name="u37Clock" extra="true">
+					<size>0 1</size>
+					<fontPath>${u37.semibold}</fontPath>
+					<fontSize>0.01927</fontSize>
+					<color>f3f4fc</color>
+					<verticalAlignment>center</verticalAlignment>
+				</clock>
+				<batteryText name="u37BatteryText" extra="true">
+					<size>0 1</size>
+					<fontPath>${u37.semibold}</fontPath>
+					<fontSize>0.01927</fontSize>
+					<color>b5bece</color>
+					<verticalAlignment>center</verticalAlignment>
+				</batteryText>
+				<batteryIcon name="u37BatteryIcon" extra="true">
+					<size>0.08065 1</size>
+					<full>${u37}/art/status/battery-full.png</full>
+					<at75>${u37}/art/status/battery-at75.png</at75>
+					<at50>${u37}/art/status/battery-at50.png</at50>
+					<at25>${u37}/art/status/battery-at25.png</at25>
+					<empty>${u37}/art/status/battery-empty.png</empty>
+					<incharge>${u37}/art/status/battery-incharge.png</incharge>
+				</batteryIcon>
+				<networkIcon name="u37Network" extra="true">
+					<size>0.05645 1</size>
+					<networkIcon>${u37}/art/status/wifi.png</networkIcon>
+					<planemodeIcon>${u37}/art/status/wifi-off.png</planemodeIcon>
+				</networkIcon>
+			</stackpanel>
+		</view>
+	</theme>

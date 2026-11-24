@@ -1,0 +1,487 @@
+diff --git a/es-app/src/FileData.cpp b/es-app/src/FileData.cpp
+index b9239a9..eea64cb 100644
+--- a/es-app/src/FileData.cpp
++++ b/es-app/src/FileData.cpp
+@@ -1061,7 +1061,7 @@ const std::string& CollectionFileData::getName()
+ 	return mSourceFileData->getName();
+ }
+ 
+-const std::vector<FileData*> FolderData::getChildrenListToDisplay() 
++const std::vector<FileData*> FolderData::getChildrenListToDisplay(bool ignoreTextFilter)
+ {
+ 	std::vector<FileData*> ret;
+ 
+@@ -1124,7 +1124,7 @@ const std::vector<FileData*> FolderData::getChildrenListToDisplay()
+ 
+ 		if (idx != nullptr)
+ 		{
+-			int score = idx->showFile(*it);
++			int score = idx->showFile(*it, ignoreTextFilter);
+ 			if (score == 0)
+ 				continue;
+ 
+@@ -1146,7 +1146,7 @@ const std::vector<FileData*> FolderData::getChildrenListToDisplay()
+ 			auto fd = pFolder->findUniqueGameForFolder();
+ 			if (fd != nullptr)
+ 			{
+-				if (idx != nullptr && !idx->showFile(fd))
++				if (idx != nullptr && !idx->showFile(fd, ignoreTextFilter))
+ 					continue;
+ 
+ 				if (!showHiddenFiles && fd->getHidden())
+@@ -1170,7 +1170,7 @@ const std::vector<FileData*> FolderData::getChildrenListToDisplay()
+ 
+ 	const FileSorts::SortType& sort = FileSorts::getSortTypes().at(currentSortId);
+ 
+-	if (idx != nullptr && idx->hasRelevency())
++	if (!ignoreTextFilter && idx != nullptr && idx->hasRelevency())
+ 	{
+ 		auto compf = sort.comparisonFunction;
+ 
+diff --git a/es-app/src/FileData.h b/es-app/src/FileData.h
+index 896a13c..67b636f 100644
+--- a/es-app/src/FileData.h
++++ b/es-app/src/FileData.h
+@@ -245,7 +245,7 @@ public:
+ 	FileData* FindByPath(const std::string& path);
+ 
+ 	inline const std::vector<FileData*>& getChildren() const { return mChildren; }
+-	const std::vector<FileData*> getChildrenListToDisplay();
++	const std::vector<FileData*> getChildrenListToDisplay(bool ignoreTextFilter = false);
+ 	std::shared_ptr<std::vector<FileData*>> findChildrenListToDisplayAtCursor(FileData* toFind, std::stack<FileData*>& stack);
+ 
+ 	std::vector<FileData*> getFilesRecursive(unsigned int typeMask, bool displayedOnly = false, SystemData* system = nullptr, bool includeVirtualStorage = true) const;
+diff --git a/es-app/src/FileFilterIndex.cpp b/es-app/src/FileFilterIndex.cpp
+index 6562557..98d2bb8 100644
+--- a/es-app/src/FileFilterIndex.cpp
++++ b/es-app/src/FileFilterIndex.cpp
+@@ -625,7 +625,7 @@ float jw_distance(std::string s1, std::string s2, bool caseSensitive = true) {
+ 	return weight;
+ }
+ 
+-int FileFilterIndex::showFile(FileData* game)
++int FileFilterIndex::showFile(FileData* game, bool ignoreText)
+ {
+ 	// this shouldn't happen, but just in case let's get it out of the way
+ 	if (!isFiltered())
+@@ -639,7 +639,7 @@ int FileFilterIndex::showFile(FileData* game)
+ 		// iterate through all of the children, until there's a match
+ 
+ 		for (std::vector<FileData*>::const_iterator it = children.cbegin(); it != children.cend(); ++it )
+-			if (showFile(*it))
++			if (showFile(*it, ignoreText))
+ 				return 1;
+ 
+ 		return 0;
+@@ -649,7 +649,7 @@ int FileFilterIndex::showFile(FileData* game)
+ 	
+ 	int textScore = 0;
+ 
+-	if (!mTextFilter.empty())
++	if (!ignoreText && !mTextFilter.empty())
+ 	{
+ 		auto name = game->getSourceFileData()->getName();
+ 		std::string language = SystemConf::getInstance()->get("system.language");
+@@ -947,6 +947,9 @@ int FileFilterIndex::showFile(FileData* game)
+ 		keepGoing = true;
+ 	}
+ 
++	if (ignoreText)
++		return !hasFilter || keepGoing;
++
+ 	if (keepGoing && !mTextFilter.empty())
+ 		return textScore;
+ 	
+@@ -1302,7 +1305,7 @@ bool CollectionFilter::isFiltered()
+ 	return mSystemFilter.size() > 0 || FileFilterIndex::isFiltered();
+ }
+ 
+-int CollectionFilter::showFile(FileData* game)
++int CollectionFilter::showFile(FileData* game, bool ignoreText)
+ {
+ 	if (game == nullptr)
+ 		return 0;
+@@ -1314,7 +1317,7 @@ int CollectionFilter::showFile(FileData* game)
+ 			return 0;
+ 	}
+ 	
+-	return FileFilterIndex::showFile(game);
++	return FileFilterIndex::showFile(game, ignoreText);
+ }
+ 
+ bool CollectionFilter::isSystemSelected(const std::string name)
+diff --git a/es-app/src/FileFilterIndex.h b/es-app/src/FileFilterIndex.h
+index ea5e88e..43e6853 100644
+--- a/es-app/src/FileFilterIndex.h
++++ b/es-app/src/FileFilterIndex.h
+@@ -66,7 +66,7 @@ public:
+ 
+ 	void clearAllFilters();
+ 	
+-	virtual int showFile(FileData* game);
++	virtual int showFile(FileData* game, bool ignoreText = false);
+ 	virtual bool isFiltered() { return (!mTextFilter.empty() || filterByGenre || filterByPlayers || filterByPubDev || filterByFamily
+ 		|| filterByRatings || filterByFavorites || filterByKidGame || filterByPlayed || filterByLang || filterByRegion || filterByYear || filterByCheevos || filterByVertical || filterByLightGun || filterByWheel || filterByTrackball || filterBySpinner || filterByHasMedia || filterByMissingMedia); };
+ 
+@@ -177,7 +177,7 @@ public:
+ 	bool load(const std::string file);
+ 	bool save();
+ 
+-	int showFile(FileData* game) override;
++	int showFile(FileData* game, bool ignoreText = false) override;
+ 	bool isFiltered() override;
+ 
+ 	bool isSystemSelected(const std::string name);
+diff --git a/es-app/src/guis/GuiGamelistOptions.cpp b/es-app/src/guis/GuiGamelistOptions.cpp
+index 777aca5..5378393 100644
+--- a/es-app/src/guis/GuiGamelistOptions.cpp
++++ b/es-app/src/guis/GuiGamelistOptions.cpp
+@@ -286,6 +286,54 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, IGameListView* gamelist,
+ 	mMenu.animateTo(Vector2f((Renderer::getScreenWidth() - mMenu.getSize().x()) / 2, (Renderer::getScreenHeight() - mMenu.getSize().y()) / 2));
+ }
+ 
++void GuiGamelistOptions::openGameSearch(Window* window, SystemData* system, const std::string& title,
++	const std::string& value, const std::function<void(const std::string&)>& apply)
++{
++	auto theme = system->getTheme();
++	if (!theme || theme->getVariable("esSearchPicks").empty() || !Settings::getInstance()->getBool("UseOSK") ||
++		!theme->getElement("menu", "searchKeys", "menuKeyboard"))
++	{
++		GuiTextEditPopupKeyboard::openSearch(window, theme, system->getFullName(), title, value, apply);
++		return;
++	}
++
++	std::vector<GuiTextEditPopupKeyboard::SearchEntry> catalog;
++	std::vector<FolderData*> folders = {system->getRootFolder()};
++	std::set<FolderData*> visited;
++	std::set<std::string> paths;
++	while (!folders.empty())
++	{
++		auto folder = folders.back();
++		folders.pop_back();
++		if (!folder || !visited.insert(folder).second)
++			continue;
++		for (auto item : folder->getChildrenListToDisplay(true))
++		{
++			if (item->getType() == FOLDER)
++				folders.push_back(static_cast<FolderData*>(item));
++			else if (item->getType() == GAME && paths.insert(item->getPath()).second)
++			{
++				auto source = item->getSourceFileData();
++				const auto& name = source->getName();
++				catalog.push_back({name, Utils::String::toLower(name), source->getSystem()->getFullName(),
++					item->getPath(), source->getMetadata().get("lastplayed")});
++			}
++		}
++	}
++
++	auto pick = [system, apply](const GuiTextEditPopupKeyboard::SearchEntry& entry)
++	{
++		apply(entry.title);
++		auto view = ViewController::get()->getGameListView(system);
++		if (auto game = system->getRootFolder()->FindByPath(entry.path))
++			view->setCursor(game);
++	};
++	auto keyboard = new GuiTextEditPopupKeyboard(window, theme->getVariable("esSearchTitle"), value, apply,
++		false, "OK", theme, system->getFullName());
++	keyboard->enableSuggestions(std::move(catalog), pick);
++	window->pushGui(keyboard);
++}
++
+ void GuiGamelistOptions::addTextFilterToMenu()
+ {
+ 	auto theme = ThemeData::getMenuTheme();
+@@ -348,7 +396,7 @@ void GuiGamelistOptions::addTextFilterToMenu()
+ 
+ 	row.makeAcceptInputHandler([this, updateVal]
+ 	{
+-		GuiTextEditPopupKeyboard::openSearch(mWindow, mSystem->getTheme(), mSystem->getFullName(),
++		GuiGamelistOptions::openGameSearch(mWindow, mSystem,
+ 			_("FILTER GAMES BY TEXT"), mTextFilter->getValue(), updateVal);
+ 	});
+ 
+diff --git a/es-app/src/guis/GuiGamelistOptions.h b/es-app/src/guis/GuiGamelistOptions.h
+index 2148fb2..732457e 100644
+--- a/es-app/src/guis/GuiGamelistOptions.h
++++ b/es-app/src/guis/GuiGamelistOptions.h
+@@ -21,6 +21,8 @@ public:
+ 	virtual std::vector<HelpPrompt> getHelpPrompts() override;
+ 	virtual HelpStyle getHelpStyle() override;
+ 
++	static void openGameSearch(Window* window, SystemData* system, const std::string& title,
++		const std::string& value, const std::function<void(const std::string&)>& apply);
+ 	static std::vector<std::string> gridSizes;
+ 
+ 	virtual bool onMouseClick(int button, bool pressed, int x, int y);
+diff --git a/es-app/src/views/SystemView.cpp b/es-app/src/views/SystemView.cpp
+index 455357d..919f893 100644
+--- a/es-app/src/views/SystemView.cpp
++++ b/es-app/src/views/SystemView.cpp
+@@ -24,7 +24,7 @@
+ #include "CollectionSystemManager.h"
+ #include "resources/TextureDataManager.h"
+ #include "guis/GuiTextEditPopup.h"
+-#include "guis/GuiTextEditPopupKeyboard.h"
++#include "guis/GuiGamelistOptions.h"
+ #include "TextToSpeech.h"
+ #include "BindingManager.h"
+ #include "guis/GuiRetroAchievements.h"
+@@ -582,7 +582,7 @@ void SystemView::showQuickSearch()
+ 			ViewController::get()->goToGameList(all, false);
+ 		};
+ 
+-		GuiTextEditPopupKeyboard::openSearch(mWindow, all->getTheme(), all->getFullName(),
++		GuiGamelistOptions::openGameSearch(mWindow, all,
+ 			_("QUICK SEARCH"), "", updateVal);
+ 	}
+ }
+diff --git a/es-app/src/views/gamelist/ISimpleGameListView.cpp b/es-app/src/views/gamelist/ISimpleGameListView.cpp
+index 6b2e576..8b6270e 100644
+--- a/es-app/src/views/gamelist/ISimpleGameListView.cpp
++++ b/es-app/src/views/gamelist/ISimpleGameListView.cpp
+@@ -485,7 +485,7 @@ void ISimpleGameListView::showQuickSearch()
+ 			ViewController::get()->reloadGameListView(mRoot->getSystem());
+ 	};
+ 
+-	GuiTextEditPopupKeyboard::openSearch(mWindow, mRoot->getSystem()->getTheme(), mRoot->getSystem()->getFullName(),
++	GuiGamelistOptions::openGameSearch(mWindow, mRoot->getSystem(),
+ 		_("FILTER GAMES BY TEXT"), searchText, updateVal);
+ }
+ 
+diff --git a/es-core/src/guis/GuiTextEditPopupKeyboard.cpp b/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
+index 78a2b2f..62fea78 100644
+--- a/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
++++ b/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
+@@ -4,6 +4,9 @@
+ #include "utils/StringUtil.h"
+ #include "Log.h"
+ #include "Window.h"
++#include "utils/HtmlColor.h"
++#include <tuple>
++#include <cctype>
+ #include "LocaleES.h"
+ #include "SystemConf.h"
+ 
+@@ -404,12 +407,27 @@ void GuiTextEditPopupKeyboard::onSizeChanged()
+ 		mHint->setSize(540*s, mText->getSize().y());
+ 		mHint->setPosition(30*s, 48*s);
+ 		mShortcuts->setSize(562*s, 24*s);
+-		mShortcuts->setPosition(19*s, 287*s);
++		const float extra = mPickGame ? 98*s : 0;
++		mShortcuts->setPosition(19*s, 287*s+extra);
++		if (mPickGame)
++		{
++			mMatchHeader->setSize(562*s, 18*s);
++			mMatchHeader->setPosition(20*s, 79*s);
++			for (int i = 0; i < suggestionLimit; ++i)
++			{
++				float y = (99+24*i)*s;
++				mRowTitle[i]->setPadding(Vector4f(16*s, 0, 0, 0));
++				mRowTitle[i]->setSize(412*s, 23*s);
++				mRowSystem[i]->setSize(150*s, 23*s);
++				mRowTitle[i]->setPosition(19*s, y);
++				mRowSystem[i]->setPosition(431*s, y);
++			}
++		}
+ 		mKeyboardGrid->setColWidthPerc(12, 0.103f, false);
+ 		mKeyboardGrid->setRowHeightPerc(0, 0.17f, false);
+ 		mKeyboardGrid->setRowHeightPerc(4, 0.19f, false);
+ 		mKeyboardGrid->setSize(568*s, 197*s);
+-		mKeyboardGrid->setPosition(16*s, 83*s);
++		mKeyboardGrid->setPosition(16*s, 83*s+extra);
+ 		return;
+ 	}
+ 
+@@ -428,15 +446,158 @@ void GuiTextEditPopupKeyboard::onSizeChanged()
+ 	mKeyboardGrid->setPosition(OSK_PADDINGX, pos.y());	
+ }
+ 
++void GuiTextEditPopupKeyboard::enableSuggestions(std::vector<SearchEntry> catalog, PickGame pick)
++{
++	mCatalog = std::move(catalog);
++	mPickGame = std::move(pick);
++	auto theme = ThemeData::getMenuTheme();
++	mMatchHeader = std::make_shared<TextComponent>(mWindow, "", theme->TextSmall.font, theme->TextSmall.color);
++	addChild(mMatchHeader.get());
++	for (int i = 0; i < suggestionLimit; ++i)
++	{
++		mRowTitle[i] = std::make_shared<TextComponent>(mWindow, "", theme->Text.font, theme->Text.color);
++		mRowSystem[i] = std::make_shared<TextComponent>(mWindow, "", theme->TextSmall.font, theme->TextSmall.color, ALIGN_RIGHT);
++		for (auto& label : {mRowTitle[i], mRowSystem[i]})
++		{
++			label->setMultiLine(TextComponent::SINGLELINE);
++			addChild(label.get());
++		}
++	}
++	mMatchCursor = std::make_shared<TextComponent>(mWindow, "›", theme->Text.font, theme->Text.color);
++	addChild(mMatchCursor.get());
++	const float s = mSize.x()/600.0f;
++	mMatchCursor->setSize(12*s, 23*s);
++	setSize(mSize.x(), Math::round(418*s));
++	setPosition(mPosition.x(), Math::round((Renderer::getScreenHeight()-mSize.y())/2));
++	refreshMatches();
++}
++
++void GuiTextEditPopupKeyboard::refreshMatches()
++{
++	mLastQuery = mText->getValue();
++	const auto query = Utils::String::toLower(Utils::String::trim(mLastQuery));
++	// Keep a bounded shortlist. Equal titles are resolved by console and then ROM path.
++	using Ranked = std::pair<int, size_t>;
++	std::vector<Ranked> best;
++	auto before = [&](const Ranked& a, const Ranked& b)
++	{
++		const auto& x = mCatalog[a.second];
++		const auto& y = mCatalog[b.second];
++		if (a.first != b.first) return a.first < b.first;
++		if (query.empty() && x.lastPlayed != y.lastPlayed) return x.lastPlayed > y.lastPlayed;
++		return std::tie(x.foldedTitle, x.system, x.path) < std::tie(y.foldedTitle, y.system, y.path);
++	};
++	for (size_t i = 0; i < mCatalog.size(); ++i)
++	{
++		const auto& name = mCatalog[i].foldedTitle;
++		const auto pos = name.find(query);
++		if (pos == std::string::npos) continue;
++		int rank = name == query ? 0 : pos == 0 ? 1 : !std::isalnum(static_cast<unsigned char>(name[pos-1])) ? 2 : 3;
++		Ranked item(rank, i);
++		auto at = std::lower_bound(best.begin(), best.end(), item, before);
++		if (at == best.end() && best.size() == suggestionLimit) continue;
++		best.insert(at, item);
++		if (best.size() > suggestionLimit) best.pop_back();
++	}
++	mMatches.clear();
++	for (auto item : best) mMatches.push_back(item.second);
++	focusMatch(-1);
++}
++
++void GuiTextEditPopupKeyboard::styleMatches()
++{
++	auto theme = ThemeData::getMenuTheme();
++	auto keys = mSearchTheme->getElement("menu", "searchKeys", "menuKeyboard");
++	const auto accent = Utils::HtmlColor::parse(mSearchTheme->getVariable("accent"));
++	const auto ink = keys->get<unsigned int>("selectedColor");
++	mMatchHeader->setText(mSearchTheme->getVariable(mMatches.empty() ? "esSearchNoMatches" :
++		(mLastQuery.empty() ? "esSearchBrowse" : "esSearchPicks")));
++	for (int i = 0; i < suggestionLimit; ++i)
++	{
++		bool visible = i < (int)mMatches.size();
++		mRowTitle[i]->setVisible(visible);
++		mRowSystem[i]->setVisible(visible);
++		if (!visible) continue;
++		const auto& item = mCatalog[mMatches[i]];
++		bool selected = mSelectedMatch == i;
++		mRowTitle[i]->setText(item.title);
++		mRowSystem[i]->setText(item.system + "  ");
++		mRowTitle[i]->setAutoScroll(selected ? TextComponent::HORIZONTAL : TextComponent::NONE);
++		mRowTitle[i]->setColor(selected ? ink : theme->Text.color);
++		mRowSystem[i]->setColor(selected ? ink : theme->TextSmall.color);
++		for (auto& label : {mRowTitle[i], mRowSystem[i]})
++		{
++			label->setBackgroundColor(selected ? accent : 0);
++			label->setRenderBackground(selected);
++		}
++	}
++	mMatchCursor->setVisible(mSelectedMatch >= 0);
++	if (mSelectedMatch >= 0)
++	{
++		const float scale = mSize.x()/600.0f;
++		mMatchCursor->setPosition(25*scale, (99+24*mSelectedMatch)*scale);
++		mMatchCursor->setColor(ink);
++	}
++	mShortcuts->setText(mSearchTheme->getVariable(mSelectedMatch >= 0 ? "esPickControls" :
++		mMatches.empty() ? "esNoPickControls" : "esSearchShortcuts"));
++}
++
++void GuiTextEditPopupKeyboard::focusMatch(int row)
++{
++	if (mSelectedMatch < 0 && row >= 0) mGrid.onFocusLost();
++	if (mSelectedMatch >= 0 && row < 0) mGrid.onFocusGained();
++	mSelectedMatch = row;
++	mPickPressed = false;
++	styleMatches();
++}
++
++bool GuiTextEditPopupKeyboard::matchInput(InputConfig* config, Input input)
++{
++	bool toggle = config->isMappedTo("r2", input);
++	bool up = config->isMappedLike("up", input);
++	bool down = config->isMappedLike("down", input);
++	if (mSelectedMatch < 0)
++	{
++		if (mMatches.empty() || (!toggle && !(up && mGrid.getSelectedComponent() == mKeyboardGrid && mKeyboardGrid->getCursor().y() == 0)))
++			return false;
++		if (input.value) focusMatch(0);
++		return true;
++	}
++	if (config->isMappedTo(BUTTON_OK, input))
++	{
++		if (input.value) mPickPressed = true;
++		else if (mPickPressed)
++		{
++			mPickGame(mCatalog[mMatches[mSelectedMatch]]);
++			delete this;
++		}
++		return true;
++	}
++	if (toggle || config->isMappedTo(BUTTON_BACK, input) || (down && mSelectedMatch+1 == (int)mMatches.size()))
++	{
++		if (input.value) focusMatch(-1);
++		return true;
++	}
++	if (up || down)
++	{
++		if (input.value) focusMatch(std::max(0, mSelectedMatch + (down ? 1 : -1)));
++		return true;
++	}
++	// START applies the typed filter and X clears it through the usual keyboard handlers.
++	return !config->isMappedTo("start", input) && !config->isMappedTo("x", input);
++}
++
+ void GuiTextEditPopupKeyboard::update(int deltaTime)
+ {
+ 	GuiComponent::update(deltaTime);
++	if (mPickGame && mText->getValue() != mLastQuery) refreshMatches();
+ 	if (mHint)
+ 		mHint->setVisible(mText->getValue().empty());
+ }
+ 
+ bool GuiTextEditPopupKeyboard::input(InputConfig* config, Input input)
+ {
++	if (mPickGame && matchInput(config, input)) return true;
+ 	if (GuiComponent::input(config, input))
+ 		return true;
+ 
+diff --git a/es-core/src/guis/GuiTextEditPopupKeyboard.h b/es-core/src/guis/GuiTextEditPopupKeyboard.h
+index 0d7c5e8..e797730 100644
+--- a/es-core/src/guis/GuiTextEditPopupKeyboard.h
++++ b/es-core/src/guis/GuiTextEditPopupKeyboard.h
+@@ -15,6 +15,9 @@ public:
+ 		const std::shared_ptr<ThemeData>& searchTheme = nullptr, const std::string& scope = "");
+ 	static void openSearch(Window* window, const std::shared_ptr<ThemeData>& theme, const std::string& scope,
+ 		const std::string& title, const std::string& value, const std::function<void(const std::string&)>& apply);
++	struct SearchEntry { std::string title, foldedTitle, system, path, lastPlayed; };
++	using PickGame = std::function<void(const SearchEntry&)>;
++	void enableSuggestions(std::vector<SearchEntry> catalog, PickGame pick);
+ 	void update(int deltaTime) override;
+ 
+ 	bool input(InputConfig* config, Input input);
+@@ -58,6 +61,19 @@ private:
+ 
+ 	std::shared_ptr<ThemeData> mSearchTheme;
+ 	std::shared_ptr<TextComponent> mScope, mHint, mShortcuts;
++	static constexpr int suggestionLimit = 3;
++	std::vector<SearchEntry> mCatalog;
++	std::vector<size_t> mMatches;
++	PickGame mPickGame;
++	std::shared_ptr<TextComponent> mMatchHeader, mMatchCursor;
++	std::shared_ptr<TextComponent> mRowTitle[suggestionLimit], mRowSystem[suggestionLimit];
++	std::string mLastQuery;
++	int mSelectedMatch = -1;
++	bool mPickPressed = false;
++	void refreshMatches();
++	void styleMatches();
++	void focusMatch(int row);
++	bool matchInput(InputConfig* config, Input input);
+ 	bool mMultiLine;
+ 	bool mShift = false;	
+ 	bool mAlt = false;

@@ -1,0 +1,86 @@
+{
+  "iris": {
+    "label": "Iris",
+    "canvas": "07111d",
+    "panel": "111f32",
+    "top": "0b1829",
+    "ink": "f3f4fc",
+    "muted": "b5bece",
+    "accent": "cfcbff",
+    "rail": "43536b",
+    "stops": [
+      "a8f1ef",
+      "7fd4ff",
+      "a496ff",
+      "ef9fdc",
+      "ffe7b7"
+    ],
+    "motif": "slots",
+    "cardWash": "0",
+    "tileRadius": "9",
+    "frameCorner": "10 10",
+    "menuGroup": "07111dbb",
+    "menuLine": "b5bece28",
+    "ctaInk": "07111d",
+    "meterTrack": "f8f6ff",
+    "metricBand": "223249",
+    "ctaStops": [
+      "ffe7b7",
+      "cfcbff"
+    ]
+  },
+  "ambar": {
+    "label": "Ámbar",
+    "canvas": "100f10",
+    "panel": "27201d",
+    "top": "151414",
+    "ink": "fff4e2",
+    "muted": "cfbeb0",
+    "accent": "ffbf66",
+    "rail": "5b4b3e",
+    "stops": [
+      "ffe6a3",
+      "ffbf66",
+      "e59154"
+    ],
+    "motif": "ticket",
+    "cardWash": "1",
+    "tileRadius": "4",
+    "frameCorner": "22 22",
+    "menuGroup": "100f10bb",
+    "menuLine": "cfbeb028",
+    "menuStops": [
+      [
+        0,
+        "080707"
+      ],
+      [
+        16,
+        "191514"
+      ],
+      [
+        42,
+        "392b23"
+      ],
+      [
+        128,
+        "ad8058"
+      ],
+      [
+        210,
+        "ffcb88"
+      ],
+      [
+        255,
+        "fff2d9"
+      ]
+    ],
+    "ctaInk": "100f10",
+    "meterTrack": "fff6e8",
+    "metricBand": "3D3028",
+    "ctaStops": [
+      "ffe6a3",
+      "e59154"
+    ]
+  }
+}

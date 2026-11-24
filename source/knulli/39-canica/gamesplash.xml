@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<theme>
+  <formatVersion>7</formatVersion>
+  <view name="splash">
+    <splash name="splash"><backgroundColor>000000FF</backgroundColor></splash>
+    <image name="background"><visible>false</visible></image>
+    <text name="label"><visible>false</visible></text>
+  </view>
+</theme>

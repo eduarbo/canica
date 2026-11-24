@@ -1,0 +1,584 @@
+diff --git a/es-app/src/guis/GuiGamelistOptions.cpp b/es-app/src/guis/GuiGamelistOptions.cpp
+index 5378393..d00c464 100644
+--- a/es-app/src/guis/GuiGamelistOptions.cpp
++++ b/es-app/src/guis/GuiGamelistOptions.cpp
+@@ -290,14 +290,14 @@ void GuiGamelistOptions::openGameSearch(Window* window, SystemData* system, cons
+ 	const std::string& value, const std::function<void(const std::string&)>& apply)
+ {
+ 	auto theme = system->getTheme();
+-	if (!theme || theme->getVariable("esSearchPicks").empty() || !Settings::getInstance()->getBool("UseOSK") ||
++	if (!theme || theme->getVariable("esWordComplete").empty() || !Settings::getInstance()->getBool("UseOSK") ||
+ 		!theme->getElement("menu", "searchKeys", "menuKeyboard"))
+ 	{
+ 		GuiTextEditPopupKeyboard::openSearch(window, theme, system->getFullName(), title, value, apply);
+ 		return;
+ 	}
+ 
+-	std::vector<GuiTextEditPopupKeyboard::SearchEntry> catalog;
++	WordCompletion vocabulary;
+ 	std::vector<FolderData*> folders = {system->getRootFolder()};
+ 	std::set<FolderData*> visited;
+ 	std::set<std::string> paths;
+@@ -312,25 +312,14 @@ void GuiGamelistOptions::openGameSearch(Window* window, SystemData* system, cons
+ 			if (item->getType() == FOLDER)
+ 				folders.push_back(static_cast<FolderData*>(item));
+ 			else if (item->getType() == GAME && paths.insert(item->getPath()).second)
+-			{
+-				auto source = item->getSourceFileData();
+-				const auto& name = source->getName();
+-				catalog.push_back({name, Utils::String::toLower(name), source->getSystem()->getFullName(),
+-					item->getPath(), source->getMetadata().get("lastplayed")});
+-			}
++				vocabulary.addTitle(item->getSourceFileData()->getName());
+ 		}
+ 	}
+ 
+-	auto pick = [system, apply](const GuiTextEditPopupKeyboard::SearchEntry& entry)
+-	{
+-		apply(entry.title);
+-		auto view = ViewController::get()->getGameListView(system);
+-		if (auto game = system->getRootFolder()->FindByPath(entry.path))
+-			view->setCursor(game);
+-	};
+-	auto keyboard = new GuiTextEditPopupKeyboard(window, theme->getVariable("esSearchTitle"), value, apply,
++	auto commit = [apply](const std::string& query) { apply(Utils::String::trim(query)); };
++	auto keyboard = new GuiTextEditPopupKeyboard(window, theme->getVariable("esSearchTitle"), value, commit,
+ 		false, "OK", theme, system->getFullName());
+-	keyboard->enableSuggestions(std::move(catalog), pick);
++	keyboard->enableWords(std::move(vocabulary));
+ 	window->pushGui(keyboard);
+ }
+ 
+diff --git a/es-core/CMakeLists.txt b/es-core/CMakeLists.txt
+index e11cc58..19c7278 100644
+--- a/es-core/CMakeLists.txt
++++ b/es-core/CMakeLists.txt
+@@ -124,6 +124,7 @@ set(CORE_HEADERS
+ 	# Utils
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/FileSystemUtil.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/StringUtil.h
++	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/WordCompletion.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/StringListLock.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/TimeUtil.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/ThreadPool.h
+@@ -263,6 +264,7 @@ set(CORE_SOURCES
+ 	# Utils
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/FileSystemUtil.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/StringUtil.cpp
++	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/WordCompletion.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/StringListLock.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/TimeUtil.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/utils/ThreadPool.cpp	
+diff --git a/es-core/src/components/TextEditComponent.h b/es-core/src/components/TextEditComponent.h
+index 517781d..87c0cc7 100644
+--- a/es-core/src/components/TextEditComponent.h
++++ b/es-core/src/components/TextEditComponent.h
+@@ -30,6 +30,7 @@ public:
+ 	inline bool isEditing() const { return mEditing; };
+ 	inline const std::shared_ptr<Font>& getFont() const { return mFont; }
+ 
++	size_t getCursor() const { return mCursor; }
+ 	void setCursor(size_t pos);
+ 
+ 	virtual std::vector<HelpPrompt> getHelpPrompts() override;
+diff --git a/es-core/src/guis/GuiTextEditPopupKeyboard.cpp b/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
+index 62fea78..65236ed 100644
+--- a/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
++++ b/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
+@@ -5,8 +5,7 @@
+ #include "Log.h"
+ #include "Window.h"
+ #include "utils/HtmlColor.h"
+-#include <tuple>
+-#include <cctype>
++
+ #include "LocaleES.h"
+ #include "SystemConf.h"
+ 
+@@ -407,20 +406,19 @@ void GuiTextEditPopupKeyboard::onSizeChanged()
+ 		mHint->setSize(540*s, mText->getSize().y());
+ 		mHint->setPosition(30*s, 48*s);
+ 		mShortcuts->setSize(562*s, 24*s);
+-		const float extra = mPickGame ? 98*s : 0;
++		const float extra = mVocabulary ? 62*s : 0;
+ 		mShortcuts->setPosition(19*s, 287*s+extra);
+-		if (mPickGame)
++		if (mVocabulary)
+ 		{
+ 			mMatchHeader->setSize(562*s, 18*s);
+ 			mMatchHeader->setPosition(20*s, 79*s);
+ 			for (int i = 0; i < suggestionLimit; ++i)
+ 			{
+-				float y = (99+24*i)*s;
+-				mRowTitle[i]->setPadding(Vector4f(16*s, 0, 0, 0));
+-				mRowTitle[i]->setSize(412*s, 23*s);
+-				mRowSystem[i]->setSize(150*s, 23*s);
+-				mRowTitle[i]->setPosition(19*s, y);
+-				mRowSystem[i]->setPosition(431*s, y);
++				const float x = (19+190*i)*s;
++				mWordCards[i]->setSize(182*s, 34*s);
++				mWordCards[i]->setPosition(x, 99*s);
++				mWordLabels[i]->setSize(168*s, 34*s);
++				mWordLabels[i]->setPosition(x+7*s, 99*s);
+ 			}
+ 		}
+ 		mKeyboardGrid->setColWidthPerc(12, 0.103f, false);
+@@ -446,28 +444,23 @@ void GuiTextEditPopupKeyboard::onSizeChanged()
+ 	mKeyboardGrid->setPosition(OSK_PADDINGX, pos.y());	
+ }
+ 
+-void GuiTextEditPopupKeyboard::enableSuggestions(std::vector<SearchEntry> catalog, PickGame pick)
++void GuiTextEditPopupKeyboard::enableWords(WordCompletion vocabulary)
+ {
+-	mCatalog = std::move(catalog);
+-	mPickGame = std::move(pick);
++	mVocabulary.reset(new WordCompletion(std::move(vocabulary)));
+ 	auto theme = ThemeData::getMenuTheme();
+ 	mMatchHeader = std::make_shared<TextComponent>(mWindow, "", theme->TextSmall.font, theme->TextSmall.color);
+ 	addChild(mMatchHeader.get());
+ 	for (int i = 0; i < suggestionLimit; ++i)
+ 	{
+-		mRowTitle[i] = std::make_shared<TextComponent>(mWindow, "", theme->Text.font, theme->Text.color);
+-		mRowSystem[i] = std::make_shared<TextComponent>(mWindow, "", theme->TextSmall.font, theme->TextSmall.color, ALIGN_RIGHT);
+-		for (auto& label : {mRowTitle[i], mRowSystem[i]})
+-		{
+-			label->setMultiLine(TextComponent::SINGLELINE);
+-			addChild(label.get());
+-		}
++		mWordCards[i] = std::make_shared<NinePatchComponent>(mWindow);
++		mWordCards[i]->setCornerSize(6, 6);
++		mWordLabels[i] = std::make_shared<TextComponent>(mWindow, "", theme->Text.font, theme->Text.color, ALIGN_CENTER);
++		mWordLabels[i]->setMultiLine(TextComponent::SINGLELINE);
++		addChild(mWordCards[i].get());
++		addChild(mWordLabels[i].get());
+ 	}
+-	mMatchCursor = std::make_shared<TextComponent>(mWindow, "›", theme->Text.font, theme->Text.color);
+-	addChild(mMatchCursor.get());
+-	const float s = mSize.x()/600.0f;
+-	mMatchCursor->setSize(12*s, 23*s);
+-	setSize(mSize.x(), Math::round(418*s));
++	const float scale = mSize.x()/600.0f;
++	setSize(mSize.x(), Math::round(382*scale));
+ 	setPosition(mPosition.x(), Math::round((Renderer::getScreenHeight()-mSize.y())/2));
+ 	refreshMatches();
+ }
+@@ -475,71 +468,45 @@ void GuiTextEditPopupKeyboard::enableSuggestions(std::vector<SearchEntry> catalo
+ void GuiTextEditPopupKeyboard::refreshMatches()
+ {
+ 	mLastQuery = mText->getValue();
+-	const auto query = Utils::String::toLower(Utils::String::trim(mLastQuery));
+-	// Keep a bounded shortlist. Equal titles are resolved by console and then ROM path.
+-	using Ranked = std::pair<int, size_t>;
+-	std::vector<Ranked> best;
+-	auto before = [&](const Ranked& a, const Ranked& b)
+-	{
+-		const auto& x = mCatalog[a.second];
+-		const auto& y = mCatalog[b.second];
+-		if (a.first != b.first) return a.first < b.first;
+-		if (query.empty() && x.lastPlayed != y.lastPlayed) return x.lastPlayed > y.lastPlayed;
+-		return std::tie(x.foldedTitle, x.system, x.path) < std::tie(y.foldedTitle, y.system, y.path);
+-	};
+-	for (size_t i = 0; i < mCatalog.size(); ++i)
++	mLastCursor = mText->getCursor();
++	mChoices = mVocabulary->suggest(mLastQuery, mLastCursor, suggestionLimit);
++	focusMatch(-1);
++}
++
++void GuiTextEditPopupKeyboard::acceptWord(size_t index)
++{
++	if (mLastQuery != mText->getValue() || mLastCursor != mText->getCursor())
+ 	{
+-		const auto& name = mCatalog[i].foldedTitle;
+-		const auto pos = name.find(query);
+-		if (pos == std::string::npos) continue;
+-		int rank = name == query ? 0 : pos == 0 ? 1 : !std::isalnum(static_cast<unsigned char>(name[pos-1])) ? 2 : 3;
+-		Ranked item(rank, i);
+-		auto at = std::lower_bound(best.begin(), best.end(), item, before);
+-		if (at == best.end() && best.size() == suggestionLimit) continue;
+-		best.insert(at, item);
+-		if (best.size() > suggestionLimit) best.pop_back();
++		refreshMatches();
++		return;
+ 	}
+-	mMatches.clear();
+-	for (auto item : best) mMatches.push_back(item.second);
+-	focusMatch(-1);
++	if (index >= mChoices.words.size()) return;
++	auto query = mLastQuery;
++	const auto cursor = mChoices.insert(query, index);
++	mText->setValue(query);
++	mText->setCursor(cursor);
++	refreshMatches();
+ }
+ 
+ void GuiTextEditPopupKeyboard::styleMatches()
+ {
+-	auto theme = ThemeData::getMenuTheme();
+-	auto keys = mSearchTheme->getElement("menu", "searchKeys", "menuKeyboard");
+-	const auto accent = Utils::HtmlColor::parse(mSearchTheme->getVariable("accent"));
+-	const auto ink = keys->get<unsigned int>("selectedColor");
+-	mMatchHeader->setText(mSearchTheme->getVariable(mMatches.empty() ? "esSearchNoMatches" :
+-		(mLastQuery.empty() ? "esSearchBrowse" : "esSearchPicks")));
++	const auto keys = mSearchTheme->getElement("menu", "searchKeys", "menuKeyboard");
++	mMatchHeader->setText(mSearchTheme->getVariable(mChoices.words.empty() ? "esWordEmpty" :
++		mChoices.completing ? "esWordComplete" : mLastQuery.empty() ? "esWordStart" : "esWordNext"));
+ 	for (int i = 0; i < suggestionLimit; ++i)
+ 	{
+-		bool visible = i < (int)mMatches.size();
+-		mRowTitle[i]->setVisible(visible);
+-		mRowSystem[i]->setVisible(visible);
++		bool visible = i < (int)mChoices.words.size();
++		mWordCards[i]->setVisible(visible);
++		mWordLabels[i]->setVisible(visible);
+ 		if (!visible) continue;
+-		const auto& item = mCatalog[mMatches[i]];
+ 		bool selected = mSelectedMatch == i;
+-		mRowTitle[i]->setText(item.title);
+-		mRowSystem[i]->setText(item.system + "  ");
+-		mRowTitle[i]->setAutoScroll(selected ? TextComponent::HORIZONTAL : TextComponent::NONE);
+-		mRowTitle[i]->setColor(selected ? ink : theme->Text.color);
+-		mRowSystem[i]->setColor(selected ? ink : theme->TextSmall.color);
+-		for (auto& label : {mRowTitle[i], mRowSystem[i]})
+-		{
+-			label->setBackgroundColor(selected ? accent : 0);
+-			label->setRenderBackground(selected);
+-		}
+-	}
+-	mMatchCursor->setVisible(mSelectedMatch >= 0);
+-	if (mSelectedMatch >= 0)
+-	{
+-		const float scale = mSize.x()/600.0f;
+-		mMatchCursor->setPosition(25*scale, (99+24*mSelectedMatch)*scale);
+-		mMatchCursor->setColor(ink);
++		mWordCards[i]->setImagePath(keys->get<std::string>(selected ? "focusedPath" : "path"));
++		mWordLabels[i]->setText(mChoices.words[i]);
++		mWordLabels[i]->setAutoScroll(selected ? TextComponent::HORIZONTAL : TextComponent::NONE);
++		mWordLabels[i]->setColor(keys->get<unsigned int>(selected ? "selectedColor" : "color"));
+ 	}
+-	mShortcuts->setText(mSearchTheme->getVariable(mSelectedMatch >= 0 ? "esPickControls" :
+-		mMatches.empty() ? "esNoPickControls" : "esSearchShortcuts"));
++	mShortcuts->setText(mSearchTheme->getVariable(mSelectedMatch >= 0 ? "esWordControls" :
++		mChoices.words.empty() ? "esNoPickControls" : "esSearchShortcuts"));
+ }
+ 
+ void GuiTextEditPopupKeyboard::focusMatch(int row)
+@@ -553,12 +520,22 @@ void GuiTextEditPopupKeyboard::focusMatch(int row)
+ 
+ bool GuiTextEditPopupKeyboard::matchInput(InputConfig* config, Input input)
+ {
+-	bool toggle = config->isMappedTo("r2", input);
+-	bool up = config->isMappedLike("up", input);
+-	bool down = config->isMappedLike("down", input);
++	if (config->isMappedTo("l2", input))
++	{
++		if (input.value) mQuickPressed = !mChoices.words.empty();
++		else if (mQuickPressed)
++		{
++			mQuickPressed = false;
++			acceptWord(0);
++		}
++		return true;
++	}
++	const bool toggle = config->isMappedTo("r2", input);
++	const bool up = config->isMappedLike("up", input);
++	const bool down = config->isMappedLike("down", input);
+ 	if (mSelectedMatch < 0)
+ 	{
+-		if (mMatches.empty() || (!toggle && !(up && mGrid.getSelectedComponent() == mKeyboardGrid && mKeyboardGrid->getCursor().y() == 0)))
++		if (mChoices.words.empty() || (!toggle && !(up && mGrid.getSelectedComponent() == mKeyboardGrid && mKeyboardGrid->getCursor().y() == 0)))
+ 			return false;
+ 		if (input.value) focusMatch(0);
+ 		return true;
+@@ -566,38 +543,35 @@ bool GuiTextEditPopupKeyboard::matchInput(InputConfig* config, Input input)
+ 	if (config->isMappedTo(BUTTON_OK, input))
+ 	{
+ 		if (input.value) mPickPressed = true;
+-		else if (mPickPressed)
+-		{
+-			mPickGame(mCatalog[mMatches[mSelectedMatch]]);
+-			delete this;
+-		}
++		else if (mPickPressed) acceptWord(mSelectedMatch);
+ 		return true;
+ 	}
+-	if (toggle || config->isMappedTo(BUTTON_BACK, input) || (down && mSelectedMatch+1 == (int)mMatches.size()))
++	if (toggle || down || config->isMappedTo(BUTTON_BACK, input))
+ 	{
+ 		if (input.value) focusMatch(-1);
+ 		return true;
+ 	}
+-	if (up || down)
++	const bool left = config->isMappedLike("left", input);
++	const bool right = config->isMappedLike("right", input);
++	if (input.value && (left || right))
+ 	{
+-		if (input.value) focusMatch(std::max(0, mSelectedMatch + (down ? 1 : -1)));
+-		return true;
++		const int count = (int)mChoices.words.size();
++		focusMatch((mSelectedMatch + count + (right ? 1 : -1)) % count);
+ 	}
+-	// START applies the typed filter and X clears it through the usual keyboard handlers.
+ 	return !config->isMappedTo("start", input) && !config->isMappedTo("x", input);
+ }
+ 
+ void GuiTextEditPopupKeyboard::update(int deltaTime)
+ {
+ 	GuiComponent::update(deltaTime);
+-	if (mPickGame && mText->getValue() != mLastQuery) refreshMatches();
++	if (mVocabulary && (mText->getValue() != mLastQuery || mText->getCursor() != mLastCursor)) refreshMatches();
+ 	if (mHint)
+ 		mHint->setVisible(mText->getValue().empty());
+ }
+ 
+ bool GuiTextEditPopupKeyboard::input(InputConfig* config, Input input)
+ {
+-	if (mPickGame && matchInput(config, input)) return true;
++	if (mVocabulary && matchInput(config, input)) return true;
+ 	if (GuiComponent::input(config, input))
+ 		return true;
+ 
+diff --git a/es-core/src/guis/GuiTextEditPopupKeyboard.h b/es-core/src/guis/GuiTextEditPopupKeyboard.h
+index e797730..ea049f8 100644
+--- a/es-core/src/guis/GuiTextEditPopupKeyboard.h
++++ b/es-core/src/guis/GuiTextEditPopupKeyboard.h
+@@ -6,6 +6,7 @@
+ #include "components/TextEditComponent.h"
+ #include "components/TextComponent.h"
+ #include <functional>
++#include "utils/WordCompletion.h"
+ 
+ class GuiTextEditPopupKeyboard : public GuiComponent
+ {
+@@ -15,9 +16,7 @@ public:
+ 		const std::shared_ptr<ThemeData>& searchTheme = nullptr, const std::string& scope = "");
+ 	static void openSearch(Window* window, const std::shared_ptr<ThemeData>& theme, const std::string& scope,
+ 		const std::string& title, const std::string& value, const std::function<void(const std::string&)>& apply);
+-	struct SearchEntry { std::string title, foldedTitle, system, path, lastPlayed; };
+-	using PickGame = std::function<void(const SearchEntry&)>;
+-	void enableSuggestions(std::vector<SearchEntry> catalog, PickGame pick);
++	void enableWords(WordCompletion vocabulary);
+ 	void update(int deltaTime) override;
+ 
+ 	bool input(InputConfig* config, Input input);
+@@ -62,14 +61,15 @@ private:
+ 	std::shared_ptr<ThemeData> mSearchTheme;
+ 	std::shared_ptr<TextComponent> mScope, mHint, mShortcuts;
+ 	static constexpr int suggestionLimit = 3;
+-	std::vector<SearchEntry> mCatalog;
+-	std::vector<size_t> mMatches;
+-	PickGame mPickGame;
+-	std::shared_ptr<TextComponent> mMatchHeader, mMatchCursor;
+-	std::shared_ptr<TextComponent> mRowTitle[suggestionLimit], mRowSystem[suggestionLimit];
++	std::unique_ptr<WordCompletion> mVocabulary;
++	WordCompletion::Choices mChoices;
++	std::shared_ptr<TextComponent> mMatchHeader, mWordLabels[suggestionLimit];
++	std::shared_ptr<NinePatchComponent> mWordCards[suggestionLimit];
+ 	std::string mLastQuery;
++	size_t mLastCursor = 0;
+ 	int mSelectedMatch = -1;
+-	bool mPickPressed = false;
++	bool mPickPressed = false, mQuickPressed = false;
++	void acceptWord(size_t index);
+ 	void refreshMatches();
+ 	void styleMatches();
+ 	void focusMatch(int row);
+diff --git a/es-core/src/utils/WordCompletion.cpp b/es-core/src/utils/WordCompletion.cpp
+new file mode 100644
+index 0000000..89fcc97
+--- /dev/null
++++ b/es-core/src/utils/WordCompletion.cpp
+@@ -0,0 +1,157 @@
++#include "WordCompletion.h"
++#include "utils/StringUtil.h"
++#include <algorithm>
++#include <cctype>
++#include <cwctype>
++#include <tuple>
++
++namespace {
++struct Token { size_t begin, end; };
++
++std::vector<Token> tokenize(const std::string& text)
++{
++	std::vector<Token> tokens;
++	bool inWord = false;
++	for (size_t next = 0; next < text.size();)
++	{
++		const auto start = next;
++		const auto ch = Utils::String::chars2Unicode(text, next);
++		bool letter = std::iswalnum(ch) || (inWord && ch >= 0x300 && ch <= 0x36f);
++		if (inWord && (ch == '\'' || ch == 0x2019) && next < text.size())
++		{
++			auto peek = next;
++			letter = std::iswalnum(Utils::String::chars2Unicode(text, peek));
++		}
++		if (letter && !inWord) tokens.push_back({start, next});
++		else if (letter) tokens.back().end = next;
++		inWord = letter;
++	}
++	return tokens;
++}
++
++// Match common accented spellings from the pad's primary letter layer.
++std::string key(const std::string& word)
++{
++	auto lower = Utils::String::toLower(word);
++	std::string out;
++	for (size_t next = 0; next < lower.size();)
++	{
++		const auto start = next;
++		const auto ch = Utils::String::chars2Unicode(lower, next);
++		switch (ch)
++		{
++		case U'à': case U'á': case U'â': case U'ä': case U'ã': out += 'a'; break;
++		case U'è': case U'é': case U'ê': case U'ë': out += 'e'; break;
++		case U'ì': case U'í': case U'î': case U'ï': out += 'i'; break;
++		case U'ò': case U'ó': case U'ô': case U'ö': case U'õ': out += 'o'; break;
++		case U'ù': case U'ú': case U'û': case U'ü': out += 'u'; break;
++		case U'ñ': out += 'n'; break;
++		case U'ç': out += 'c'; break;
++		case 0x2019: out += '\''; break;
++		default:
++			if (ch < 0x300 || ch > 0x36f)
++				out.append(lower, start, next-start);
++		}
++	}
++	return out;
++}
++}
++
++void WordCompletion::addTitle(const std::string& title)
++{
++	std::string older, previous;
++	for (auto token : tokenize(title))
++	{
++		const auto spelling = title.substr(token.begin, token.end-token.begin);
++		const auto folded = key(spelling);
++		auto& word = mWords[folded];
++		if (word.count++ == 0) word.spelling = spelling;
++		if (!older.empty()) ++mPhrases[{older, previous}][folded];
++		if (!previous.empty()) ++mWords.at(previous).following[folded];
++		else ++word.starts;
++		older = previous;
++		previous = folded;
++	}
++}
++
++WordCompletion::Choices WordCompletion::suggest(const std::string& text, size_t cursor, size_t limit) const
++{
++	cursor = std::min(cursor, text.size());
++	Choices result{cursor, cursor, false, {}};
++	std::string prefix, previous, older;
++	for (auto token : tokenize(text))
++	{
++		if (cursor < token.begin) break;
++		if (cursor <= token.end)
++		{
++			result.begin = token.begin;
++			result.end = token.end;
++			prefix = key(text.substr(token.begin, cursor-token.begin));
++			result.completing = !prefix.empty();
++			break;
++		}
++		older = previous;
++		previous = key(text.substr(token.begin, token.end-token.begin));
++	}
++
++	const auto context = mWords.find(previous);
++	const auto phrase = mPhrases.find({older, previous});
++	struct Candidate { unsigned pair, adjacent, frequency; const std::string* word; };
++	std::vector<Candidate> best;
++	auto consider = [&](const Word& word, unsigned pair, unsigned adjacent, unsigned frequency)
++	{
++		Candidate candidate{pair, adjacent, frequency, &word.spelling};
++		// The dictionary is ordered, so equal counts retain a stable alphabetical order.
++		auto pos = std::find_if(best.begin(), best.end(), [&](const Candidate& other) {
++			return std::tie(pair, adjacent, frequency) > std::tie(other.pair, other.adjacent, other.frequency);
++		});
++		if (pos == best.end() && best.size() == limit) return;
++		best.insert(pos, candidate);
++		if (best.size() > limit) best.pop_back();
++	};
++
++	if (prefix.empty() && !previous.empty())
++	{
++		if (context != mWords.end())
++		{
++			const auto& following = phrase == mPhrases.end() ? context->second.following : phrase->second;
++			for (const auto& next : following)
++			{
++				const auto& word = mWords.at(next.first);
++				consider(word, next.second, context->second.following.at(next.first), word.count);
++			}
++		}
++	}
++	else
++	{
++		for (auto it = mWords.lower_bound(prefix); it != mWords.end() && it->first.compare(0, prefix.size(), prefix) == 0; ++it)
++		{
++			const auto& word = it->second;
++			unsigned adjacent = 0;
++			if (context != mWords.end())
++			{
++				auto next = context->second.following.find(it->first);
++				if (next != context->second.following.end()) adjacent = next->second;
++			}
++			unsigned pair = 0;
++			if (phrase != mPhrases.end())
++			{
++				auto next = phrase->second.find(it->first);
++				if (next != phrase->second.end()) pair = next->second;
++			}
++			if (!prefix.empty() || word.starts) consider(word, pair, adjacent, prefix.empty() ? word.starts : word.count);
++		}
++	}
++	for (auto candidate : best) result.words.push_back(*candidate.word);
++	return result;
++}
++
++size_t WordCompletion::Choices::insert(std::string& text, size_t index) const
++{
++	const auto& word = words.at(index);
++	text.replace(begin, end-begin, word);
++	auto cursor = begin + word.size();
++	if (cursor == text.size()) text.push_back(' ');
++	else if (!std::isspace(static_cast<unsigned char>(text[cursor]))) return cursor;
++	return cursor+1;
++}
+diff --git a/es-core/src/utils/WordCompletion.h b/es-core/src/utils/WordCompletion.h
+new file mode 100644
+index 0000000..4f0ced0
+--- /dev/null
++++ b/es-core/src/utils/WordCompletion.h
+@@ -0,0 +1,31 @@
++#pragma once
++
++#include <map>
++#include <string>
++#include <vector>
++
++// The vocabulary belongs to the currently visible library. Offsets are UTF-8 byte positions.
++class WordCompletion
++{
++public:
++	struct Choices
++	{
++		size_t begin, end;
++		bool completing;
++		std::vector<std::string> words;
++		size_t insert(std::string& text, size_t index) const;
++	};
++
++	void addTitle(const std::string& title);
++	Choices suggest(const std::string& text, size_t cursor, size_t limit) const;
++
++private:
++	struct Word
++	{
++		std::string spelling;
++		unsigned count = 0, starts = 0;
++		std::map<std::string, unsigned> following;
++	};
++	std::map<std::string, Word> mWords;
++	std::map<std::pair<std::string, std::string>, std::map<std::string, unsigned>> mPhrases;
++};

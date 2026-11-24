@@ -1,0 +1,529 @@
+<theme><variables ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.71795</u36.card0>
+		<u36.card1>1 0.28205</u36.card1>
+		<u36.card2>0.04327 0.87179</u36.card2>
+		<u36.card3>0.91346 0.08974</u36.card3>
+		<u36.card4>0.1543 0.12179</u36.card4>
+		<u36.card5>0.18352 0.12179</u36.card5>
+		<u36.card6>0.21282 0.12179</u36.card6>
+		<u36.card7>0.09135 0.01923</u36.card7>
+		<u36.card8>0.09615 0.08333</u36.card8>
+		<u36.card9>0.86058 0.01923</u36.card9>
+		<u36.card10>0.12019 0.14744</u36.card10>
+		<u36.card11>0.65865 0.03846</u36.card11>
+		<u36.card12>0.30769 0.08333</u36.card12>
+		<u36.card13>0.87019 0.17308</u36.card13>
+		<u36.card14>0.09615 0.12821</u36.card14>
+		<u36.card15>maxSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.7</u36.card17>
+		<u36.card18>2 2</u36.card18>
+		<u36.card19>0.1875</u36.card19>
+	</variables>
+	<variables ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.54167</u36.card0>
+		<u36.card1>1 0.45833</u36.card1>
+		<u36.card2>0.07031 0.79167</u36.card2>
+		<u36.card3>0.85938 0.14583</u36.card3>
+		<u36.card4>0.25073 0.19792</u36.card4>
+		<u36.card5>0.29822 0.19792</u36.card5>
+		<u36.card6>0.34583 0.19792</u36.card6>
+		<u36.card7>0.14844 0.03125</u36.card7>
+		<u36.card8>0.15625 0.13542</u36.card8>
+		<u36.card9>0.77344 0.03125</u36.card9>
+		<u36.card10>0.19531 0.23958</u36.card10>
+		<u36.card11>0.44531 0.0625</u36.card11>
+		<u36.card12>0.5 0.13542</u36.card12>
+		<u36.card13>0.78906 0.28125</u36.card13>
+		<u36.card14>0.15625 0.20833</u36.card14>
+		<u36.card15>maxSize</u36.card15>
+		<u36.card16>0.33125 0.1125</u36.card16>
+		<u36.card17>0.65 0.88333</u36.card17>
+		<u36.card18>3 4</u36.card18>
+		<u36.card19>0.00417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'nes' || {system.name} == 'fds' || {system.name} == 'snes' || {system.name} == 'sfc' || {system.name} == 'satellaview' || {system.name} == 'sufami' || {system.name} == 'megadrive' || {system.name} == 'genesis' || {system.name} == 'mastersystem' || {system.name} == 'sg1000' || {system.name} == 'sega32x' || {system.name} == 'segacd' || {system.name} == 'megacd' || {system.name} == 'pcengine' || {system.name} == 'pcenginecd' || {system.name} == 'tg16' || {system.name} == 'tg-cd' || {system.name} == 'supergrafx' || {system.name} == 'n64' || {system.name} == 'psx' || {system.name} == 'saturn' || {system.name} == 'dreamcast' || {system.name} == 'naomi' || {system.name} == 'atomiswave' || {system.name} == 'atari2600' || {system.name} == 'atari5200' || {system.name} == 'atari7800' || {system.name} == 'colecovision' || {system.name} == 'intellivision' || {system.name} == 'neogeo' || {system.name} == 'neogeocd' || {system.name} == 'arcade' || {system.name} == 'mame' || {system.name} == 'fbneo' || {system.name} == 'cps1' || {system.name} == 'cps2' || {system.name} == 'cps3' || {system.name} == 'dos' || {system.name} == 'pc' || {system.name} == 'eduke32' || {system.name} == 'gzdoom' || {system.name} == 'prboom' || {system.name} == 'msx' || {system.name} == 'msx1' || {system.name} == 'msx2' || {system.name} == 'amiga' || {system.name} == 'c64' || {system.name} == 'amstradcpc' || {system.name} == 'zxspectrum' || {system.name} == '3do' || {system.name} == 'jaguar' || {system.name} == 'cdi'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.71795</u36.card0>
+		<u36.card1>1 0.28205</u36.card1>
+		<u36.card2>0.04327 0.87179</u36.card2>
+		<u36.card3>0.91346 0.08974</u36.card3>
+		<u36.card4>0.1543 0.12179</u36.card4>
+		<u36.card5>0.18352 0.12179</u36.card5>
+		<u36.card6>0.21282 0.12179</u36.card6>
+		<u36.card7>0.09135 0.01923</u36.card7>
+		<u36.card8>0.09615 0.08333</u36.card8>
+		<u36.card9>0.86058 0.01923</u36.card9>
+		<u36.card10>0.12019 0.14744</u36.card10>
+		<u36.card11>0.65865 0.03846</u36.card11>
+		<u36.card12>0.30769 0.08333</u36.card12>
+		<u36.card13>0.87019 0.17308</u36.card13>
+		<u36.card14>0.09615 0.12821</u36.card14>
+		<u36.card15>screen</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.7</u36.card17>
+		<u36.card18>2 2</u36.card18>
+		<u36.card19>0.1875</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'arcadetate' || {system.name} == 'vertical' || {system.name} == 'vectrex'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.75735</u36.card0>
+		<u36.card1>1 0.24265</u36.card1>
+		<u36.card2>0.06618 0.88971</u36.card2>
+		<u36.card3>0.86765 0.07721</u36.card3>
+		<u36.card4>0.23598 0.10478</u36.card4>
+		<u36.card5>0.28068 0.10478</u36.card5>
+		<u36.card6>0.32548 0.10478</u36.card6>
+		<u36.card7>0.13971 0.01654</u36.card7>
+		<u36.card8>0.14706 0.07169</u36.card8>
+		<u36.card9>0.78676 0.01654</u36.card9>
+		<u36.card10>0.18382 0.12684</u36.card10>
+		<u36.card11>0.47794 0.03309</u36.card11>
+		<u36.card12>0.47059 0.07169</u36.card12>
+		<u36.card13>0.80147 0.1489</u36.card13>
+		<u36.card14>0.14706 0.11029</u36.card14>
+		<u36.card15>screen</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.80556</u36.card17>
+		<u36.card18>3 2</u36.card18>
+		<u36.card19>0.08194</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'gb' || {system.name} == 'gbc' || {system.name} == 'gamegear'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.76496</u36.card0>
+		<u36.card1>1 0.23504</u36.card1>
+		<u36.card2>0.04327 0.89316</u36.card2>
+		<u36.card3>0.91346 0.07479</u36.card3>
+		<u36.card4>0.1543 0.1015</u36.card4>
+		<u36.card5>0.18352 0.1015</u36.card5>
+		<u36.card6>0.21282 0.1015</u36.card6>
+		<u36.card7>0.09135 0.01603</u36.card7>
+		<u36.card8>0.09615 0.06944</u36.card8>
+		<u36.card9>0.86058 0.01603</u36.card9>
+		<u36.card10>0.12019 0.12286</u36.card10>
+		<u36.card11>0.65865 0.03205</u36.card11>
+		<u36.card12>0.30769 0.06944</u36.card12>
+		<u36.card13>0.87019 0.14423</u36.card13>
+		<u36.card14>0.09615 0.10684</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.83</u36.card17>
+		<u36.card18>2 2</u36.card18>
+		<u36.card19>0.0575</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'ngp' || {system.name} == 'ngpc'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.77733</u36.card0>
+		<u36.card1>1 0.22267</u36.card1>
+		<u36.card2>0.04327 0.89879</u36.card2>
+		<u36.card3>0.91346 0.07085</u36.card3>
+		<u36.card4>0.1543 0.09615</u36.card4>
+		<u36.card5>0.18352 0.09615</u36.card5>
+		<u36.card6>0.21282 0.09615</u36.card6>
+		<u36.card7>0.09135 0.01518</u36.card7>
+		<u36.card8>0.09615 0.06579</u36.card8>
+		<u36.card9>0.86058 0.01518</u36.card9>
+		<u36.card10>0.12019 0.1164</u36.card10>
+		<u36.card11>0.65865 0.03036</u36.card11>
+		<u36.card12>0.30769 0.06579</u36.card12>
+		<u36.card13>0.87019 0.13664</u36.card13>
+		<u36.card14>0.09615 0.10121</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.87333</u36.card17>
+		<u36.card18>2 2</u36.card18>
+		<u36.card19>0.01417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'gba' || {system.name} == 'pokemini'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.68269</u36.card0>
+		<u36.card1>1 0.31731</u36.card1>
+		<u36.card2>0.04327 0.85577</u36.card2>
+		<u36.card3>0.91346 0.10096</u36.card3>
+		<u36.card4>0.1543 0.13702</u36.card4>
+		<u36.card5>0.18352 0.13702</u36.card5>
+		<u36.card6>0.21282 0.13702</u36.card6>
+		<u36.card7>0.09135 0.02163</u36.card7>
+		<u36.card8>0.09615 0.09375</u36.card8>
+		<u36.card9>0.86058 0.02163</u36.card9>
+		<u36.card10>0.12019 0.16587</u36.card10>
+		<u36.card11>0.65865 0.04327</u36.card11>
+		<u36.card12>0.30769 0.09375</u36.card12>
+		<u36.card13>0.87019 0.19471</u36.card13>
+		<u36.card14>0.09615 0.14423</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.62778</u36.card17>
+		<u36.card18>2 2</u36.card18>
+		<u36.card19>0.25972</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'lynx'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.66817</u36.card0>
+		<u36.card1>1 0.33183</u36.card1>
+		<u36.card2>0.04327 0.84917</u36.card2>
+		<u36.card3>0.91346 0.10558</u36.card3>
+		<u36.card4>0.1543 0.14329</u36.card4>
+		<u36.card5>0.18352 0.14329</u36.card5>
+		<u36.card6>0.21282 0.14329</u36.card6>
+		<u36.card7>0.09135 0.02262</u36.card7>
+		<u36.card8>0.09615 0.09804</u36.card8>
+		<u36.card9>0.86058 0.02262</u36.card9>
+		<u36.card10>0.12019 0.17345</u36.card10>
+		<u36.card11>0.65865 0.04525</u36.card11>
+		<u36.card12>0.30769 0.09804</u36.card12>
+		<u36.card13>0.87019 0.20362</u36.card13>
+		<u36.card14>0.09615 0.15083</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.6025</u36.card17>
+		<u36.card18>2 2</u36.card18>
+		<u36.card19>0.285</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'wswan' || {system.name} == 'wswanc'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.67094</u36.card0>
+		<u36.card1>1 0.32906</u36.card1>
+		<u36.card2>0.04327 0.85043</u36.card2>
+		<u36.card3>0.91346 0.1047</u36.card3>
+		<u36.card4>0.1543 0.14209</u36.card4>
+		<u36.card5>0.18352 0.14209</u36.card5>
+		<u36.card6>0.21282 0.14209</u36.card6>
+		<u36.card7>0.09135 0.02244</u36.card7>
+		<u36.card8>0.09615 0.09722</u36.card8>
+		<u36.card9>0.86058 0.02244</u36.card9>
+		<u36.card10>0.12019 0.17201</u36.card10>
+		<u36.card11>0.65865 0.04487</u36.card11>
+		<u36.card12>0.30769 0.09722</u36.card12>
+		<u36.card13>0.87019 0.20192</u36.card13>
+		<u36.card14>0.09615 0.14957</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.60714</u36.card17>
+		<u36.card18>2 2</u36.card18>
+		<u36.card19>0.28036</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'nds'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.78431</u36.card0>
+		<u36.card1>1 0.21569</u36.card1>
+		<u36.card2>0.06618 0.90196</u36.card2>
+		<u36.card3>0.86765 0.06863</u36.card3>
+		<u36.card4>0.23598 0.09314</u36.card4>
+		<u36.card5>0.28068 0.09314</u36.card5>
+		<u36.card6>0.32548 0.09314</u36.card6>
+		<u36.card7>0.13971 0.01471</u36.card7>
+		<u36.card8>0.14706 0.06373</u36.card8>
+		<u36.card9>0.78676 0.01471</u36.card9>
+		<u36.card10>0.18382 0.11275</u36.card10>
+		<u36.card11>0.47794 0.02941</u36.card11>
+		<u36.card12>0.47059 0.06373</u36.card12>
+		<u36.card13>0.80147 0.13235</u36.card13>
+		<u36.card14>0.14706 0.09804</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.45833</u36.card17>
+		<u36.card18>3 1</u36.card18>
+		<u36.card19>0.42917</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'supervision'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.78846</u36.card0>
+		<u36.card1>1 0.21154</u36.card1>
+		<u36.card2>0.04327 0.90385</u36.card2>
+		<u36.card3>0.91346 0.06731</u36.card3>
+		<u36.card4>0.1543 0.09135</u36.card4>
+		<u36.card5>0.18352 0.09135</u36.card5>
+		<u36.card6>0.21282 0.09135</u36.card6>
+		<u36.card7>0.09135 0.01442</u36.card7>
+		<u36.card8>0.09615 0.0625</u36.card8>
+		<u36.card9>0.86058 0.01442</u36.card9>
+		<u36.card10>0.12019 0.11058</u36.card10>
+		<u36.card11>0.65865 0.02885</u36.card11>
+		<u36.card12>0.30769 0.0625</u36.card12>
+		<u36.card13>0.87019 0.12981</u36.card13>
+		<u36.card14>0.09615 0.09615</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.46667</u36.card17>
+		<u36.card18>2 1</u36.card18>
+		<u36.card19>0.42083</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'psp' || {system.name} == 'virtualboy'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.6267</u36.card0>
+		<u36.card1>1 0.3733</u36.card1>
+		<u36.card2>0.04327 0.83032</u36.card2>
+		<u36.card3>0.91346 0.11878</u36.card3>
+		<u36.card4>0.1543 0.1612</u36.card4>
+		<u36.card5>0.18352 0.1612</u36.card5>
+		<u36.card6>0.21282 0.1612</u36.card6>
+		<u36.card7>0.09135 0.02545</u36.card7>
+		<u36.card8>0.09615 0.11029</u36.card8>
+		<u36.card9>0.86058 0.02545</u36.card9>
+		<u36.card10>0.12019 0.19514</u36.card10>
+		<u36.card11>0.65865 0.0509</u36.card11>
+		<u36.card12>0.30769 0.11029</u36.card12>
+		<u36.card13>0.87019 0.22907</u36.card13>
+		<u36.card14>0.09615 0.16968</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.80333</u36.card17>
+		<u36.card18>2 3</u36.card18>
+		<u36.card19>0.08417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'pico8'" ifSubset="u38cardscale:grande">
+		<u36.card0>0 0.66327</u36.card0>
+		<u36.card1>1 0.33673</u36.card1>
+		<u36.card2>0.06888 0.84694</u36.card2>
+		<u36.card3>0.86224 0.10714</u36.card3>
+		<u36.card4>0.24562 0.14541</u36.card4>
+		<u36.card5>0.29213 0.14541</u36.card5>
+		<u36.card6>0.33877 0.14541</u36.card6>
+		<u36.card7>0.14541 0.02296</u36.card7>
+		<u36.card8>0.15306 0.09949</u36.card8>
+		<u36.card9>0.77806 0.02296</u36.card9>
+		<u36.card10>0.19133 0.17602</u36.card10>
+		<u36.card11>0.45663 0.04592</u36.card11>
+		<u36.card12>0.4898 0.09949</u36.card12>
+		<u36.card13>0.79337 0.20663</u36.card13>
+		<u36.card14>0.15306 0.15306</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.325 0.1125</u36.card16>
+		<u36.card17>0.6625 0.88333</u36.card17>
+		<u36.card18>3 3</u36.card18>
+		<u36.card19>0.00417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'nes' || {system.name} == 'fds' || {system.name} == 'snes' || {system.name} == 'sfc' || {system.name} == 'satellaview' || {system.name} == 'sufami' || {system.name} == 'megadrive' || {system.name} == 'genesis' || {system.name} == 'mastersystem' || {system.name} == 'sg1000' || {system.name} == 'sega32x' || {system.name} == 'segacd' || {system.name} == 'megacd' || {system.name} == 'pcengine' || {system.name} == 'pcenginecd' || {system.name} == 'tg16' || {system.name} == 'tg-cd' || {system.name} == 'supergrafx' || {system.name} == 'n64' || {system.name} == 'psx' || {system.name} == 'saturn' || {system.name} == 'dreamcast' || {system.name} == 'naomi' || {system.name} == 'atomiswave' || {system.name} == 'atari2600' || {system.name} == 'atari5200' || {system.name} == 'atari7800' || {system.name} == 'colecovision' || {system.name} == 'intellivision' || {system.name} == 'neogeo' || {system.name} == 'neogeocd' || {system.name} == 'arcade' || {system.name} == 'mame' || {system.name} == 'fbneo' || {system.name} == 'cps1' || {system.name} == 'cps2' || {system.name} == 'cps3' || {system.name} == 'dos' || {system.name} == 'pc' || {system.name} == 'eduke32' || {system.name} == 'gzdoom' || {system.name} == 'prboom' || {system.name} == 'msx' || {system.name} == 'msx1' || {system.name} == 'msx2' || {system.name} == 'amiga' || {system.name} == 'c64' || {system.name} == 'amstradcpc' || {system.name} == 'zxspectrum' || {system.name} == '3do' || {system.name} == 'jaguar' || {system.name} == 'cdi'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.54167</u36.card0>
+		<u36.card1>1 0.45833</u36.card1>
+		<u36.card2>0.07031 0.79167</u36.card2>
+		<u36.card3>0.85938 0.14583</u36.card3>
+		<u36.card4>0.25073 0.19792</u36.card4>
+		<u36.card5>0.29822 0.19792</u36.card5>
+		<u36.card6>0.34583 0.19792</u36.card6>
+		<u36.card7>0.14844 0.03125</u36.card7>
+		<u36.card8>0.15625 0.13542</u36.card8>
+		<u36.card9>0.77344 0.03125</u36.card9>
+		<u36.card10>0.19531 0.23958</u36.card10>
+		<u36.card11>0.44531 0.0625</u36.card11>
+		<u36.card12>0.5 0.13542</u36.card12>
+		<u36.card13>0.78906 0.28125</u36.card13>
+		<u36.card14>0.15625 0.20833</u36.card14>
+		<u36.card15>screen</u36.card15>
+		<u36.card16>0.33125 0.1125</u36.card16>
+		<u36.card17>0.65 0.88333</u36.card17>
+		<u36.card18>3 4</u36.card18>
+		<u36.card19>0.00417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'arcadetate' || {system.name} == 'vertical' || {system.name} == 'vectrex'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.66327</u36.card0>
+		<u36.card1>1 0.33673</u36.card1>
+		<u36.card2>0.09184 0.84694</u36.card2>
+		<u36.card3>0.81633 0.10714</u36.card3>
+		<u36.card4>0.32749 0.14541</u36.card4>
+		<u36.card5>0.38951 0.14541</u36.card5>
+		<u36.card6>0.45169 0.14541</u36.card6>
+		<u36.card7>0.19388 0.02296</u36.card7>
+		<u36.card8>0.20408 0.09949</u36.card8>
+		<u36.card9>0.70408 0.02296</u36.card9>
+		<u36.card10>0.2551 0.17602</u36.card10>
+		<u36.card11>0.27551 0.04592</u36.card11>
+		<u36.card12>0.65306 0.09949</u36.card12>
+		<u36.card13>0.72449 0.20663</u36.card13>
+		<u36.card14>0.20408 0.15306</u36.card14>
+		<u36.card15>screen</u36.card15>
+		<u36.card16>0.31875 0.1125</u36.card16>
+		<u36.card17>0.675 0.88333</u36.card17>
+		<u36.card18>4 3</u36.card18>
+		<u36.card19>0.00417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'gb' || {system.name} == 'gbc' || {system.name} == 'gamegear'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.64052</u36.card0>
+		<u36.card1>1 0.35948</u36.card1>
+		<u36.card2>0.06618 0.8366</u36.card2>
+		<u36.card3>0.86765 0.11438</u36.card3>
+		<u36.card4>0.23598 0.15523</u36.card4>
+		<u36.card5>0.28068 0.15523</u36.card5>
+		<u36.card6>0.32548 0.15523</u36.card6>
+		<u36.card7>0.13971 0.02451</u36.card7>
+		<u36.card8>0.14706 0.10621</u36.card8>
+		<u36.card9>0.78676 0.02451</u36.card9>
+		<u36.card10>0.18382 0.18791</u36.card10>
+		<u36.card11>0.47794 0.04902</u36.card11>
+		<u36.card12>0.47059 0.10621</u36.card12>
+		<u36.card13>0.80147 0.22059</u36.card13>
+		<u36.card14>0.14706 0.1634</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.83167</u36.card17>
+		<u36.card18>3 3</u36.card18>
+		<u36.card19>0.05583</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'ngp' || {system.name} == 'ngpc'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.65944</u36.card0>
+		<u36.card1>1 0.34056</u36.card1>
+		<u36.card2>0.06618 0.8452</u36.card2>
+		<u36.card3>0.86765 0.10836</u36.card3>
+		<u36.card4>0.23598 0.14706</u36.card4>
+		<u36.card5>0.28068 0.14706</u36.card5>
+		<u36.card6>0.32548 0.14706</u36.card6>
+		<u36.card7>0.13971 0.02322</u36.card7>
+		<u36.card8>0.14706 0.10062</u36.card8>
+		<u36.card9>0.78676 0.02322</u36.card9>
+		<u36.card10>0.18382 0.17802</u36.card10>
+		<u36.card11>0.47794 0.04644</u36.card11>
+		<u36.card12>0.47059 0.10062</u36.card12>
+		<u36.card13>0.80147 0.20898</u36.card13>
+		<u36.card14>0.14706 0.1548</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.87417</u36.card17>
+		<u36.card18>3 3</u36.card18>
+		<u36.card19>0.01333</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'gba' || {system.name} == 'pokemini'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.51471</u36.card0>
+		<u36.card1>1 0.48529</u36.card1>
+		<u36.card2>0.06618 0.77941</u36.card2>
+		<u36.card3>0.86765 0.15441</u36.card3>
+		<u36.card4>0.23598 0.20956</u36.card4>
+		<u36.card5>0.28068 0.20956</u36.card5>
+		<u36.card6>0.32548 0.20956</u36.card6>
+		<u36.card7>0.13971 0.03309</u36.card7>
+		<u36.card8>0.14706 0.14338</u36.card8>
+		<u36.card9>0.78676 0.03309</u36.card9>
+		<u36.card10>0.18382 0.25368</u36.card10>
+		<u36.card11>0.47794 0.06618</u36.card11>
+		<u36.card12>0.47059 0.14338</u36.card12>
+		<u36.card13>0.80147 0.29779</u36.card13>
+		<u36.card14>0.14706 0.22059</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.83889</u36.card17>
+		<u36.card18>3 4</u36.card18>
+		<u36.card19>0.04861</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'lynx'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.4925</u36.card0>
+		<u36.card1>1 0.5075</u36.card1>
+		<u36.card2>0.06618 0.76932</u36.card2>
+		<u36.card3>0.86765 0.16148</u36.card3>
+		<u36.card4>0.23598 0.21915</u36.card4>
+		<u36.card5>0.28068 0.21915</u36.card5>
+		<u36.card6>0.32548 0.21915</u36.card6>
+		<u36.card7>0.13971 0.0346</u36.card7>
+		<u36.card8>0.14706 0.14994</u36.card8>
+		<u36.card9>0.78676 0.0346</u36.card9>
+		<u36.card10>0.18382 0.26528</u36.card10>
+		<u36.card11>0.47794 0.0692</u36.card11>
+		<u36.card12>0.47059 0.14994</u36.card12>
+		<u36.card13>0.80147 0.31142</u36.card13>
+		<u36.card14>0.14706 0.23068</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.80583</u36.card17>
+		<u36.card18>3 4</u36.card18>
+		<u36.card19>0.08167</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'wswan' || {system.name} == 'wswanc'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.49673</u36.card0>
+		<u36.card1>1 0.50327</u36.card1>
+		<u36.card2>0.06618 0.77124</u36.card2>
+		<u36.card3>0.86765 0.16013</u36.card3>
+		<u36.card4>0.23598 0.21732</u36.card4>
+		<u36.card5>0.28068 0.21732</u36.card5>
+		<u36.card6>0.32548 0.21732</u36.card6>
+		<u36.card7>0.13971 0.03431</u36.card7>
+		<u36.card8>0.14706 0.14869</u36.card8>
+		<u36.card9>0.78676 0.03431</u36.card9>
+		<u36.card10>0.18382 0.26307</u36.card10>
+		<u36.card11>0.47794 0.06863</u36.card11>
+		<u36.card12>0.47059 0.14869</u36.card12>
+		<u36.card13>0.80147 0.30882</u36.card13>
+		<u36.card14>0.14706 0.22876</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.3125 0.1125</u36.card16>
+		<u36.card17>0.6875 0.8119</u36.card17>
+		<u36.card18>3 4</u36.card18>
+		<u36.card19>0.0756</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'nds'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.66327</u36.card0>
+		<u36.card1>1 0.33673</u36.card1>
+		<u36.card2>0.10332 0.84694</u36.card2>
+		<u36.card3>0.79337 0.10714</u36.card3>
+		<u36.card4>0.36842 0.14541</u36.card4>
+		<u36.card5>0.4382 0.14541</u36.card5>
+		<u36.card6>0.50815 0.14541</u36.card6>
+		<u36.card7>0.21811 0.02296</u36.card7>
+		<u36.card8>0.22959 0.09949</u36.card8>
+		<u36.card9>0.66709 0.02296</u36.card9>
+		<u36.card10>0.28699 0.17602</u36.card10>
+		<u36.card11>0.18495 0.04592</u36.card11>
+		<u36.card12>0.73469 0.09949</u36.card12>
+		<u36.card13>0.69005 0.20663</u36.card13>
+		<u36.card14>0.22959 0.15306</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.35278 0.1125</u36.card16>
+		<u36.card17>0.60694 0.88333</u36.card17>
+		<u36.card18>4 3</u36.card18>
+		<u36.card19>0.00417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'supervision'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.66327</u36.card0>
+		<u36.card1>1 0.33673</u36.card1>
+		<u36.card2>0.06888 0.84694</u36.card2>
+		<u36.card3>0.86224 0.10714</u36.card3>
+		<u36.card4>0.24562 0.14541</u36.card4>
+		<u36.card5>0.29213 0.14541</u36.card5>
+		<u36.card6>0.33877 0.14541</u36.card6>
+		<u36.card7>0.14541 0.02296</u36.card7>
+		<u36.card8>0.15306 0.09949</u36.card8>
+		<u36.card9>0.77806 0.02296</u36.card9>
+		<u36.card10>0.19133 0.17602</u36.card10>
+		<u36.card11>0.45663 0.04592</u36.card11>
+		<u36.card12>0.4898 0.09949</u36.card12>
+		<u36.card13>0.79337 0.20663</u36.card13>
+		<u36.card14>0.15306 0.15306</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.325 0.1125</u36.card16>
+		<u36.card17>0.6625 0.88333</u36.card17>
+		<u36.card18>3 3</u36.card18>
+		<u36.card19>0.00417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'psp' || {system.name} == 'virtualboy'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.41489</u36.card0>
+		<u36.card1>1 0.58511</u36.card1>
+		<u36.card2>0.06782 0.73404</u36.card2>
+		<u36.card3>0.86436 0.18617</u36.card3>
+		<u36.card4>0.24184 0.25266</u36.card4>
+		<u36.card5>0.28764 0.25266</u36.card5>
+		<u36.card6>0.33356 0.25266</u36.card6>
+		<u36.card7>0.14317 0.03989</u36.card7>
+		<u36.card8>0.15071 0.17287</u36.card8>
+		<u36.card9>0.78147 0.03989</u36.card9>
+		<u36.card10>0.18839 0.30585</u36.card10>
+		<u36.card11>0.46498 0.07979</u36.card11>
+		<u36.card12>0.48227 0.17287</u36.card12>
+		<u36.card13>0.79654 0.35904</u36.card13>
+		<u36.card14>0.15071 0.26596</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.32022 0.1125</u36.card16>
+		<u36.card17>0.67206 0.88333</u36.card17>
+		<u36.card18>3 5</u36.card18>
+		<u36.card19>0.00417</u36.card19>
+	</variables>
+	<variables if="{system.name} == 'pico8'" ifSubset="u38cardscale:normal">
+		<u36.card0>0 0.66327</u36.card0>
+		<u36.card1>1 0.33673</u36.card1>
+		<u36.card2>0.06888 0.84694</u36.card2>
+		<u36.card3>0.86224 0.10714</u36.card3>
+		<u36.card4>0.24562 0.14541</u36.card4>
+		<u36.card5>0.29213 0.14541</u36.card5>
+		<u36.card6>0.33877 0.14541</u36.card6>
+		<u36.card7>0.14541 0.02296</u36.card7>
+		<u36.card8>0.15306 0.09949</u36.card8>
+		<u36.card9>0.77806 0.02296</u36.card9>
+		<u36.card10>0.19133 0.17602</u36.card10>
+		<u36.card11>0.45663 0.04592</u36.card11>
+		<u36.card12>0.4898 0.09949</u36.card12>
+		<u36.card13>0.79337 0.20663</u36.card13>
+		<u36.card14>0.15306 0.15306</u36.card14>
+		<u36.card15>minSize</u36.card15>
+		<u36.card16>0.325 0.1125</u36.card16>
+		<u36.card17>0.6625 0.88333</u36.card17>
+		<u36.card18>3 3</u36.card18>
+		<u36.card19>0.00417</u36.card19>
+	</variables>
+	</theme>

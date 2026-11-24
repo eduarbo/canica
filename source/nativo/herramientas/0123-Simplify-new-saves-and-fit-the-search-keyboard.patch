@@ -1,0 +1,350 @@
+diff --git i/es-app/src/FileData.cpp w/es-app/src/FileData.cpp
+index 518b4fa..b9239a9 100644
+--- i/es-app/src/FileData.cpp
++++ w/es-app/src/FileData.cpp
+@@ -669,7 +669,12 @@ std::string FileData::getlaunchCommand(LaunchGameOptions& options, bool includeC
+ 			std::string launcher = Utils::FileSystem::getEscapedPath(resume);
+ 			if (!state)
+ 				return launcher + command.substr(name.size());
+-			launcher += " --es-resume-slot=" + std::to_string(state->slot);
++			// A single new-game tile starts fresh even if sync delivers an auto state
++			// after the list opens. RetroArch keeps its configured auto-save-on-exit policy.
++			const auto theme = system->getTheme();
++			const bool freshAuto = state->slot == -1 && state->fileName.empty() && getEmulator() == "libretro" &&
++				theme && theme->getVariable("esSingleNewGame") == "true";
++			launcher += " --es-resume-slot=" + std::to_string(freshAuto ? -2 : state->slot);
+ 			command = launcher + command.substr(name.size());
+ 			// The active libretro core can open a slot directly, without staging a
+ 			// copy or renaming the player's automatic state before sync.
+diff --git i/es-app/src/guis/GuiGamelistOptions.cpp w/es-app/src/guis/GuiGamelistOptions.cpp
+index 9265ee3..777aca5 100644
+--- i/es-app/src/guis/GuiGamelistOptions.cpp
++++ w/es-app/src/guis/GuiGamelistOptions.cpp
+@@ -348,10 +348,8 @@ void GuiGamelistOptions::addTextFilterToMenu()
+ 
+ 	row.makeAcceptInputHandler([this, updateVal]
+ 	{
+-		if (Settings::getInstance()->getBool("UseOSK"))
+-			mWindow->pushGui(new GuiTextEditPopupKeyboard(mWindow, _("FILTER GAMES BY TEXT"), mTextFilter->getValue(), updateVal, false));
+-		else
+-			mWindow->pushGui(new GuiTextEditPopup(mWindow, _("FILTER GAMES BY TEXT"), mTextFilter->getValue(), updateVal, false));
++		GuiTextEditPopupKeyboard::openSearch(mWindow, mSystem->getTheme(), mSystem->getFullName(),
++			_("FILTER GAMES BY TEXT"), mTextFilter->getValue(), updateVal);
+ 	});
+ 
+ 	mMenu.addRow(row);
+diff --git i/es-app/src/guis/GuiSaveState.cpp w/es-app/src/guis/GuiSaveState.cpp
+index 45b0c75..3fbc798 100644
+--- i/es-app/src/guis/GuiSaveState.cpp
++++ w/es-app/src/guis/GuiSaveState.cpp
+@@ -180,16 +180,16 @@ void GuiSaveState::loadGrid()
+ 	std::string newGameIcon = theme->getMenuIcon("iconNewGame");
+ 	std::string autoSaveIcon = theme->getMenuIcon("iconAutoSave");
+ 
+-	mGrid->add(_("START NEW GAME"), newGameIcon.empty() ? ":/freeslot.svg" : newGameIcon, SaveStateItem(mRepository->getDefaultNewGameSaveState()));
++	auto datesTheme = mGame->getSystem()->getTheme();
++	const bool singleStart = datesTheme && datesTheme->getVariable("esSingleNewGame") == "true";
++	const bool offerNewAuto = mRepository->supportsAutoSave() && mGame->getCurrentGameSetting("autosave") == "1" &&
++		std::none_of(states.begin(), states.end(), [](const SaveState* state) { return state->slot == -1; });
++	auto start = singleStart && offerNewAuto ? mRepository->getDefaultAutoSaveSaveState() : mRepository->getDefaultNewGameSaveState();
+ 
+-	if (mRepository->supportsAutoSave() && mGame->getCurrentGameSetting("autosave") == "1")
+-	{
+-		auto autoSave = std::find_if(states.cbegin(), states.cend(), [](SaveState* x) { return x->slot == -1; });
+-		if (autoSave == states.cend())
+-			mGrid->add(_("START NEW AUTO SAVE"), autoSaveIcon.empty() ? ":/freeslot.svg" : autoSaveIcon, SaveStateItem(mRepository->getDefaultAutoSaveSaveState()));
+-	}
++	mGrid->add(_("START NEW GAME"), newGameIcon.empty() ? ":/freeslot.svg" : newGameIcon, SaveStateItem(start));
++	if (!singleStart && offerNewAuto)
++		mGrid->add(_("START NEW AUTO SAVE"), autoSaveIcon.empty() ? ":/freeslot.svg" : autoSaveIcon, SaveStateItem(mRepository->getDefaultAutoSaveSaveState()));
+ 
+-	auto datesTheme = mGame->getSystem()->getTheme();
+ 	const tm today = Utils::Time::DateTime::now().getTimeStruct();
+ 	tm yesterday = today;
+ 	--yesterday.tm_mday;
+@@ -289,7 +289,7 @@ bool GuiSaveState::input(InputConfig* config, Input input)
+ 
+ 	if (input.value != 0 && config->isMappedTo("y", input))
+ 	{
+-		if (mGrid->size())
++		if (mGrid->size() && !mGrid->getSelected().saveState->fileName.empty())
+ 		{
+ 			mWindow->pushGui(new GuiMsgBox(mWindow, _("ARE YOU SURE YOU WANT TO DELETE THIS ITEM?"), _("YES"), 
+ 				[this]
+@@ -313,7 +313,7 @@ bool GuiSaveState::input(InputConfig* config, Input input)
+ 	
+ 	if (input.value != 0 && config->isMappedTo("x", input))
+ 	{
+-		if (mGrid->size())
++		if (mGrid->size() && !mGrid->getSelected().saveState->fileName.empty())
+ 		{
+ 			const SaveStateItem& toCopy = mGrid->getSelected();
+ 			
+diff --git i/es-app/src/views/SystemView.cpp w/es-app/src/views/SystemView.cpp
+index 0bf13b2..455357d 100644
+--- i/es-app/src/views/SystemView.cpp
++++ w/es-app/src/views/SystemView.cpp
+@@ -582,10 +582,8 @@ void SystemView::showQuickSearch()
+ 			ViewController::get()->goToGameList(all, false);
+ 		};
+ 
+-		if (Settings::getInstance()->getBool("UseOSK"))
+-			mWindow->pushGui(new GuiTextEditPopupKeyboard(mWindow, _("QUICK SEARCH"), "", updateVal, false));
+-		else
+-			mWindow->pushGui(new GuiTextEditPopup(mWindow, _("QUICK SEARCH"), "", updateVal, false));
++		GuiTextEditPopupKeyboard::openSearch(mWindow, all->getTheme(), all->getFullName(),
++			_("QUICK SEARCH"), "", updateVal);
+ 	}
+ }
+ 
+diff --git i/es-app/src/views/gamelist/ISimpleGameListView.cpp w/es-app/src/views/gamelist/ISimpleGameListView.cpp
+index a6fe66f..6b2e576 100644
+--- i/es-app/src/views/gamelist/ISimpleGameListView.cpp
++++ w/es-app/src/views/gamelist/ISimpleGameListView.cpp
+@@ -485,10 +485,8 @@ void ISimpleGameListView::showQuickSearch()
+ 			ViewController::get()->reloadGameListView(mRoot->getSystem());
+ 	};
+ 
+-	if (Settings::getInstance()->getBool("UseOSK"))
+-		mWindow->pushGui(new GuiTextEditPopupKeyboard(mWindow, _("FILTER GAMES BY TEXT"), searchText, updateVal, false));
+-	else
+-		mWindow->pushGui(new GuiTextEditPopup(mWindow, _("FILTER GAMES BY TEXT"), searchText, updateVal, false));
++	GuiTextEditPopupKeyboard::openSearch(mWindow, mRoot->getSystem()->getTheme(), mRoot->getSystem()->getFullName(),
++		_("FILTER GAMES BY TEXT"), searchText, updateVal);
+ }
+ 
+ void ISimpleGameListView::moveToRandomGame()
+diff --git i/es-core/src/components/TextEditComponent.cpp w/es-core/src/components/TextEditComponent.cpp
+index 6bb6757..0e118bb 100644
+--- i/es-core/src/components/TextEditComponent.cpp
++++ w/es-core/src/components/TextEditComponent.cpp
+@@ -13,7 +13,7 @@
+ 
+ #define BLINKTIME	1000
+ 
+-TextEditComponent::TextEditComponent(Window* window) : GuiComponent(window),
++TextEditComponent::TextEditComponent(Window* window, const std::shared_ptr<Font>& font) : GuiComponent(window),
+ 	mBox(window, ":/textinput_ninepatch.png"), mFocused(false), 
+ 	mScrollOffset(0.0f, 0.0f), mCursor(0), mEditing(false), mFont(Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT)), 
+ 	mCursorRepeatDir(0)
+@@ -24,7 +24,9 @@ TextEditComponent::TextEditComponent(Window* window) : GuiComponent(window),
+ 	auto theme = ThemeData::getMenuTheme();
+ 	mBox.setImagePath(ThemeData::getMenuTheme()->Icons.textinput_ninepatch);
+ 
+-	if (theme->TextEdit.font != nullptr)
++	if (font)
++		mFont = font;
++	else if (theme->TextEdit.font != nullptr)
+ 		mFont = theme->TextEdit.font;
+ 
+ 	addChild(&mBox);
+diff --git i/es-core/src/components/TextEditComponent.h w/es-core/src/components/TextEditComponent.h
+index 1f4e2b2..517781d 100644
+--- i/es-core/src/components/TextEditComponent.h
++++ w/es-core/src/components/TextEditComponent.h
+@@ -12,7 +12,7 @@ class TextCache;
+ class TextEditComponent : public GuiComponent
+ {
+ public:
+-	TextEditComponent(Window* window);
++	TextEditComponent(Window* window, const std::shared_ptr<Font>& font = nullptr);
+ 	
+ 	void textInput(const char* text) override;
+ 	bool input(InputConfig* config, Input input) override;
+diff --git i/es-core/src/guis/GuiTextEditPopupKeyboard.cpp w/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
+index b59e1fd..78a2b2f 100644
+--- i/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
++++ w/es-core/src/guis/GuiTextEditPopupKeyboard.cpp
+@@ -1,7 +1,9 @@
+ #include "guis/GuiTextEditPopupKeyboard.h"
++#include "guis/GuiTextEditPopup.h"
+ #include "components/MenuComponent.h"
+ #include "utils/StringUtil.h"
+ #include "Log.h"
++#include "Window.h"
+ #include "LocaleES.h"
+ #include "SystemConf.h"
+ 
+@@ -127,9 +129,22 @@ static std::string keyLabel(const std::string& key)
+ 	return key;
+ }
+ 
++void GuiTextEditPopupKeyboard::openSearch(Window* window, const std::shared_ptr<ThemeData>& theme,
++	const std::string& scope, const std::string& title, const std::string& value,
++	const std::function<void(const std::string&)>& apply)
++{
++	const bool styled = theme && theme->getElement("menu", "searchKeys", "menuKeyboard");
++	const auto caption = styled ? theme->getVariable("esSearchTitle") : title;
++	if (Settings::getInstance()->getBool("UseOSK"))
++		window->pushGui(new GuiTextEditPopupKeyboard(window, caption, value, apply, false, "OK", styled ? theme : nullptr, scope));
++	else
++		window->pushGui(new GuiTextEditPopup(window, caption, value, apply, false));
++}
++
+ GuiTextEditPopupKeyboard::GuiTextEditPopupKeyboard(Window* window, const std::string& title, const std::string& initValue,
+-	const std::function<void(const std::string&)>& okCallback, bool multiLine, const std::string acceptBtnText)
+-	: GuiComponent(window), mBackground(window, ":/frame.png"), mGrid(window, Vector2i(1, 6)), mMultiLine(multiLine)
++	const std::function<void(const std::string&)>& okCallback, bool multiLine, const std::string acceptBtnText,
++	const std::shared_ptr<ThemeData>& searchTheme, const std::string& scope)
++	: GuiComponent(window), mBackground(window, ":/frame.png"), mGrid(window, Vector2i(1, 6)), mSearchTheme(searchTheme), mMultiLine(multiLine)
+ {
+ 	setTag("popup");
+ 
+@@ -145,11 +160,20 @@ GuiTextEditPopupKeyboard::GuiTextEditPopupKeyboard(Window* window, const std::st
+ 	addChild(&mBackground);
+ 	addChild(&mGrid);
+ 
+-	mTitle = std::make_shared<TextComponent>(mWindow, Utils::String::toUpper(title), theme->Title.font, theme->Title.color, ALIGN_CENTER);
++	mTitle = std::make_shared<TextComponent>(mWindow, mSearchTheme ? title : Utils::String::toUpper(title), theme->Title.font, theme->Title.color, mSearchTheme ? ALIGN_LEFT : ALIGN_CENTER);
+ 	
+ 	mKeyboardGrid = std::make_shared<ComponentGrid>(mWindow, Vector2i(kbUs[0].size(), kbUs.size() / BUTTON_LAYER_SIZE));
+ 
+-	mText = std::make_shared<TextEditComponent>(mWindow);
++	mText = std::make_shared<TextEditComponent>(mWindow, mSearchTheme ? theme->Keyboard.font : nullptr);
++	if (mSearchTheme)
++	{
++		mScope = std::make_shared<TextComponent>(window, scope, theme->Text.font, theme->TextSmall.color, ALIGN_RIGHT);
++		mHint = std::make_shared<TextComponent>(window, mSearchTheme->getVariable("esSearchHint"), theme->Text.font, theme->TextSmall.color, ALIGN_LEFT);
++		mShortcuts = std::make_shared<TextComponent>(window, mSearchTheme->getVariable("esSearchShortcuts"), theme->TextSmall.font, theme->TextSmall.color, ALIGN_CENTER);
++		addChild(mScope.get());
++		addChild(mHint.get());
++		addChild(mShortcuts.get());
++	}
+ 	mText->setValue(initValue);
+ 
+ 	if (!multiLine)
+@@ -159,7 +183,7 @@ GuiTextEditPopupKeyboard::GuiTextEditPopupKeyboard(Window* window, const std::st
+ 	mGrid.setEntry(mTitle, Vector2i(0, 0), false, true);
+ 
+ 	// Text edit add
+-	mGrid.setEntry(mText, Vector2i(0, 1), true, false, Vector2i(1, 1), GridFlags::BORDER_TOP);
++	mGrid.setEntry(mText, Vector2i(0, 1), true, false, Vector2i(1, 1), mSearchTheme ? GridFlags::BORDER_NONE : GridFlags::BORDER_TOP);
+ 
+ 	std::vector< std::vector< std::shared_ptr<ButtonComponent> > > buttonList;
+ 
+@@ -337,7 +361,13 @@ GuiTextEditPopupKeyboard::GuiTextEditPopupKeyboard(Window* window, const std::st
+ 
+ 	
+ 	// If multiline, set all diminsions back to default, else draw size for keyboard.
+-	if (mMultiLine) 
++	if (mSearchTheme)
++	{
++		const float scale = Math::min(Renderer::getScreenWidth() / 640.0f, Renderer::getScreenHeight() / 480.0f);
++		setSize(Math::round(600 * scale), Math::round(320 * scale));
++		setPosition(Math::round((Renderer::getScreenWidth() - mSize.x()) / 2), Math::round((Renderer::getScreenHeight() - mSize.y()) / 2));
++	}
++	else if (mMultiLine)
+ 	{
+ 		if (Renderer::ScreenSettings::fullScreenMenus())
+ 			setSize(OSK_WIDTH, Renderer::getScreenHeight());
+@@ -361,6 +391,28 @@ void GuiTextEditPopupKeyboard::onSizeChanged()
+ 
+ 	mBackground.fitTo(mSize, Vector3f::Zero(), Vector2f(-32, -32));
+ 
++	if (mSearchTheme)
++	{
++		const float s = mSize.x() / 600.0f;
++		mGrid.setSize(mSize);
++		mTitle->setSize(300*s, 32*s);
++		mTitle->setPosition(19*s, 9*s);
++		mScope->setSize(245*s, 32*s);
++		mScope->setPosition(334*s, 9*s);
++		mText->setSize(562*s, mText->getFont()->getHeight()+2);
++		mText->setPosition(19*s, 48*s);
++		mHint->setSize(540*s, mText->getSize().y());
++		mHint->setPosition(30*s, 48*s);
++		mShortcuts->setSize(562*s, 24*s);
++		mShortcuts->setPosition(19*s, 287*s);
++		mKeyboardGrid->setColWidthPerc(12, 0.103f, false);
++		mKeyboardGrid->setRowHeightPerc(0, 0.17f, false);
++		mKeyboardGrid->setRowHeightPerc(4, 0.19f, false);
++		mKeyboardGrid->setSize(568*s, 197*s);
++		mKeyboardGrid->setPosition(16*s, 83*s);
++		return;
++	}
++
+ 	mText->setSize(mSize.x() - (2 * OSK_PADDINGX), mText->getSize().y());
+ 
+ 	// update grid
+@@ -376,6 +428,13 @@ void GuiTextEditPopupKeyboard::onSizeChanged()
+ 	mKeyboardGrid->setPosition(OSK_PADDINGX, pos.y());	
+ }
+ 
++void GuiTextEditPopupKeyboard::update(int deltaTime)
++{
++	GuiComponent::update(deltaTime);
++	if (mHint)
++		mHint->setVisible(mText->getValue().empty());
++}
++
+ bool GuiTextEditPopupKeyboard::input(InputConfig* config, Input input)
+ {
+ 	if (GuiComponent::input(config, input))
+@@ -487,6 +546,21 @@ void GuiTextEditPopupKeyboard::styleKey(const std::shared_ptr<ButtonComponent>&
+ {
+ 	auto& keyboard = ThemeData::getMenuTheme()->Keyboard;
+ 
++	if (mSearchTheme)
++	{
++		const auto keys = mSearchTheme->getElement("menu", "searchKeys", "menuKeyboard");
++		const auto actions = mSearchTheme->getElement("menu", "searchActions", "menuKeyboard");
++		const bool command = key == " " || key == _("RESET") || key == _("CANCEL") ||
++			key == _U("\uF177") || key == _U("\uF058") || button == mShiftButton || button == mAltButton;
++		const auto skin = command && actions ? actions : keys;
++		float pad = skin->get<float>("spacing") / 2.0f;
++		button->setPadding(Vector4f(pad, pad, pad, pad));
++		button->setImages(skin->get<std::string>("path"), skin->get<std::string>("focusedPath"),
++			skin->get<std::string>("activePath"), skin->get<Vector2f>("cornerSize"));
++		button->setTextColors(skin->get<unsigned int>("color"), skin->get<unsigned int>("selectedColor"));
++		setKeyLabel(button, key);
++		return;
++	}
+ 	float pad = keyboard.spacing / 2.0f;
+ 	button->setPadding(Vector4f(pad, pad, pad, pad));
+ 	button->setImages(keyboard.path, keyboard.focusedPath, keyboard.activePath, keyboard.cornerSize);
+@@ -500,10 +574,15 @@ void GuiTextEditPopupKeyboard::setKeyLabel(const std::shared_ptr<ButtonComponent
+ 	auto theme = ThemeData::getMenuTheme();
+ 
+ 	std::string label = keyLabel(key);
++	if (mSearchTheme)
++	{
++		if (key == _U("\uF058")) label = mSearchTheme->getVariable("esSearchSubmit");
++		if (key == _("RESET")) label = mSearchTheme->getVariable("esSearchClear");
++	}
+ 	bool word = !label.empty() && Utils::String::nextCursor(label, 0) < label.size();
+ 
+ 	auto sz = button->getSize();
+-	button->setFont(word ? theme->TextSmall.font : theme->Keyboard.font);
++	button->setFont(word ? (mSearchTheme ? theme->Text.font : theme->TextSmall.font) : theme->Keyboard.font);
+ 	button->setText(label, label, false);
+ 	button->setSize(sz);
+ }
+diff --git i/es-core/src/guis/GuiTextEditPopupKeyboard.h w/es-core/src/guis/GuiTextEditPopupKeyboard.h
+index e30d1c3..0d7c5e8 100644
+--- i/es-core/src/guis/GuiTextEditPopupKeyboard.h
++++ w/es-core/src/guis/GuiTextEditPopupKeyboard.h
+@@ -11,10 +11,13 @@ class GuiTextEditPopupKeyboard : public GuiComponent
+ {
+ public:
+ 	GuiTextEditPopupKeyboard(Window* window, const std::string& title, const std::string& initValue,
+-		const std::function<void(const std::string&)>& okCallback, bool multiLine, const std::string acceptBtnText = "OK");
++		const std::function<void(const std::string&)>& okCallback, bool multiLine, const std::string acceptBtnText = "OK",
++		const std::shared_ptr<ThemeData>& searchTheme = nullptr, const std::string& scope = "");
++	static void openSearch(Window* window, const std::shared_ptr<ThemeData>& theme, const std::string& scope,
++		const std::string& title, const std::string& value, const std::function<void(const std::string&)>& apply);
++	void update(int deltaTime) override;
+ 
+ 	bool input(InputConfig* config, Input input);
+-	//void update(int deltatime) override;
+ 	void onSizeChanged();
+ 	std::vector<HelpPrompt> getHelpPrompts() override;
+ 
+@@ -53,6 +56,8 @@ private:
+ 	
+ 	std::function<void(const std::string&)> mOkCallback;
+ 
++	std::shared_ptr<ThemeData> mSearchTheme;
++	std::shared_ptr<TextComponent> mScope, mHint, mShortcuts;
+ 	bool mMultiLine;
+ 	bool mShift = false;	
+ 	bool mAlt = false;

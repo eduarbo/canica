@@ -1,0 +1,123 @@
+diff --git a/es-core/src/components/GridTileComponent.cpp b/es-core/src/components/GridTileComponent.cpp
+index 23f3918..02ba5bd 100644
+--- a/es-core/src/components/GridTileComponent.cpp
++++ b/es-core/src/components/GridTileComponent.cpp
+@@ -20,7 +20,7 @@
+ 
+ #define VIDEODELAY	100
+ 
+-GridTileComponent::GridTileComponent(Window* window) : GuiComponent(window), mBackground(window), mLabel(window), mVideo(nullptr), mVideoPlaying(false), mHasItemTemplate(false)
++GridTileComponent::GridTileComponent(Window* window) : GuiComponent(window), mBackground(window), mLabel(window), mVideo(nullptr), mPreviewVisible(false), mHasItemTemplate(false)
+ {
+ 	mHasStandardMarquee = false;
+ 	mSelectedZoomPercent = 1.0f;
+@@ -323,6 +323,7 @@ void GridTileComponent::resize()
+ void GridTileComponent::update(int deltaTime)
+ {
+ 	GuiComponent::update(deltaTime);
++	setPreviewVisible(mSelected && mVideo != nullptr && mVideo->hasVisibleFrame());
+ 	
+ 	if (hasStoryBoard() && !isStoryBoardRunning())
+ 		deselectStoryboard(false);
+@@ -1168,6 +1169,20 @@ void GridTileComponent::playStoryboard(const std::string& event)
+ 	if (!mHasItemTemplate)
+ 		return;
+ 
++	playExtraStoryboard(event);
++}
++
++void GridTileComponent::setPreviewVisible(bool visible)
++{
++	if (visible == mPreviewVisible)
++		return;
++
++	mPreviewVisible = visible;
++	playExtraStoryboard(visible ? "videoplaying" : "videostopped");
++}
++
++void GridTileComponent::playExtraStoryboard(const std::string& event)
++{
+ 	for (auto comp : enumerateExtraChildrens())
+ 	{
+ 		if (comp->getStoryBoards().find(event) == comp->getStoryBoards().cend())
+@@ -1209,6 +1224,7 @@ void GridTileComponent::onShow()
+ 
+ void GridTileComponent::onHide()
+ {
++	setPreviewVisible(false);
+ 	GuiComponent::onHide();		
+ 
+ 	if (mSelected)
+@@ -1232,9 +1248,9 @@ void GridTileComponent::startVideo()
+ 		mVideo->setKeepOrientation(mSelectedProperties.Image.keepOrientation);
+ 
+ 		if (mSelectedProperties.Image.sizeMode == "minSize")
+-			mVideo->setMinSize(mSelectedProperties.Size);
++			mVideo->setMinSize(mSelectedProperties.Size.x(), mSelectedProperties.Size.y());
+ 		else
+-			mVideo->setResize(mSelectedProperties.Size);
++			mVideo->setResize(mSelectedProperties.Size.x(), mSelectedProperties.Size.y());
+ 
+ 		mVideo->setVideo(mVideoPath, false);
+ 	}
+@@ -1242,6 +1258,7 @@ void GridTileComponent::startVideo()
+ 
+ void GridTileComponent::stopVideo()
+ {
++	setPreviewVisible(false);
+ 	if (mVideo != nullptr)
+ 		mVideo->setVideo("");
+ }
+diff --git a/es-core/src/components/GridTileComponent.h b/es-core/src/components/GridTileComponent.h
+index 94805fe..76dfec0 100644
+--- a/es-core/src/components/GridTileComponent.h
++++ b/es-core/src/components/GridTileComponent.h
+@@ -9,7 +9,7 @@
+ #include "resources/TextureResource.h"
+ #include "renderers/Renderer.h"
+ 
+-class VideoComponent;
++class VideoVlcComponent;
+ 
+ struct GridImageProperties
+ {
+@@ -276,6 +276,8 @@ private:
+ 	void	createCheevos();
+ 	void	createImageOverlay();
+ 	void	stopVideo();
++	void setPreviewVisible(bool visible);
++	void playExtraStoryboard(const std::string& event);
+ 
+ 	void resize();
+ 
+@@ -308,14 +310,14 @@ private:
+ 
+ 	Vector3f mAnimPosition;
+ 
+-	VideoComponent* mVideo;
++	VideoVlcComponent* mVideo;
+ 	ImageComponent* mImage;
+ 	ImageComponent* mMarquee;
+ 	ImageComponent* mFavorite;
+ 	ImageComponent* mCheevos;
+ 	ImageComponent* mImageOverlay;
+ 
+-	bool mVideoPlaying;	
++	bool mPreviewVisible;
+ 	bool mHasStandardMarquee;
+ 	bool mHasItemTemplate;
+ };
+diff --git a/es-core/src/components/VideoVlcComponent.h b/es-core/src/components/VideoVlcComponent.h
+index 5dd0120..8dd716c 100644
+--- a/es-core/src/components/VideoVlcComponent.h
++++ b/es-core/src/components/VideoVlcComponent.h
+@@ -113,6 +113,9 @@ public:
+ 
+ 	void setEffect(VideoVlcFlags::VideoVlcEffect effect) { mEffect = effect; }
+ 
++	// A resumed player may exist before its first frame has reached the renderer.
++	bool hasVisibleFrame() const { return mIsPlaying && mFadeIn > 0 && mTexture != nullptr; }
++
+ 	bool getLinearSmooth() { return mLinearSmooth; }
+ 	void setLinearSmooth(bool value = true) { mLinearSmooth = value; }
+ 

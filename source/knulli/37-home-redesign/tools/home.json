@@ -1,0 +1,303 @@
+{
+  "tabs": [
+    {
+      "name": "EXTRAS",
+      "systems": [
+        "all",
+        "favorites",
+        "recent",
+        "tools",
+        "emulators",
+        "imageviewer"
+      ]
+    },
+    {
+      "name": "8 BITS",
+      "systems": [
+        "atari2600",
+        "nes",
+        "mastersystem"
+      ]
+    },
+    {
+      "name": "16 BITS",
+      "systems": [
+        "pcengine",
+        "pcenginecd",
+        "megadrive",
+        "snes",
+        "neogeo",
+        "segacd"
+      ]
+    },
+    {
+      "name": "32+ BITS",
+      "systems": [
+        "sega32x",
+        "psx",
+        "n64",
+        "dreamcast"
+      ]
+    },
+    {
+      "name": "PORTÁTILES",
+      "systems": [
+        "gb",
+        "lynx",
+        "gamegear",
+        "gbc",
+        "wswan",
+        "ngpc",
+        "wswanc",
+        "gba",
+        "nds"
+      ]
+    },
+    {
+      "name": "ARCADE",
+      "systems": [
+        "arcade",
+        "arcadetate",
+        "mame"
+      ]
+    },
+    {
+      "name": "PC Y MÁS",
+      "systems": [
+        "dos",
+        "prboom",
+        "eduke32",
+        "pico8",
+        "ports",
+        "*"
+      ]
+    }
+  ],
+  "grouped": {
+    "fds": {
+      "label": "Famicom Disk System",
+      "theme": "fds"
+    },
+    "gzdoom": {
+      "label": "GZDoom",
+      "theme": "gzdoom"
+    },
+    "cavestory": {
+      "label": "Cave Story",
+      "theme": "cavestory"
+    },
+    "vaixterm": {
+      "label": "VaixTerm",
+      "theme": "vaixterm"
+    }
+  },
+  "systems": {
+    "all": {
+      "desc": "Juegos de todos tus sistemas en una sola lista.",
+      "label": "Todos los juegos",
+      "theme": "auto-allgames"
+    },
+    "favorites": {
+      "desc": "Los juegos que marcaste como favoritos en todas tus consolas.",
+      "label": "Sugerencias del chef",
+      "theme": "auto-favorites"
+    },
+    "recent": {
+      "desc": "Los juegos que abriste, del más reciente al más antiguo.",
+      "label": "Últimos jugados",
+      "theme": "auto-lastplayed"
+    },
+    "atari2600": {
+      "desc": "Llevó los cartuchos intercambiables a millones de hogares. Unos 30 millones vendidas.",
+      "label": "Atari 2600",
+      "year": 1977,
+      "theme": "atari2600"
+    },
+    "nes": {
+      "desc": "La Famicom de 1983, que en América llegó como NES. 61.91 millones vendidas.",
+      "label": "NES",
+      "year": 1983,
+      "theme": "nes"
+    },
+    "mastersystem": {
+      "desc": "Consola de 8 bits de Sega, sucesora de la Mark III; muy popular en Brasil y Europa.",
+      "label": "Master System",
+      "year": 1985,
+      "theme": "mastersystem"
+    },
+    "pcengine": {
+      "desc": "De NEC y Hudson Soft: CPU de 8 bits con gráficos de 16. En América, TurboGrafx-16.",
+      "label": "PC Engine",
+      "year": 1987,
+      "theme": "pcengine"
+    },
+    "pcenginecd": {
+      "desc": "El primer CD-ROM para una consola: un accesorio de PC Engine, en Japón en 1988.",
+      "label": "PC Engine CD",
+      "year": 1988,
+      "theme": "pce-cd"
+    },
+    "megadrive": {
+      "desc": "Consola de 16 bits de Sega, Genesis en América, con Sonic de mascota desde 1991.",
+      "label": "Mega Drive",
+      "year": 1988,
+      "theme": "megadrive"
+    },
+    "snes": {
+      "desc": "Consola de 16 bits con Modo 7 y chip de sonido de Sony. 49 millones vendidas.",
+      "label": "Super Nintendo",
+      "year": 1990,
+      "theme": "snes"
+    },
+    "neogeo": {
+      "desc": "La versión casera (AES) del arcade MVS de SNK: los mismos juegos, sin recortes.",
+      "label": "Neo Geo",
+      "year": 1990,
+      "theme": "neogeo"
+    },
+    "segacd": {
+      "desc": "Unidad de CD-ROM para Mega Drive, con más memoria y escalado y rotación de sprites.",
+      "label": "Sega CD",
+      "year": 1991,
+      "theme": "segacd"
+    },
+    "sega32x": {
+      "desc": "Accesorio de 32 bits para Mega Drive, con dos procesadores SH-2 como los de Saturn.",
+      "label": "32X",
+      "year": 1994,
+      "theme": "sega32x"
+    },
+    "psx": {
+      "desc": "La primera consola en pasar los 100 millones: 102.49 millones vendidas, en CD.",
+      "label": "PlayStation",
+      "year": 1994,
+      "theme": "psx"
+    },
+    "n64": {
+      "desc": "Estrenó el stick analógico de Nintendo con Super Mario 64. 32.93 millones vendidas.",
+      "label": "Nintendo 64",
+      "year": 1996,
+      "theme": "n64"
+    },
+    "dreamcast": {
+      "desc": "La última consola de Sega y la primera con módem integrado para jugar en línea.",
+      "label": "Dreamcast",
+      "year": 1998,
+      "theme": "dreamcast"
+    },
+    "gb": {
+      "desc": "Portátil de 8 bits con pantalla de cuatro tonos de verde. Con GB Color, 118.69 millones.",
+      "label": "Game Boy",
+      "year": 1989,
+      "theme": "gb"
+    },
+    "lynx": {
+      "desc": "La primera portátil con pantalla a color retroiluminada. La diseñó Epyx y la lanzó Atari.",
+      "label": "Lynx",
+      "year": 1989,
+      "theme": "atarilynx"
+    },
+    "gamegear": {
+      "desc": "Portátil de 8 bits de Sega con pantalla a color retroiluminada, basada en Master System.",
+      "label": "Game Gear",
+      "year": 1990,
+      "theme": "gamegear"
+    },
+    "gbc": {
+      "desc": "Sucesora a color de Game Boy: 56 colores a la vez y compatible con sus juegos.",
+      "label": "Game Boy Color",
+      "year": 1998,
+      "theme": "gbc"
+    },
+    "wswan": {
+      "desc": "Portátil de Bandai diseñada por Gunpei Yokoi, creador de Game Boy. Sólo salió en Japón.",
+      "label": "WonderSwan",
+      "year": 1999,
+      "theme": "wonderswan"
+    },
+    "ngpc": {
+      "desc": "Portátil de SNK con stick de microinterruptores, famosa por sus juegos de pelea.",
+      "label": "Neo Geo Pocket Color",
+      "year": 1999,
+      "theme": "ngpc"
+    },
+    "wswanc": {
+      "desc": "WonderSwan a color, compatible con sus juegos. Recibió remakes de Final Fantasy I, II y IV.",
+      "label": "WonderSwan Color",
+      "year": 2000,
+      "theme": "wonderswancolor"
+    },
+    "gba": {
+      "desc": "Portátil de 32 bits, sucesora de Game Boy y retrocompatible con ella. 81.5 millones vendidas.",
+      "label": "Game Boy Advance",
+      "year": 2001,
+      "theme": "gba"
+    },
+    "nds": {
+      "desc": "Portátil de dos pantallas, la de abajo táctil, con micrófono y Wi-Fi. 154.02 millones.",
+      "label": "Nintendo DS",
+      "year": 2004,
+      "theme": "nds"
+    },
+    "arcade": {
+      "desc": "Juegos de máquinas recreativas de distintos fabricantes.",
+      "label": "Arcade",
+      "theme": "arcade"
+    },
+    "arcadetate": {
+      "desc": "Arcades de pantalla vertical (TATE), como 1942 o Galaga, en su orientación original.",
+      "label": "Arcade vertical",
+      "theme": "auto-verticalarcade"
+    },
+    "mame": {
+      "desc": "Juegos de máquinas recreativas compatibles con MAME.",
+      "label": "MAME",
+      "year": 1997,
+      "theme": "mame"
+    },
+    "dos": {
+      "desc": "Juegos para MS-DOS y computadoras compatibles con IBM PC.",
+      "label": "MS-DOS",
+      "year": 1981,
+      "theme": "pc"
+    },
+    "prboom": {
+      "desc": "PrBoom+, port del motor de Doom (1993) de id Software, con los WAD originales.",
+      "label": "Doom",
+      "year": 1993,
+      "theme": "prboom"
+    },
+    "eduke32": {
+      "desc": "EDuke32, port del motor Build de Duke Nukem 3D (1996), de 3D Realms.",
+      "label": "Duke Nukem 3D",
+      "year": 1996,
+      "theme": "eduke32"
+    },
+    "pico8": {
+      "desc": "Consola de fantasía: 128×128 píxeles y 16 colores; cada juego cabe en una imagen PNG.",
+      "label": "PICO-8",
+      "year": 2015,
+      "theme": "pico8"
+    },
+    "ports": {
+      "desc": "Juegos nativos sin emulador: PortMaster y ports como Cave Story o GZDoom.",
+      "label": "Ports",
+      "theme": "ports"
+    },
+    "tools": {
+      "desc": "Herramientas disponibles en esta instalación.",
+      "label": "Herramientas",
+      "theme": "tools"
+    },
+    "emulators": {
+      "desc": "Emuladores disponibles en esta instalación.",
+      "label": "Emuladores",
+      "theme": "emulators"
+    },
+    "imageviewer": {
+      "desc": "Capturas guardadas en esta consola.",
+      "label": "Capturas",
+      "theme": "imageviewer"
+    }
+  }
+}

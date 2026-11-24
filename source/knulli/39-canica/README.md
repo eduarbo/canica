@@ -1,0 +1,44 @@
+# Canica · Iris y Ámbar
+
+Canica es el tema de mi RG35XX H y usa mi fork de EmulationStation. La configuración que mantengo combina la base Scarab del 11 de mayo de 2026, el motor de Canica y el adaptador de partidas. Las categorías, la navegación con gatillos, la búsqueda por palabras y las vistas previas dependen del motor del fork.
+
+## Instalar Canica
+
+Copia el instalador completo de RC31 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc31-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
+
+## Ajustes
+
+| Ajuste | Opciones | Qué cambia |
+| --- | --- | --- |
+| Variante | Iris, Ámbar | Fondo, paneles, menús, foco, barra de progreso y acceso a partidas. |
+| Tarjetas de juegos | Grandes, Compactas | Número de tarjetas visibles según el formato de la consola. En automático, PICO-8 mantiene tres columnas. |
+| Vídeo en la tarjeta seleccionada | Reproducir, Solo imagen | Activa la reproducción tras una breve pausa o conserva la captura. Requiere un vídeo en la ficha. |
+| Imagen de la ficha | Carátula primero, Captura primero | Elige el arte que aparece en los detalles. Si falta, usa el otro y finalmente la ilustración de reserva. |
+| Vistas previas de consolas | Animadas, Solo imágenes fijas | Controla la rotación de capturas en las tarjetas y el vídeo de la última partida en el panel de consola. |
+
+KNULLI también ofrece **Tamaño pred. de cuadrícula**. Déjalo en **Automático** para respetar el tamaño de tarjetas del tema y las tres columnas de PICO-8. Una cuadrícula manual global o por sistema tiene prioridad.
+
+## Controles
+
+- Inicio usa derecha para enfocar las consolas. En las tarjetas, izquierda y derecha cambian la selección en círculo. A abre y B vuelve.
+- L1 y R1 cambian de categoría en Inicio y entre consolas en los juegos. Extras queda fuera de este último recorrido. L2 y R2 avanzan o retroceden tantas filas completas como caben en pantalla. Al mantenerlos, el frontend puede saltar por letras en listas ordenadas por nombre.
+- **Y · Buscar.** En Inicio busca en toda la biblioteca. En la lista usa los títulos visibles de la consola o colección. Las tres tarjetas completan la palabra que escribes. Después de un espacio, proponen palabras que suelen seguir a la anterior en esos títulos. L2 inserta la primera. R2 lleva el foco a las tarjetas, ←/→ elige y A inserta la palabra. El teclado sigue abierto para encadenar otra palabra. B vuelve a la misma tecla. START aplica el texto, L1 borra una letra y X limpia el filtro. B desde el teclado cancela la edición y conserva el filtro previo.
+- **A · Jugar.** En la lista, A inicia el juego seleccionado con la reanudación configurada. Para cambiar favoritos, mantén A y elige la acción en Opciones del juego.
+- **X · Partidas.** Elige «Nueva partida» para arrancar desde el inicio o una ranura para retomar ese momento. Las tarjetas muestran la captura completa, con la ranura y la fecha sobre el degradado inferior. Una ranura sin imagen conserva su fecha y muestra el icono de guardado. Cuando existe un autoguardado, aparece con su fecha y hora. Las partidas de hoy y ayer muestran el día en palabras y la hora local en formato de 24 horas. Las anteriores muestran día y mes, además del año si es distinto del actual. En juegos que guardan el avance dentro del propio juego, la ficha indica dónde cargarlo. En la vista de consolas, X continúa la partida o abre la sugerencia que muestra la ficha.
+- FN + A continúa el último juego en instalaciones que tengan ese atajo habilitado. El triángulo de la barra superior identifica ese juego. «Últimos jugados» abre Extras y recorre el historial del más reciente al más antiguo. «Todos los juegos» y «Sugerencias del chef» recorren su colección en orden aleatorio. Con las fichas animadas, el siguiente juego aparece al terminar el vídeo. Un juego sin vídeo muestra su imagen durante ocho segundos. En Extras, la línea encima de la imagen identifica la consola del juego visible. En la ficha de cada consola, el recorrido comienza por su último juego y sigue por los anteriores. Si sólo hay uno jugado, continúa con sugerencias de esa consola. X abre ese juego. Los controles de brillo y volumen muestran un medidor vertical en el lateral derecho, lavanda en Iris y dorado en Ámbar.
+
+## Biblioteca y personalización
+
+Canica lee las capturas, vídeos, carátulas, favoritos, puntuaciones y estadísticas que EmulationStation ya conoce. Incluye ilustraciones propias para tarjetas y marcadores de posición. Puedes agregar imágenes propias en `/userdata/decorations/canica/logos/<system-theme>.png`. Iris y Ámbar usan las mismas tarjetas de `/userdata/decorations/canica/cards/<system-theme>.png`. Si falta una tarjeta, ambas variantes componen la vista con el logo arriba a la izquierda, el año abajo a la izquierda y la imagen de la consola abajo a la derecha. Puedes añadir esta última en `/userdata/decorations/canica/hardware/<system-theme>.png`. El nombre es el identificador de tema del sistema (por ejemplo, `gba.png`). Los pictogramas opcionales de navegación se leen de `/userdata/decorations/canica/categories/<tamaño>/` (20, 24 o 34 píxeles, con los nombres extras, eight-bit, sixteen-bit, thirty-two-bit, handheld, arcade y computer, en PNG). Esta carpeta se conserva al sustituir el ZIP. Para una tarjeta con fondo de la biblioteca, usa un PNG con transparencia. El instalador prepara los fondos y las capturas de las tarjetas de juego en una caché independiente. Las tarjetas conservan la paleta y las proporciones de cada sistema también en colecciones mixtas. DS conserva ambas pantallas en la tarjeta del juego. Las capturas originales y las portadas permanecen en su biblioteca. Game Boy usa cuatro tonos verdes. DS muestra la pantalla superior cuando la captura contiene las dos, y los juegos verticales conservan su orientación. Tras añadir capturas, vuelve a ejecutar el instalador para actualizar los fondos.
+
+El corazón indica favorito. De cinco estrellas se encienden, de izquierda a derecha, una por debajo de 40 puntos, dos desde 40, tres desde 60, cuatro desde 80 y cinco desde 90, según la puntuación redondeada del catálogo. Si falta la puntuación, la ficha muestra las cinco apagadas y la tarjeta oculta las estrellas. Un degradado cubre la parte superior de cada tarjeta, con la partida guardada seguida del corazón en el extremo derecho. Los iconos son más pequeños en densidad compacta. El título y los marcadores recuperan su contraste al salir del vídeo. Herramientas y Emuladores comparten pictogramas transparentes entre tarjeta y ficha. Para personalizar uno, guarda un PNG en `/userdata/decorations/canica/utility-icons/<variante>/<nombre de imagen original sin extensión>.png`. Las fichas reservan las mismas posiciones para los datos ausentes y centran el arte vertical y horizontal.
+
+Los títulos usan D-DIN Condensed Bold de Datto ([fuente original](https://github.com/amcchord/datto-d-din/tree/e199c8441e758d6e492cd01ef52c3c67ba4bae26)), con su licencia en `fonts/D-DIN-OFL.txt`. Roboto se distribuye con la licencia incluida en `fonts/OFL.txt`. Los elementos visuales del tema y los controles se generaron para este proyecto. Las imágenes de los juegos y los logotipos aportados por cada instalación permanecen en su biblioteca. El tema no incluye ROMs, BIOS, capturas comerciales ni archivos de configuración personales.
+
+Canica © 2026 Eduardo Ruiz Macias. El tema y su arte se distribuyen bajo CC BY-SA 4.0 (`licencias/CC-BY-SA-4.0.txt`) y el código propio bajo la licencia MIT (`licencias/MIT.txt`). Los componentes de terceros conservan sus avisos y licencias.
+
+## Compilar desde el repositorio de origen
+
+Para reproducir el motor desde los forks públicos, sigue los pasos de Scarab para la RG35XX-H. Incluyen el adaptador de partidas y la vuelta al frontend de fábrica. [Guía de instalación desde los forks](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
+
+Con Python 3, librsvg (`rsvg-convert`) e ImageMagick 7 (`magick`), ejecuta `python3 -B build.py /ruta/de/salida` desde el directorio fuente de Canica. La compilación usa los recursos de interfaz y las métricas de cuadrícula del mismo árbol. Los controles estáticos aprobados se encuentran en `controls/<variante>/`. Las variantes se registran en `palettes.json`. El diseño compartido usa esos valores para mantener los mismos controles, espacios y estados. Para comprobar el resultado, ejecuta `python3 -B validate.py /ruta/de/salida/canica-1.0.1-rc30.zip`.

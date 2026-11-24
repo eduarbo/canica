@@ -1,0 +1,269 @@
+<theme><view name="screen">
+			<controllerActivity name="controllerActivity">
+				<visible>false</visible>
+			</controllerActivity>
+			<notification name="notification">
+				<pos>0.98438 0.0625</pos>
+				<origin>1 0</origin>
+				<size>0.65625 0.05833</size>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.02135</fontSize>
+				<color>f3f4fc</color>
+				<backgroundColor>0d1a2bf2</backgroundColor>
+				<borderColor>cbd3f026</borderColor>
+				<cornerSize>0.01667</cornerSize>
+				<iconPath>${u38}/art/notice.png</iconPath>
+				<iconSize>0.02917</iconSize>
+				<spacing>0.0125</spacing>
+				<maxCount>2</maxCount>
+			</notification>
+			<notification name="meters">
+				<vertical>true</vertical>
+				<pos>0.9875 0.5</pos>
+				<origin>1 0.5</origin>
+				<size>0.07187 0.33333</size>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<backgroundColor>101723ff</backgroundColor>
+				<borderColor>dce7f7ff</borderColor>
+				<cornerSize>0.02083</cornerSize>
+				<trackColor>56667aff</trackColor>
+				<fillColor>fff0b0ff</fillColor>
+				<iconSize>0.02917</iconSize>
+				<spacing>0.01667</spacing>
+			</notification>
+		</view>
+	<view name="system"><text name="u38UtilityCounttools" extra="true">
+				<pos>1.01875 0.14583</pos>
+				<size>0.275 0.03333</size>
+				<text>{system:total} == 1 ? "1 herramienta" : tostring({system:total}) + " herramientas"</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>center</alignment>
+				<zIndex>92</zIndex>
+				<visible>({system:theme} == 'tools')</visible>
+			</text>
+			<text name="u38UtilityCountemulators" extra="true">
+				<pos>1.01875 0.14583</pos>
+				<size>0.275 0.03333</size>
+				<text>{system:total} == 1 ? "1 emulador" : tostring({system:total}) + " emuladores"</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>center</alignment>
+				<zIndex>92</zIndex>
+				<visible>({system:theme} == 'emulators')</visible>
+			</text>
+			<text name="u38UtilityCountimageviewer" extra="true">
+				<pos>1.01875 0.14583</pos>
+				<size>0.275 0.03333</size>
+				<text>{system:total} == 1 ? "1 captura" : tostring({system:total}) + " capturas"</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>center</alignment>
+				<zIndex>92</zIndex>
+				<visible>({system:theme} == 'imageviewer')</visible>
+			</text>
+			<text name="u38LibraryContents" extra="true">
+				<pos>1.01875 0.225</pos>
+				<size>0.275 0.03333</size>
+				<text>Disponibles</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>({system:theme} == 'tools' || {system:theme} == 'emulators')</visible>
+			</text>
+			<image name="u38AppIcon0" extra="true">
+				<pos>1.01875 0.27917</pos>
+				<size>0.0375 0.05</size>
+				<path>firstfile({system:recent1:image}, "${u37}/art/panel/row-" + {system:theme} + ".png")</path>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent1:name}))</visible>
+				<zIndex>31</zIndex>
+			</image>
+			<text name="u38AppName0" extra="true">
+				<pos>1.06875 0.2875</pos>
+				<size>0.225 0.03333</size>
+				<text>{system:recent1:cleanName}</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent1:name}))</visible>
+			</text>
+			<image name="u38AppIcon1" extra="true">
+				<pos>1.01875 0.36875</pos>
+				<size>0.0375 0.05</size>
+				<path>firstfile({system:recent2:image}, "${u37}/art/panel/row-" + {system:theme} + ".png")</path>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent2:name}))</visible>
+				<zIndex>31</zIndex>
+			</image>
+			<text name="u38AppName1" extra="true">
+				<pos>1.06875 0.37708</pos>
+				<size>0.225 0.03333</size>
+				<text>{system:recent2:cleanName}</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent2:name}))</visible>
+			</text>
+			<image name="u38AppIcon2" extra="true">
+				<pos>1.01875 0.45833</pos>
+				<size>0.0375 0.05</size>
+				<path>firstfile({system:recent3:image}, "${u37}/art/panel/row-" + {system:theme} + ".png")</path>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent3:name}))</visible>
+				<zIndex>31</zIndex>
+			</image>
+			<text name="u38AppName2" extra="true">
+				<pos>1.06875 0.46667</pos>
+				<size>0.225 0.03333</size>
+				<text>{system:recent3:cleanName}</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent3:name}))</visible>
+			</text>
+			<image name="u38AppIcon3" extra="true">
+				<pos>1.01875 0.54792</pos>
+				<size>0.0375 0.05</size>
+				<path>firstfile({system:recent4:image}, "${u37}/art/panel/row-" + {system:theme} + ".png")</path>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent4:name}))</visible>
+				<zIndex>31</zIndex>
+			</image>
+			<text name="u38AppName3" extra="true">
+				<pos>1.06875 0.55625</pos>
+				<size>0.225 0.03333</size>
+				<text>{system:recent4:cleanName}</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent4:name}))</visible>
+			</text>
+			<image name="u38AppIcon4" extra="true">
+				<pos>1.01875 0.6375</pos>
+				<size>0.0375 0.05</size>
+				<path>firstfile({system:recent5:image}, "${u37}/art/panel/row-" + {system:theme} + ".png")</path>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent5:name}))</visible>
+				<zIndex>31</zIndex>
+			</image>
+			<text name="u38AppName4" extra="true">
+				<pos>1.06875 0.64583</pos>
+				<size>0.225 0.03333</size>
+				<text>{system:recent5:cleanName}</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent5:name}))</visible>
+			</text>
+			<image name="u38AppIcon5" extra="true">
+				<pos>1.01875 0.72708</pos>
+				<size>0.0375 0.05</size>
+				<path>firstfile({system:recent6:image}, "${u37}/art/panel/row-" + {system:theme} + ".png")</path>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent6:name}))</visible>
+				<zIndex>31</zIndex>
+			</image>
+			<text name="u38AppName5" extra="true">
+				<pos>1.06875 0.73542</pos>
+				<size>0.225 0.03333</size>
+				<text>{system:recent6:cleanName}</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>(({system:theme} == 'tools' || {system:theme} == 'emulators') &amp;&amp; !empty({system:recent6:name}))</visible>
+			</text>
+			<text name="u38Latest" extra="true">
+				<pos>1.01875 0.225</pos>
+				<size>0.275 0.03333</size>
+				<text>Última captura</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>({system:theme} == 'imageviewer' &amp;&amp; !empty({system:recent1:name}))</visible>
+			</text>
+			<image name="u38LatestImage" extra="true">
+				<pos>1.15625 0.28333</pos>
+				<origin>0.5 0</origin>
+				<maxSize>0.275 0.35417</maxSize>
+				<path>{system:recent1:image}</path>
+				<visible>({system:theme} == 'imageviewer' &amp;&amp; !empty({system:recent1:name}))</visible>
+				<zIndex>31</zIndex>
+			</image>
+			<text name="u38LatestTitle" extra="true">
+				<pos>1.01875 0.65417</pos>
+				<size>0.275 0.03333</size>
+				<text>{system:recent1:cleanName}</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>({system:theme} == 'imageviewer' &amp;&amp; !empty({system:recent1:name}))</visible>
+			</text>
+			<text name="u38LatestTime" extra="true">
+				<pos>1.01875 0.69792</pos>
+				<size>0.275 0.03333</size>
+				<text>{system:recent1:shotDate}</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>({system:theme} == 'imageviewer' &amp;&amp; !empty({system:recent1:name}))</visible>
+			</text>
+			<text name="u38EmptyShots" extra="true">
+				<pos>1.01875 0.28333</pos>
+				<size>0.275 0.03333</size>
+				<text>Aún no hay capturas</text>
+				<fontPath>${u37.semibold}</fontPath>
+				<fontSize>0.01927</fontSize>
+				<color>f3f4fc</color>
+				<verticalAlignment>center</verticalAlignment>
+				<multiLine>false</multiLine>
+				<alignment>left</alignment>
+				<zIndex>92</zIndex>
+				<visible>({system:theme} == 'imageviewer' &amp;&amp; empty({system:recent1:name}))</visible>
+			</text>
+			</view></theme>

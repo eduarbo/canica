@@ -1,0 +1,13 @@
+diff --git a/es-app/src/views/gamelist/ISimpleGameListView.cpp b/es-app/src/views/gamelist/ISimpleGameListView.cpp
+index 84f61ce..a6fe66f 100644
+--- a/es-app/src/views/gamelist/ISimpleGameListView.cpp
++++ b/es-app/src/views/gamelist/ISimpleGameListView.cpp
+@@ -436,7 +436,7 @@ void ISimpleGameListView::launchSelectedGame()
+ 	{
+ 		if (cursor->getType() == GAME)
+ 		{
+-			if (SaveStateRepository::isEnabled(cursor) &&
++			if ((!usesSavedGamesButton() || !hasPlayableSelection()) && SaveStateRepository::isEnabled(cursor) &&
+ 				(cursor->getCurrentGameSetting("savestates") == "1" || (cursor->getCurrentGameSetting("savestates") == "2" && cursor->getSourceFileData()->getSystem()->getSaveStateRepository()->hasSaveStates(cursor))))
+ 			{
+ 				mWindow->pushGui(new GuiSaveState(mWindow, cursor, [this, cursor](SaveState* state)
