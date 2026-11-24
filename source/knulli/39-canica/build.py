@@ -16,7 +16,7 @@ from games import card_sizes, games, save_cards, tile_badge_geometry
 from layout import (ART, CAT, COL, FONT, HERE, HOME, KIT, LOOK, RED, element, option, prop,
                     system_data, systems, variables, view)
 
-VERSION="1.0.1-rc34"
+VERSION="1.0.1-rc35"
 KIT["label"]=VERSION.rsplit("-",1)[-1].upper()
 # The theme and its art are CC BY-SA 4.0; the project's own code is MIT.
 LICENSES=("CC-BY-SA-4.0.txt","MIT.txt")

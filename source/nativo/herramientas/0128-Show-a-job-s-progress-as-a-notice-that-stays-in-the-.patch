@@ -1,0 +1,277 @@
+From 4f18ea3875435100768925da15e0813800371f86 Mon Sep 17 00:00:00 2001
+From: Eduardo Ruiz <335073+eduarbo@users.noreply.github.com>
+Date: Tue, 24 Nov 2026 00:36:25 -0800
+Subject: [PATCH] Show a job's progress as a notice that stays, in the theme's
+ style
+
+The progress panel reused the menu's download box: a narrow box in the top
+corner that a theme with its own notices leaves without a background, over
+the header, cutting its text. An outside job's progress is now one of the
+theme's notices that stays: its title beside the icon, a detail line and a
+gauge, at the full width of the style, until the job closes it.
+POST /progress-notice replaces POST /progress.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+---
+ es-app/src/services/HttpServerThread.cpp | 25 +++------
+ es-core/src/Window.cpp                   | 26 ++++++++++
+ es-core/src/Window.h                     |  5 ++
+ es-core/src/guis/GuiInfoPopup.cpp        | 66 +++++++++++++++++++++++-
+ es-core/src/guis/GuiInfoPopup.h          |  9 ++++
+ 5 files changed, 111 insertions(+), 20 deletions(-)
+
+diff --git a/es-app/src/services/HttpServerThread.cpp b/es-app/src/services/HttpServerThread.cpp
+index 2063ab6..b22d769 100644
+--- a/es-app/src/services/HttpServerThread.cpp
++++ b/es-app/src/services/HttpServerThread.cpp
+@@ -25,7 +25,6 @@
+ #include "guis/GuiUpdate.h"
+ #include "ContentInstaller.h"
+ #include "components/VideoVlcComponent.h"
+-#include "components/AsyncNotificationComponent.h"
+ #include "utils/StringUtil.h"
+ 
+ /* 
+@@ -591,10 +590,10 @@ void HttpServerThread::run()
+ 		mWindow->displayNotificationMessage(req.body);
+ 	});
+ 
+-	// One panel that stays on screen while an outside job works, such as the kit updater, instead of a notice
+-	// that goes away. Body: "<percent>\n<title>\n<text>"; a percent below 0 hides the gauge. The body "close"
+-	// takes the panel away.
+-	mHttpServer->Post("/progress", [this](const httplib::Request& req, httplib::Response& res)
++	// One notice that stays on screen while an outside job works, such as the kit updater, in the style of the
++	// theme's notices. Body: "<percent>\n<title>\n<detail>"; a percent below 0 hides the gauge. The body "close"
++	// takes it away.
++	mHttpServer->Post("/progress-notice", [this](const httplib::Request& req, httplib::Response& res)
+ 	{
+ 		if (!isAllowed(req, res))
+ 			return;
+@@ -610,14 +609,9 @@ void HttpServerThread::run()
+ 		Window* w = mWindow;
+ 		mWindow->postToUiThread([body, w]()
+ 		{
+-			static AsyncNotificationComponent* panel = nullptr;
+-
+ 			if (body == "close")
+ 			{
+-				if (panel != nullptr)
+-					panel->close();
+-
+-				panel = nullptr;
++				w->hideProgress();
+ 				return;
+ 			}
+ 
+@@ -627,14 +621,9 @@ void HttpServerThread::run()
+ 
+ 			size_t second = body.find('\n', first + 1);
+ 			std::string title = body.substr(first + 1, second == std::string::npos ? std::string::npos : second - first - 1);
+-			std::string text = second == std::string::npos ? "" : body.substr(second + 1);
+-
+-			if (panel == nullptr)
+-				panel = w->createAsyncNotificationComponent();
++			std::string detail = second == std::string::npos ? "" : body.substr(second + 1);
+ 
+-			panel->updateTitle(title);
+-			panel->updateText(text);
+-			panel->updatePercent(Utils::String::toInteger(body.substr(0, first)));
++			w->showProgress(title, detail, Utils::String::toInteger(body.substr(0, first)));
+ 		});
+ 	});
+ 
+diff --git a/es-core/src/Window.cpp b/es-core/src/Window.cpp
+index b3da394..0799f18 100644
+--- a/es-core/src/Window.cpp
++++ b/es-core/src/Window.cpp
+@@ -374,8 +374,34 @@ void Window::processNotificationMessages()
+ 	layoutNotificationPopups();
+ }
+ 
++void Window::showProgress(const std::string& title, const std::string& detail, int percent)
++{
++	if (mProgressPopup == nullptr)
++	{
++		if (mNotificationPopups.size() == 0)
++			PowerSaver::pause();
++
++		// First, so a theme's cap on the notices shown at once never hides it
++		mProgressPopup = new GuiInfoPopup(this, title, 24 * 3600 * 1000);
++		mNotificationPopups.insert(mNotificationPopups.begin(), mProgressPopup);
++	}
++
++	mProgressPopup->setProgress(title, detail, percent);
++	layoutNotificationPopups();
++}
++
++void Window::hideProgress()
++{
++	if (mProgressPopup != nullptr)
++		mProgressPopup->finish();
++
++	mProgressPopup = nullptr;
++}
++
+ void Window::stopNotificationPopups()
+ {
++	mProgressPopup = nullptr;
++
+ 	if (mNotificationPopups.size() == 0)
+ 		return;
+ 
+diff --git a/es-core/src/Window.h b/es-core/src/Window.h
+index 145fa2b..0675ebe 100644
+--- a/es-core/src/Window.h
++++ b/es-core/src/Window.h
+@@ -52,6 +52,10 @@ public:
+ 
+ 	void pushGui(GuiComponent* gui);
+ 	void displayNotificationMessage(std::string message, int duration = -1); 
++
++	// One notice that stays while a job works, with its progress; on the UI thread
++	void showProgress(const std::string& title, const std::string& detail, int percent);
++	void hideProgress();
+ 	void removeGui(GuiComponent* gui);
+ 	GuiComponent* peekGui();
+ 	inline int getGuiStackSize() { return (int)mGuiStack.size(); }
+@@ -183,6 +187,7 @@ private:
+ 	std::vector<PostedFunction> mFunctions;
+ 
+ 	std::vector<GuiInfoPopup*> mNotificationPopups;
++	GuiInfoPopup* mProgressPopup = nullptr;
+ 	void updateNotificationPopups(int deltaTime);
+ 	void layoutNotificationPopups();
+ 
+diff --git a/es-core/src/guis/GuiInfoPopup.cpp b/es-core/src/guis/GuiInfoPopup.cpp
+index 3e92aef..8f40e33 100644
+--- a/es-core/src/guis/GuiInfoPopup.cpp
++++ b/es-core/src/guis/GuiInfoPopup.cpp
+@@ -9,7 +9,8 @@
+ 
+ GuiInfoPopup::GuiInfoPopup(Window* window, std::string message, int duration) :
+ 	GuiComponent(window), mMessage(message), mDuration(duration), mRunning(true), mFadeOut(0),
+-	mGrid(nullptr), mFrame(nullptr), mThemed(false), mBackgroundColor(0), mBorderColor(0), mCornerRadius(0)
++	mGrid(nullptr), mFrame(nullptr), mThemed(false), mBackgroundColor(0), mBorderColor(0), mCornerRadius(0),
++	mSticky(false), mPercent(-1), mRowHeight(0)
+ {
+ 	auto theme = ThemeData::getMenuTheme();
+ 
+@@ -52,6 +53,7 @@ GuiInfoPopup::GuiInfoPopup(Window* window, std::string message, int duration) :
+ 		addChild(mText.get());
+ 
+ 		mSize = Vector2f(textX + textWidth + padding, height);
++		mRowHeight = height;
+ 		return;
+ 	}
+ 
+@@ -120,11 +122,65 @@ void GuiInfoPopup::render(const Transform4x4f& /*parentTrans*/)
+ 		auto withOpacity = [this](unsigned int color) { return (color & 0xFFFFFF00) | ((color & 0xFF) * getOpacity() / 255); };
+ 		Renderer::drawSolidRectangle(0, 0, mSize.x(), mSize.y(), withOpacity(mBackgroundColor), withOpacity(mBorderColor),
+ 			(mBorderColor & 0xFF) ? 1.0f : 0.0f, mCornerRadius);
++
++		if (mPercent >= 0 && mText != nullptr)
++		{
++			float x = mText->getPosition().x();
++			float w = mSize.x() - x - Math::round(mRowHeight * 0.4f);
++			float h = Math::max(2.0f, Math::round(mRowHeight * 0.12f));
++			float y = mSize.y() - h - Math::round(mRowHeight * 0.26f);
++			unsigned int ink = mText->getColor();
++
++			Renderer::drawRect(x, y, w, h, withOpacity((ink & 0xFFFFFF00) | 0x38));
++			Renderer::drawRect(x, y, w * Math::min(mPercent, 100) / 100.0f, h, withOpacity(ink));
++		}
+ 	}
+ 
+ 	renderChildren(trans);	
+ }
+ 
++// In a theme's style the box takes the style's full width, so it does not change size with its text: the title
++// beside the icon, the detail under it and a gauge along the bottom
++void GuiInfoPopup::setProgress(const std::string& title, const std::string& detail, int percent)
++{
++	mSticky = true;
++	mPercent = percent;
++	mMessage = title;
++
++	if (!mThemed || mText == nullptr)
++		return;
++
++	const Window::PopupStyle& style = mWindow->getNoticeStyle();
++	float textX = mText->getPosition().x();
++	float textWidth = Math::max(0.0f, style.size.x() - textX - Math::round(mRowHeight * 0.4f));
++
++	mText->setText(title);
++	mText->setSize(textWidth, mRowHeight);
++
++	if (mDetail == nullptr)
++	{
++		mDetail = std::make_shared<TextComponent>(mWindow, detail, style.font, style.color, ALIGN_LEFT);
++		mDetail->setMultiLine(TextComponent::MultiLineType::SINGLELINE);
++		mDetail->setPosition(textX, Math::round(mRowHeight * 0.78f));
++		addChild(mDetail.get());
++	}
++
++	mDetail->setText(detail);
++	mDetail->setSize(textWidth, mRowHeight);
++
++	mSize = Vector2f(style.size.x(), Math::round(mRowHeight * 2.2f));
++}
++
++void GuiInfoPopup::finish()
++{
++	mSticky = false;
++
++	if (mStartTime == 0)
++		mRunning = false;
++	else
++		mDuration = SDL_GetTicks() - mStartTime + 250;
++}
++
+ void GuiInfoPopup::shorten(int ms)
+ {
+ 	if (!mRunning || mStartTime == 0)
+@@ -144,7 +200,13 @@ void GuiInfoPopup::update(int deltaTime)
+ 	// we only init the actual time when we first start to render
+ 	if (mStartTime == 0)
+ 		mStartTime = curTime;
+-	else if (curTime - mStartTime > mDuration || curTime < mStartTime)
++	else if (mSticky && curTime - mStartTime > 250)
++	{
++		// A job's progress stays as it is until the job finishes it
++		setOpacity(255);
++		return;
++	}
++	else if (!mSticky && (curTime - mStartTime > mDuration || curTime < mStartTime))
+ 	{
+ 		// If we're past the popup duration, no need to render or if SDL reset : Stop
+ 		mRunning = false;
+diff --git a/es-core/src/guis/GuiInfoPopup.h b/es-core/src/guis/GuiInfoPopup.h
+index bc77702..64b61cc 100644
+--- a/es-core/src/guis/GuiInfoPopup.h
++++ b/es-core/src/guis/GuiInfoPopup.h
+@@ -26,6 +26,10 @@ public:
+ 
+ 	std::string         getMessage() { return mMessage; }
+ 
++	// A job's progress: the notice stays, with a second line and a gauge, until finish()
++	void setProgress(const std::string& title, const std::string& detail, int percent);
++	void finish();
++
+ private:
+ 	std::string         mMessage;
+ 
+@@ -45,6 +49,11 @@ private:
+ 	float               mCornerRadius;
+ 	std::shared_ptr<ImageComponent> mIcon;
+ 	std::shared_ptr<TextComponent>  mText;
++
++	bool                mSticky;
++	int                 mPercent;
++	float               mRowHeight;
++	std::shared_ptr<TextComponent>  mDetail;
+ };
+ 
+ #endif // ES_APP_GUIS_GUI_INFO_POPUP_H
+-- 
+2.55.0
+

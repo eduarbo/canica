@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC35 · El progreso como aviso del tema
+
+El panel de RC34 usaba la caja de descargas del menú, que con este tema queda sin fondo, estrecha y sobre la cabecera. El ejecutable nuevo muestra el progreso de un trabajo externo como un aviso del tema que se queda en pantalla: título, detalle y barra (`POST /progress-notice`). El lanzador, el vigilante y el servicio son los mismos; el ensayo del servicio en Linux ARM64 se repitió con este ejecutable.
+
 ## RC34 · Panel de progreso
 
 El ejecutable es nuevo: añade al menú una entrada (`POST /progress`) con la que un trabajo externo abre, actualiza y cierra el panel de progreso del propio menú. El instalador y el generador de tarjetas dicen por dónde van, y el actualizador del kit lo muestra en un solo panel en vez de avisos repetidos. El lanzador, el vigilante y el servicio son los mismos; el ensayo del servicio en Linux ARM64 se repitió con este ejecutable.
