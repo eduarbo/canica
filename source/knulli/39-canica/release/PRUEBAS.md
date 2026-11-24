@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC33 · Sugerencias fijas por día y versión a la vista
+
+El ejecutable es nuevo: se compiló desde estas fuentes con el cambio 0126, que da a cada estante su propia secuencia según la fecha local. «Todos los juegos», «Sugerencias del chef» y las sugerencias de cada consola salen en el mismo orden cada vez que arranca el menú ese día, y cambian al día siguiente. El Inicio muestra la versión del kit bajo la lista de la biblioteca. El lanzador, el vigilante y el servicio son los mismos; el ensayo del servicio en Linux ARM64 se repitió con este ejecutable.
+
 ## RC32 · Logos de consola
 
 El tema lleva los logos de consola de Art Book Next (CC BY-NC-SA 2.0) en `art/logos` y los usa cuando no hay un PNG propio en la carpeta de decoraciones. Comparada con RC31, cambian `theme.xml`, la guía, los avisos y el inventario que sella el servicio; el ejecutable, el lanzador y el vigilante son los mismos.

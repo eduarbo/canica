@@ -1,10 +1,10 @@
 # Reconstruir Canica
 
-El directorio `knulli/39-canica` contiene el generador del tema. Los directorios vecinos sólo contienen los recursos que consume. La carpeta `nativo/fuente` contiene el código de EmulationStation que utiliza la candidata RC32, con los parches específicos ya aplicados. El binario incluido se identifica por SHA-256 `e01811482186db924a2c855f81084c800d6782621445b43a2cdc2600ba812c4f`.
+El directorio `knulli/39-canica` contiene el generador del tema. Los directorios vecinos sólo contienen los recursos que consume. La carpeta `nativo/fuente` contiene el código de EmulationStation que utiliza la candidata RC33, con los parches específicos ya aplicados. El binario incluido se identifica por SHA-256 `720bcdd11fe1d4e0be39b316050253fb921d092bf62efe9291e0b7221dbbd797`.
 
 ## Origen del frontend
 
-El motor de la candidata está en la rama `main` del fork de EmulationStation. Sobre la serie de Scarab para RG35XX H, la revisión `4215ca1` añade las tarjetas de partidas y permite usar capturas con el tratamiento visual de cada sistema. La compilación del kit aplica además los cuatro parches de empaquetado de KNULLI. La carpeta `nativo/herramientas` conserva los últimos quince diffs y `nativo/fuente` contiene el resultado aplicado. [Fork del frontend](https://github.com/eduarbo/batocera-emulationstation) · [Revisiones y compilación](https://github.com/eduarbo/canica/blob/main/tools/canica/README.md)
+El motor de la candidata está en la rama `main` del fork de EmulationStation. Sobre la serie de Scarab para RG35XX H, la revisión `4215ca1` añade las tarjetas de partidas y permite usar capturas con el tratamiento visual de cada sistema, y `f9c8c58` hace que cada estante sugiera los mismos juegos durante todo el día. La compilación del kit aplica además los cuatro parches de empaquetado de KNULLI. La carpeta `nativo/herramientas` conserva los últimos dieciséis diffs y `nativo/fuente` contiene el resultado aplicado. [Fork del frontend](https://github.com/eduarbo/batocera-emulationstation) · [Revisiones y compilación](https://github.com/eduarbo/canica/blob/main/tools/canica/README.md)
 
 Existe también un fork del firmware para cambios de sistema como suspensión y ahorro de energía. El instalable de Canica usa la imagen oficial de Scarab y añade el frontend mediante un servicio reversible. El tercer repositorio compila y distribuye paquetes de correcciones de la consola. [Fork de KNULLI](https://github.com/eduarbo/knulli-linux) · [Paquetes de la consola](https://github.com/eduarbo/knulli-console-bundles)
 
@@ -14,7 +14,7 @@ Con Python 3.9 o posterior, ImageMagick 7 y librsvg instalados, ejecuta desde la
 
 ```sh
 python3 -B knulli/39-canica/build.py salida
-python3 -B knulli/39-canica/validate.py salida/canica-1.0.1-rc32.zip
+python3 -B knulli/39-canica/validate.py salida/canica-1.0.1-rc33.zip
 ```
 
 ## Frontend
@@ -38,10 +38,10 @@ El binario incorpora la hora de compilación. La comparación del ZIP del tema s
 Para reproducir los dos ZIP con el ejecutable cualificado, recupera ese archivo del instalable y ejecuta el empaquetador desde la raíz de estas fuentes:
 
 ```sh
-unzip -p /ruta/canica-1.0.1-rc32-rg35xx-h.zip share/system/canica/bin/emulationstation > nativo/emulationstation
-python3 -B knulli/39-canica/release.py nativo salida/canica-1.0.1-rc32.zip distribucion
+unzip -p /ruta/canica-1.0.1-rc33-rg35xx-h.zip share/system/canica/bin/emulationstation > nativo/emulationstation
+python3 -B knulli/39-canica/release.py nativo salida/canica-1.0.1-rc33.zip distribucion
 ```
 
 ## Probar el instalable
 
-Desde la raíz de estas fuentes, ejecuta en la computadora `bash knulli/39-canica/release/tests/probar-servicio.sh /ruta/knulli-h700-rg35xx-h-scarab-20260511.img.gz /ruta/canica-1.0.1-rc32-rg35xx-h.zip nativo/herramientas/fat_extract.py`. El ensayo crea un entorno Linux ARM64 descartable, comprueba el cambio de ejecutable y prueba la decisión de reiniciar con respuestas HTTP simuladas.
+Desde la raíz de estas fuentes, ejecuta en la computadora `bash knulli/39-canica/release/tests/probar-servicio.sh /ruta/knulli-h700-rg35xx-h-scarab-20260511.img.gz /ruta/canica-1.0.1-rc33-rg35xx-h.zip nativo/herramientas/fat_extract.py`. El ensayo crea un entorno Linux ARM64 descartable, comprueba el cambio de ejecutable y prueba la decisión de reiniciar con respuestas HTTP simuladas.

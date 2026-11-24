@@ -57,7 +57,7 @@ in_sc bash "$svc" start
 test "$sc$target" -ef "$sc/var/run/canica/launcher"
 env LD_BIND_NOW=1 chroot "$sc" "$target" --help >/tmp/candidate-usage
 grep '^Version' /tmp/candidate-usage
-test "$(sha256sum "$sc/var/run/canica/bin/emulationstation" | cut -d' ' -f1)" = e01811482186db924a2c855f81084c800d6782621445b43a2cdc2600ba812c4f
+test "$(sha256sum "$sc/var/run/canica/bin/emulationstation" | cut -d' ' -f1)" = 720bcdd11fe1d4e0be39b316050253fb921d092bf62efe9291e0b7221dbbd797
 in_sc knulli-services stop canica
 check_stock
 env LD_BIND_NOW=1 chroot "$sc" "$target" --help >/tmp/stock-usage

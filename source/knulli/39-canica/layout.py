@@ -21,6 +21,8 @@ UTILS = ("tools", "emulators", "imageviewer")
 UTILITY = " || ".join("{system.name} == '" + name + "'" for name in UTILS)
 GAMES = "!({system:theme} == 'tools' || {system:theme} == 'emulators' || {system:theme} == 'imageviewer')"
 PERSONAL = "${decorations}/"
+# The kit's version as the menu shows it; build.py sets it from its VERSION.
+KIT = {"label": ""}
 
 
 def logo_file(source):
@@ -366,6 +368,8 @@ def systems(root):
     image(v,"right",640,31,200,449,LOOK+"panel.png",z=2)
     header(v)
     text(v,"tabTitle",16,45,170,27,"Biblioteca",19,weight="Black")
+    if KIT["label"]:
+        text(v,"kitVersion",16,459,170,14,"Canica "+KIT["label"],10,color="${muted}",weight="Medium")
     subtitles=("Colecciones y utilidades","1977 – 1985","1987 – 1991","1994 – 1998",
                "1989 – 2004","Arcade, vertical, MAME","MS-DOS, Doom, PICO-8")
     for i,t in enumerate(CAT["tabs"]):
