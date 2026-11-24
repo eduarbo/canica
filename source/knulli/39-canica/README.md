@@ -4,7 +4,7 @@ Canica es el tema de mi RG35XX H y usa mi fork de EmulationStation. La configura
 
 ## Instalar Canica
 
-Copia el instalador completo de RC31 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc31-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
+Copia el instalador completo de RC32 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc32-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
 
 ## Ajustes
 
@@ -35,7 +35,7 @@ El corazón indica favorito. De cinco estrellas se encienden, de izquierda a der
 
 Los títulos usan D-DIN Condensed Bold de Datto ([fuente original](https://github.com/amcchord/datto-d-din/tree/e199c8441e758d6e492cd01ef52c3c67ba4bae26)), con su licencia en `fonts/D-DIN-OFL.txt`. Roboto se distribuye con la licencia incluida en `fonts/OFL.txt`. Los elementos visuales del tema y los controles se generaron para este proyecto. Las imágenes de los juegos y los logotipos aportados por cada instalación permanecen en su biblioteca. El tema no incluye ROMs, BIOS, capturas comerciales ni archivos de configuración personales.
 
-Canica © 2026 Eduardo Ruiz Macias. El tema y su arte se distribuyen bajo CC BY-SA 4.0 (`licencias/CC-BY-SA-4.0.txt`) y el código propio bajo la licencia MIT (`licencias/MIT.txt`). Los componentes de terceros conservan sus avisos y licencias.
+Canica © 2026 Eduardo Ruiz Macias. El tema y su arte se distribuyen bajo CC BY-SA 4.0 (`licencias/CC-BY-SA-4.0.txt`), salvo los logos de consola de `art/logos`, que son de Art Book Next bajo CC BY-NC-SA 2.0 (`art/logos/README.md`), y el código propio bajo la licencia MIT (`licencias/MIT.txt`). Los componentes de terceros conservan sus avisos y licencias.
 
 ## Compilar desde el repositorio de origen
 

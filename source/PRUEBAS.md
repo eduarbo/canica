@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC32 · Logos de consola
+
+El tema lleva los logos de consola de Art Book Next (CC BY-NC-SA 2.0) en `art/logos` y los usa cuando no hay un PNG propio en la carpeta de decoraciones. Comparada con RC31, cambian `theme.xml`, la guía, los avisos y el inventario que sella el servicio; el ejecutable, el lanzador y el vigilante son los mismos.
+
 ## RC31 · Esquinas de la tarjeta enfocada
 
 En la tarjeta enfocada, el vídeo y la captura que lo precede se recortan con el mismo radio que la imagen. En Iris, el aro de selección llega al borde de la tarjeta y cubre ese recorte. Comparada con RC30.1, cambian `theme.xml`, `art/iris/focus.png`, la guía y el inventario que sella el servicio; el ejecutable, el lanzador y el vigilante son los mismos.

@@ -2,12 +2,12 @@
 
 [Home](../README.md) · [Feature gallery](canica-en-accion.md) · [Build from source](../tools/canica/README.md)
 
-Use an **Anbernic RG35XX H**, **KNULLI Scarab for May 11, 2026**, and the **Canica RC31 kit**. Canica runs locally with your own EmulationStation library. The kit supplies the patched frontend, theme and service; the installer adds the save adapter. [Download the kit](https://github.com/eduarbo/canica/releases/latest). Its theme and artwork are licensed under CC BY-SA 4.0 and its own code under the MIT License.
+Use an **Anbernic RG35XX H**, **KNULLI Scarab for May 11, 2026**, and the **Canica RC32 kit**. Canica runs locally with your own EmulationStation library. The kit supplies the patched frontend, theme and service; the installer adds the save adapter. [Download the kit](https://github.com/eduarbo/canica/releases/latest). Its theme and artwork are licensed under CC BY-SA 4.0 and its own code under the MIT License.
 
 ## Install
 
-1. **Prepare the card.** An RG35XX H already running this Scarab release can keep its installation. For a new card, follow KNULLI’s flashing instructions for this exact model. RC31 rounds the focused card’s video like its picture in Iris, and RC30.1 added the license texts. RC30 is a release candidate tested on an existing handheld installation. A first cold boot on a freshly flashed microSD is still unverified. [RG35XX H image](https://github.com/knulli-cfw/knulli-linux/releases/download/20260511/knulli-h700-rg35xx-h-scarab-20260511.img.gz) · [KNULLI installation](https://knulli.org/play/install/)
-2. **Copy the installer.** Download `canica-1.0.1-rc31-instalador.sh` from the [latest release](https://github.com/eduarbo/canica/releases/latest) and rename it `Instalar Canica.sh`: that single file holds everything. Or download `canica-1.0.1-rc31-rg35xx-h.zip` and copy it unopened beside the [lightweight installer](https://raw.githubusercontent.com/eduarbo/canica/main/tools/canica/Instalar%20Canica.sh), keeping both filenames.
+1. **Prepare the card.** An RG35XX H already running this Scarab release can keep its installation. For a new card, follow KNULLI’s flashing instructions for this exact model. RC32 carries the console logos, RC31 rounded the focused card’s video in Iris, and RC30.1 added the license texts. RC30 is a release candidate tested on an existing handheld installation. A first cold boot on a freshly flashed microSD is still unverified. [RG35XX H image](https://github.com/knulli-cfw/knulli-linux/releases/download/20260511/knulli-h700-rg35xx-h-scarab-20260511.img.gz) · [KNULLI installation](https://knulli.org/play/install/)
+2. **Copy the installer.** Download `canica-1.0.1-rc32-instalador.sh` from the [latest release](https://github.com/eduarbo/canica/releases/latest) and rename it `Instalar Canica.sh`: that single file holds everything. Or download `canica-1.0.1-rc32-rg35xx-h.zip` and copy it unopened beside the [lightweight installer](https://raw.githubusercontent.com/eduarbo/canica/main/tools/canica/Instalar%20Canica.sh), keeping both filenames.
 3. **Put the file(s) in `share/roms/tools/`.** You can use the card’s data partition or enable **System Settings → Services → SAMBA** and connect to `smb://KNULLI/share` on a Mac or `\\KNULLI\share` on Windows. In that share, open `roms/tools`. [Transfer files to KNULLI](https://knulli.org/play/add-games/network-transfer/)
 4. **Open Tools → Instalar Canica** and press **A**. If the tool is missing, open **START → Game Settings → Update Games Lists**. Wait for **“Canica está listo”** (Canica is ready), then restart. A message naming an existing conflicting file or frontend service means it was preserved. After an interruption, run the same installer again.
 5. **Select the theme.** In **START → User Interface Settings → Theme Set**, choose **es-theme-canica**. Under Theme Configuration, pick **Iris** or **Ámbar** (Amber). Leave the default grid size on **Automatic** to retain the system-specific layouts. The other settings control card size, video in the selected card, cover or screenshot priority, and animated or static console previews.
@@ -25,7 +25,8 @@ Keep the ROM directory and file types the stock system supports. A Game Boy game
 | Game Boy colors or portrait screenshots | Reference a screenshot with `<image>` or `<titleshot>` in a `screenshots`, `snaps`, `screens` or `titleshots` directory inside the system folder. During installation, Canica makes a four-tone green copy of Game Boy stills for the card cache. Rerun the installer after adding media. Your source images, videos and gameplay keep their own colors. |
 | Stars, cover art and detail text | Your own rating, artwork and description. A game can still launch with these fields empty. |
 | Dated save slots and screenshots | Create a state on an emulator that supports it. X shows its available slots. In-game saves also work on systems with their own save mechanism. |
-| Console logos and hardware pictures like the recordings | Optional transparent PNGs in `share/decorations/canica/logos/<system-theme>.png` and `hardware/<system-theme>.png` under the same directory. For GBA use `gba.png`. The standard fallback is the console name. The hardware illustrations in the recordings are optional decorations. |
+| Console logos | Included: the kit carries Art Book Next’s logos (CC BY-NC-SA 2.0). Your own transparent PNG in `share/decorations/canica/logos/<system-theme>.png` replaces one; for GBA use `gba.png`. A system without a logo shows its name. |
+| Hardware pictures like the recordings | Optional transparent PNGs in `share/decorations/canica/hardware/<system-theme>.png`. The ones in the recordings are my own decorations and are not part of the kit. |
 
 Here is one ordinary catalog entry. The paths resolve relative to `share/roms/gb/gamelist.xml`. A video, favorite or rating can be added later.
 
@@ -55,15 +56,15 @@ I use RomM as the shared library for my Anbernic and my TVs. Grout on the handhe
 | Base system | RG35XX H Scarab `20260511` image, SHA-256 `c28a96f88b07e3adb4ea76b9874cd18ae177ec216bec2dac87c68795fb81291c` |
 | Frontend | [EmulationStation `4215ca1`](https://github.com/eduarbo/batocera-emulationstation/tree/4215ca1eb833688a7b34f8f0b2c026584b9110b9) with the [four Scarab packaging patches](https://github.com/eduarbo/knulli-linux/tree/1f16d1a77df3c8f3432f0176117561f9c30c066d/package/emulationstation/knulli-emulationstation) |
 | ARM64 build tools | [Bundle tools `5942f8a`](https://github.com/eduarbo/knulli-console-bundles/tree/5942f8a9681d0cfcb52f4658f56d32b367bdcd69) |
-| Installer and save adapter | [RC31 recipe](https://github.com/eduarbo/canica/tree/v1.0.1-rc31/tools/canica) |
-| Theme, artwork, engine and service | `canica-1.0.1-rc31-rg35xx-h.zip` · SHA-256 `212e8d4d1b8462168d0e1cbac5ff7b559993d5140ef795ec1aa0dd691be3e3d8` |
+| Installer and save adapter | [RC32 recipe](https://github.com/eduarbo/canica/tree/v1.0.1-rc32/tools/canica) |
+| Theme, artwork, engine and service | `canica-1.0.1-rc32-rg35xx-h.zip` · SHA-256 `417be2560d9c9e50dfef6acb5753008312fcde84f5b1a61f7ec8edd5b4d9f4e9` |
 
-To compare the installed files over SSH, run the commands below. The manifest covers the frontend and packaged theme files. The last command checks the separately installed save adapter against the RC31 version, unchanged since RC30. If you deliberately kept a custom adapter, its hash will differ.
+To compare the installed files over SSH, run the commands below. The manifest covers the frontend and packaged theme files. The last command checks the separately installed save adapter against the RC32 version, unchanged since RC30. If you deliberately kept a custom adapter, its hash will differ.
 
 ```sh
 cd /userdata && sha256sum -c system/canica/SHA256SUMS
 sha256sum /userdata/system/configs/emulationstation/resume/emulatorlauncher
-# RC31 adapter: 4e36929f93928371f3d151fa7cd71b3198b9246b2fd74a0bd0d5870874613b8e
+# RC32 adapter: 4e36929f93928371f3d151fa7cd71b3198b9246b2fd74a0bd0d5870874613b8e
 ```
 
 On the reference RG35XX H, all 382 installed RC30 kit and adapter files matched their packaged hashes, including the running frontend. An isolated test on the handheld used a small Game Boy program, restored a chosen slot, preserved a newer in-game save and generated a card from a separate test screenshot. These checks used no owner ROMs or RomM account.

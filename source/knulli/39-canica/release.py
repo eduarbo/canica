@@ -67,7 +67,7 @@ def license_headers(files):
 def theme_sources():
     paths = [HERE / f for f in ("build.py", "card_screens.py", "Preparar fondos de Canica.sh", "release.py", "validate.py", "layout.py", "games.py", "artwork.py",
              "utility_art.py", "theme_options.py", "check-word-completion.cpp", "check-time-centering.py", "README.md", "palettes.json", "gamesplash.xml")]
-    paths += list((HERE / "controls").glob("*/*.png")) + list((HERE / "fonts").glob("*")) + [HERE / "licencias" / n for n in OWN_LICENSES]
+    paths += list((HERE / "controls").glob("*/*.png")) + list((HERE / "fonts").glob("*")) + [HERE / "licencias" / n for n in OWN_LICENSES] + sorted((HERE / "logos").glob("*"))
     paths += [p for p in PUBLIC.iterdir() if p.is_file()]
     paths += sorted(p for p in (PUBLIC / "tests").iterdir() if p.suffix in {".py", ".sh"})
     paths += [WATCHDOG, RED / "parts/menu.xml", *sorted((RED / "fonts").glob("Roboto-*.ttf")), RED / "fonts/OFL.txt"]

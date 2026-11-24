@@ -1,6 +1,6 @@
 # Build the Canica frontend
 
-[Install the RC31 kit](../../docs/canica-rg35xx-h.md) · [Watch it on the handheld](../../docs/canica-en-accion.md)
+[Install the RC32 kit](../../docs/canica-rg35xx-h.md) · [Watch it on the handheld](../../docs/canica-en-accion.md)
 
 Use Git, Python 3, Bash and Docker with Linux ARM64 support. Start in an empty directory containing the original RG35XX H Scarab image. The commands check its digest, build the pinned frontend with the four firmware patches and assemble the manual installation kit. [Download the May 11 image](https://github.com/knulli-cfw/knulli-linux/releases/download/20260511/knulli-h700-rg35xx-h-scarab-20260511.img.gz)
 
@@ -41,7 +41,7 @@ bash firmware/tools/canica/prepare-kit.sh tools bin/emulationstation canica-kit
 )
 ```
 
-The resulting frontend is `canica-kit/payload/emulationstation`. The build writes a manifest. The same four patches are applied by Buildroot for the full H700 firmware. The handheld kit uses a separate, sealed binary identified in the [RC31 inventory](../../docs/canica-rg35xx-h.md#reproduce-this-build).
+The resulting frontend is `canica-kit/payload/emulationstation`. The build writes a manifest. The same four patches are applied by Buildroot for the full H700 firmware. The handheld kit uses a separate, sealed binary identified in the [RC32 inventory](../../docs/canica-rg35xx-h.md#reproduce-this-build).
 
 ## Install or remove a manual build
 
@@ -70,22 +70,22 @@ To restore the previous frontend, select your previous theme, run `cd /userdata/
 
 ## Rebuild the theme and sealed archives
 
-The RC31 source archive from the [release](https://github.com/eduarbo/canica/releases/latest) reproduces the theme without a game library. The qualifying build used ImageMagick 7.1.2-29 and librsvg 2.62.3. Extract `canica-1.0.1-rc31-fuentes.zip` into a new directory. Run these commands from that directory with Python 3.9 or newer. Set `kit` to your original, checksum-verified handheld ZIP.
+The RC32 source archive from the [release](https://github.com/eduarbo/canica/releases/latest) reproduces the theme without a game library. The qualifying build used ImageMagick 7.1.2-29 and librsvg 2.62.3. Extract `canica-1.0.1-rc32-fuentes.zip` into a new directory. Run these commands from that directory with Python 3.9 or newer. Set `kit` to your original, checksum-verified handheld ZIP.
 
 ```sh
-kit=/path/to/canica-1.0.1-rc31-rg35xx-h.zip
+kit=/path/to/canica-1.0.1-rc32-rg35xx-h.zip
 python3 -B knulli/39-canica/build.py output
-python3 -B knulli/39-canica/validate.py output/canica-1.0.1-rc31.zip
+python3 -B knulli/39-canica/validate.py output/canica-1.0.1-rc32.zip
 unzip -p "$kit" share/system/canica/bin/emulationstation > nativo/emulationstation
-python3 -B knulli/39-canica/release.py nativo output/canica-1.0.1-rc31.zip dist
+python3 -B knulli/39-canica/release.py nativo output/canica-1.0.1-rc32.zip dist
 ```
 
-The RC31 check reproduced all three archives byte for byte. Repackaging uses the qualified ARM64 executable from the kit because the native compiler embeds a build timestamp. Expected SHA-256 values:
+The RC32 check reproduced all three archives byte for byte. Repackaging uses the qualified ARM64 executable from the kit because the native compiler embeds a build timestamp. Expected SHA-256 values:
 
 ```text
-d4f112e5616287c629cfeb46fced1df0c20d72a37fb2ff0e52634fec43d21860  canica-1.0.1-rc31.zip
-212e8d4d1b8462168d0e1cbac5ff7b559993d5140ef795ec1aa0dd691be3e3d8  canica-1.0.1-rc31-rg35xx-h.zip
-32ed4bac69fe664068015be3372c180dc5c150b5052f83188b50200e8f9ce96c  canica-1.0.1-rc31-fuentes.zip
+c8c66bda8f07e6dd83a47a5ded5318df00e8b0d1a57379cdbeb9d9b258de8c31  canica-1.0.1-rc32.zip
+417be2560d9c9e50dfef6acb5753008312fcde84f5b1a61f7ec8edd5b4d9f4e9  canica-1.0.1-rc32-rg35xx-h.zip
+9adc66781c5fccf7d7b281eeeeb169e1835bc92f3f9042562c4bd71a5097c274  canica-1.0.1-rc32-fuentes.zip
 ```
 
 ## Build the installer for Tools
@@ -96,6 +96,6 @@ From this repository:
 python3 -B tools/canica/installer/build.py 'Instalar Canica.sh'
 ```
 
-This constructs the lightweight installer with its save adapter. To embed a privately supplied kit, add `--kit /path/to/canica-1.0.1-rc31-rg35xx-h.zip`. The packager recognizes RC27.1 through RC31 by SHA-256.
+This constructs the lightweight installer with its save adapter. To embed a privately supplied kit, add `--kit /path/to/canica-1.0.1-rc32-rg35xx-h.zip`. The packager recognizes RC27.1 through RC32 by SHA-256.
 
 The installer checks the device model, firmware and original executable, stages files on the data partition, verifies them and enables Canica for the next boot. Running the installer again recovers an interrupted transaction. ROMs, saves and theme preferences stay in place. Physical testing used an existing RG35XX H card; first boot on a freshly flashed card remains unverified.

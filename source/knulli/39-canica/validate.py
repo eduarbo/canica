@@ -115,6 +115,7 @@ def validate(path):
             if name.endswith(".png"): require(z.read(name).startswith(b"\x89PNG\r\n\x1a\n"),"invalid image")
         require(all("es-theme-canica/fonts/"+f in names for f in ("OFL.txt","D-DIN-OFL.txt","D-DINCondensed-Bold.ttf")),"title font or license missing")
         require(all(name in names for name in LICENSES),"theme license missing")
+        require("es-theme-canica/art/logos/README.md" in names and "es-theme-canica/art/logos/snes.png" in names,"console logos or their credit missing")
         # A stale option or first launch must select a complete baseline.
         defaults={n.tag:n.text for b in root.findall("variables") if not b.attrib for n in b}
         require(defaults["look"]=="iris" and defaults["u36.card18"] and defaults["videoDelay"]=="450","unsafe default")

@@ -16,7 +16,7 @@ from games import card_sizes, games, save_cards, tile_badge_geometry
 from layout import (ART, CAT, COL, FONT, HERE, HOME, LOOK, RED, element, option, prop,
                     system_data, systems, variables, view)
 
-VERSION="1.0.1-rc31"
+VERSION="1.0.1-rc32"
 # The theme and its art are CC BY-SA 4.0; the project's own code is MIT.
 LICENSES=("CC-BY-SA-4.0.txt","MIT.txt")
 FOLDER="es-theme-canica"
@@ -135,6 +135,8 @@ def build(dest):
         shutil.copyfile(RED/"fonts"/name,fonts/name)
     for asset in ("D-DINCondensed-Bold.ttf","D-DIN-OFL.txt"):
         shutil.copyfile(HERE/"fonts"/asset,fonts/asset)
+    # Console logos from Art Book Next (CC BY-NC-SA 2.0), with their credit; see logos/README.md.
+    shutil.copytree(HERE/"logos", dest/"art/logos")
     licenses=dest/"licencias"
     licenses.mkdir()
     for name in LICENSES:

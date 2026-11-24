@@ -21,6 +21,15 @@ UTILS = ("tools", "emulators", "imageviewer")
 UTILITY = " || ".join("{system.name} == '" + name + "'" for name in UTILS)
 GAMES = "!({system:theme} == 'tools' || {system:theme} == 'emulators' || {system:theme} == 'imageviewer')"
 PERSONAL = "${decorations}/"
+
+
+def logo_file(source):
+    """A system's logo: the owner's own PNG, else the one the kit carries."""
+    return 'firstfile("'+PERSONAL+'logos/" + '+source+' + ".png", "'+ART+'logos/" + '+source+' + ".png", "")'
+
+
+def logo_exists(source):
+    return '(exists("'+PERSONAL+'logos/" + '+source+' + ".png") || exists("'+ART+'logos/" + '+source+' + ".png"))'
 # One category image follows its label through the library and both shoulder hints.
 CATEGORY_ICONS = ("extras", "eight-bit", "sixteen-bit", "thirty-two-bit", "handheld", "arcade", "computer")
 PORTABLE_DESCRIPTIONS = {
@@ -237,8 +246,8 @@ def identity(v,panel,context=False,show=None):
     # The faceplate occupies the same 200-pixel column on either side of the library.
     source="({system:collection} ? {game:system:theme} : {system:theme})" if context else "{system:theme}"
     name="{system:collection} ? {game:system:fullName} : {system:fullName}" if context else "${sysLabel}"
-    path='firstfile("'+PERSONAL+'logos/" + '+source+' + ".png", "")'
-    has='exists("'+PERSONAL+'logos/" + '+source+' + ".png")'
+    path=logo_file(source)
+    has=logo_exists(source)
     def visible(condition):
         return "("+show+") && ("+condition+")" if show else condition
     image(v,"identityLogo",panel+39,34,122,28,path,show=visible(has),contain=True)
@@ -316,13 +325,13 @@ def system_cards(v):
     private='firstfile("'+PERSONAL+'cards/" + {system:theme} + ".png", "")'
     prop(tile_img("localIllustration",private,7),"visible",has_native)
     # Without a local card, compose the same layout from separate artwork for both palettes.
-    has_logo='exists("'+PERSONAL+'logos/" + {system:theme} + ".png")'
+    has_logo=logo_exists("{system:theme}")
     prop(tile_img("cardWash",LOOK+"card-wash.png",5),"visible","${cardWash}")
     hardware='firstfile("'+PERSONAL+'hardware/" + {system:theme} + ".png", "")'
     element(tpl,"image","consoleHardware",{"pos":".965 .963","origin":"1 1","maxSize":".49 .49",
             "path":hardware,"linearSmooth":"true","visible":plain,"zIndex":8})
     element(tpl,"image","wordmark",{"pos":".055 .046","origin":"0 0","maxSize":".89 .17",
-            "path":'firstfile("'+PERSONAL+'logos/" + {system:theme} + ".png", "")',
+            "path":logo_file("{system:theme}"),
             "visible":plain,"linearSmooth":"true","zIndex":8})
     has_year="("+plain+") && !empty({system:releaseYear})"
     element(tpl,"image","yearPlate",{"pos":".051 .805","size":".29 .14","path":LOOK+"year.png","visible":has_year,"zIndex":8})
