@@ -24,6 +24,7 @@ ADAPTER_SHA = '4e36929f93928371f3d151fa7cd71b3198b9246b2fd74a0bd0d5870874613b8e'
 ROOT = Path('/userdata')
 LOCK = '/var/run/canica-installer.lock'
 PACKAGES = {
+    'canica-1.0.1-rc34-rg35xx-h.zip': '1a406a422c2900a70e6cafa4b691a7b1b03df4f9fa110ec95131a0034b505bbc',
     'canica-1.0.1-rc33-rg35xx-h.zip': 'b0c55c5a4e1648d602d6420de8c724a4984a3dc9a4a4f76c457020ab3c6dfe49',
     'canica-1.0.1-rc32-rg35xx-h.zip': '417be2560d9c9e50dfef6acb5753008312fcde84f5b1a61f7ec8edd5b4d9f4e9',
     'canica-1.0.1-rc31-rg35xx-h.zip': '212e8d4d1b8462168d0e1cbac5ff7b559993d5140ef795ec1aa0dd691be3e3d8',
@@ -38,6 +39,68 @@ PACKAGES = {
 # An upgrade may replace an untouched file from a known earlier kit.
 # Each destination digest is paired with its permitted predecessors.
 PREVIOUS = {
+    # RC34 has the frontend with the progress panel, and its card generator reports its progress.
+    ('system/canica/SHA256SUMS',
+     '416140e77db2c524caa22ded53b29a98e6f88faa7e7530d4912c5cd40b42d0e4'): {
+        '2534d448237a741768b6022f691c8c161b698603d649c81746b5199693ade708',
+        '2b311fdffadd2e464101d2bbf40cc4fc2548f1aa62bc239bac68a3dcbf050107',
+        '3375eb0db2b58c67df329805dadb27cc82489a11781838e9c1638bf625ac2015',
+        '3c3cd01a961afddd6abb3394e2aad9ec0899689558975f0d58471cb985c1ac0c',
+        '575482d4cdfe578cc7660e4a093f57a2e1c3004684d963f30e3852974708f7a1',
+        '59992ac2663926b698e022d97c4612f7efa03510364c04eb152879d795d9cc56',
+        '63caf5e4d9f8e95d77631cc56b7a404d951f8e94d0578f31d91f2294c25741a2',
+        '71d4f6ae6249c63941efa237cb63f068dd5a0ecdcbad10d2be0675cdec27429c',
+        'a04d84433887d06e3d0bec8d451a0363a2b7744c380c616091012ef52681f62c',
+        'c95c8620a394f241a2e1f9a403b6816ab0de2e8f67d58eb37961f565151957c0',
+    },
+    ('system/canica/bin/emulationstation',
+     'da85c76166dfd47928f660ecb90d2a929deb527298542e1b4a3f8b6486871df0'): {
+        '39235ef32ef9aa0ee3ec6274ab0877346cc5594446e2535f4e80cd41661f8314',
+        '720bcdd11fe1d4e0be39b316050253fb921d092bf62efe9291e0b7221dbbd797',
+        'e01811482186db924a2c855f81084c800d6782621445b43a2cdc2600ba812c4f',
+    },
+    ('system/services/canica',
+     '251ef74893151c75de854d8b46bccb23d5f8fb4c4fb3073f2c89236279928d7d'): {
+        '27928228e36e2db417cf46ac11d674580a7c12efa95ed7e728c986e1cbbc8794',
+        '2d834b0414ff1fca8378a617ac6a2b50f8589ea3dec5baa573d48900e148c7cd',
+        '390bc1dcc4e1e4f0875d30c3c56c8d61fc06d7dcc05e566ecb89bd4bb61f2993',
+        '4c40fd415383a92492f2fe4ff8dd9318c6b0fed03ff6c6210d650cfcc0db3b3e',
+        '5ec4b917b3f8346e048440e96c7bda50c8cbfaea5d9f47df5ceb660ab679bd57',
+        '71eca699c971d070e33cb97a9ae1fee11829f6a8c6340cf240b707271b3475c8',
+        '9fb19f5567231117339d951a72117a69901c87426b92ac69b6033c7cbe95e092',
+        'eb9caaaa8ee80b7e785391b1ca8493584fd62612667abe2c1c9632e86a52dbce',
+        'ffafa4c743a60732b553a376247e158f4ae65be8a063c7899dcd296d04051dc2',
+        'ffdf96c6d9cb19f2d0845d178270b617949536ec88641725ec3134d214c0c4f1',
+    },
+    ('themes/es-theme-canica/README.md',
+     'cd40a51e6aeb7a53c57adca9d7f2b863aa3647fa89d82306149ada71b973a81a'): {
+        '1acd949b55259b54399d41d64bc4a1828de7120acf3bcaa12632011d60945631',
+        '20b609bb34f7975494483d7b94e855043d96821126d1b25317a546f2ec36d27a',
+        '32bf92075794123dc9c73349a46a93c0ad3958a6e8d57f50ebd6008d023adce3',
+        '403305aa227666b4b589cd0e6bcfcae6fd2cefc0c27c12a0f5f82a445df69766',
+        '7080f0ecdc7a1ab968b5159eeb2efdfa792fbc5ee81da43e446178824f25e398',
+        '75189ae3661b286e7a4fb5781af851ede2172af827fa99df81f324b0fd21791a',
+        'b8a8998e506feedcf3b2096eb8bf1ba8f542dc1faff51ce14c66c55528b68915',
+        'c33775f5eb7e18fed9f7dee6a506c1ffffd23476cbcfdc208c232ff305903b82',
+        'e4dd7083d64a62e851f1a289116fc31c6d8f4a1a45c1aa4cfd2448daf6d5f5a4',
+        'ffdc7da73ac53f78922b132c9428d2155f08093fbbf5c1307003bcb17a46deea',
+    },
+    ('themes/es-theme-canica/card_screens.py',
+     '5980f0b648649846f7edc324b85d562b36a846e826bc7de4b30187ecb0fff9c7'): {
+        '34e5b8b3b02e7dbf96060c45e0acfd600ed04649915af3f5e433c3633e7913b7',
+        '8bb64bfbb189ee52a6233f39e70873d2c01f2c0e111d25e2d93e73b77f6cab12',
+    },
+    ('themes/es-theme-canica/theme.xml',
+     '3b0a9c5217a8ac6dc74ab1418093d99029faf5ee60d6c0ae1df918b75d33e1a3'): {
+        '020c13cbd8de6c67e46a412fb62b208bcb9128b64b6e8f80836b7917c4b1ef7f',
+        '19840ccbfd7e03d882b55f1093d7004ae52ecf5e715c1a422a6687b6cbd2bbc2',
+        '1c42716796064bfbca89312a2650211f5645a1f2370675eedad86b3d81f4f9f7',
+        '82007d158d183a71f85ba7c85ddabfa69c9d4e4112807a5299f5b4e7b0aa6435',
+        '9c3783ab4cf9a0c8487932fd3ff8adcc2efa6d0e55c3a91f9c6792088906b546',
+        'a39d31b4bbe1447e9f275131f79f70040fddf5530dd12ac6f7e9c88dc2da83b9',
+        'e55d1a85b4127318ef2f257c0850817b46b2ccfd8ad177b9303e69e8c92ff33e',
+        'f6fcec2b712284c21a107c2694ac0b2f45879fdf577dd357d5f7dcb625fdf142',
+    },
     # RC33 has a new frontend (the same suggestions all day) and shows its version in the menu.
     ('system/canica/SHA256SUMS',
      '59992ac2663926b698e022d97c4612f7efa03510364c04eb152879d795d9cc56'): {
@@ -535,11 +598,13 @@ def apply(tool, root, console):
     recover(root, work, console)
     with read_package(tool) as (archive, adapter):
         files, custom_adapter = changes(root, archive, adapter)
+        print('@canica step files', flush=True)        # read by the kit updater's panel
         commit_files(root, work, console, archive, adapter, files)
         generator = 'share/' + THEME + '/card_screens.py'
         cards_failed = False
         if generator in archive.namelist() and root == Path('/userdata'):
             # Run the verified kit member, independent of the contents of the SD card.
+            print('@canica step cards', flush=True)
             cards_failed = subprocess.run([sys.executable, '-I', '-'], input=archive.read(generator)).returncode != 0
     return len(files), custom_adapter, cards_failed
 

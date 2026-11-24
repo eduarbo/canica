@@ -156,7 +156,8 @@ def update_game_cards(share, systems, target):
     if not isinstance(previous, dict):
         previous = {}
     current = previous.copy()
-    for name, theme in systems.items():
+    for number, (name, theme) in enumerate(systems.items()):
+        print(f"@canica cards {number} {len(systems)}", flush=True)    # read by the kit updater's panel
         directory = share / "roms" / name
         if name in {"tools", "emulators", "imageviewer", "vaixterm"}:
             continue

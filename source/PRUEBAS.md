@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC34 · Panel de progreso
+
+El ejecutable es nuevo: añade al menú una entrada (`POST /progress`) con la que un trabajo externo abre, actualiza y cierra el panel de progreso del propio menú. El instalador y el generador de tarjetas dicen por dónde van, y el actualizador del kit lo muestra en un solo panel en vez de avisos repetidos. El lanzador, el vigilante y el servicio son los mismos; el ensayo del servicio en Linux ARM64 se repitió con este ejecutable.
+
 ## RC33 · Sugerencias fijas por día y versión a la vista
 
 El ejecutable es nuevo: se compiló desde estas fuentes con el cambio 0126, que da a cada estante su propia secuencia según la fecha local. «Todos los juegos», «Sugerencias del chef» y las sugerencias de cada consola salen en el mismo orden cada vez que arranca el menú ese día, y cambian al día siguiente. El Inicio muestra la versión del kit bajo la lista de la biblioteca. El lanzador, el vigilante y el servicio son los mismos; el ensayo del servicio en Linux ARM64 se repitió con este ejecutable.
