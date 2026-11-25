@@ -1,5 +1,6 @@
 """Assemble the RG35XX-H distribution and its build sources from explicit inputs."""
 import argparse
+import base64
 import hashlib
 import json
 import re
@@ -13,7 +14,7 @@ from layout import CAT, COL, HERE, HOME, KNULLI, PORTABLE_DESCRIPTIONS, RED
 from validate import validate
 
 PUBLIC = HERE / "release"
-ENGINE_SHA = "a7d7044503aebe3d0c12b71a18e079a1449f8dd946ff8c6ef846cc245905d9d7"
+ENGINE_SHA = "9e953bd26d9e02846c205aea6ad11dc435f04063b1c88b261bb467bc18bd4fb7"
 WATCHDOG = KNULLI / "07-es-api-events/install/files/launcher.sh"
 LICENSES = ("LICENSE.md", "CREDITS.md", "external/id3v2lib/LICENSE",
             "external/libcheevos/rcheevos/LICENSE", "external/nanosvg/nanosvg_license.txt",
@@ -65,10 +66,11 @@ def license_headers(files):
 
 
 def theme_sources():
-    paths = [HERE / f for f in ("build.py", "card_screens.py", "Preparar fondos de Canica.sh", "release.py", "validate.py", "layout.py", "games.py", "artwork.py",
+    paths = [HERE / f for f in ("build.py", "switcher.py", "card_screens.py", "Preparar fondos de Canica.sh", "release.py", "validate.py", "layout.py", "games.py", "artwork.py",
              "utility_art.py", "theme_options.py", "check-word-completion.cpp", "check-time-centering.py", "README.md", "palettes.json", "gamesplash.xml")]
     paths += list((HERE / "controls").glob("*/*.png")) + list((HERE / "fonts").glob("*")) + [HERE / "licencias" / n for n in OWN_LICENSES] + sorted((HERE / "logos").glob("*"))
     paths += [p for p in PUBLIC.iterdir() if p.is_file()]
+    paths += sorted((PUBLIC / "keys").glob("*.pub"))
     paths += sorted(p for p in (PUBLIC / "tests").iterdir() if p.suffix in {".py", ".sh"})
     paths += [WATCHDOG, RED / "parts/menu.xml", *sorted((RED / "fonts").glob("Roboto-*.ttf")), RED / "fonts/OFL.txt"]
     for n in ET.parse(RED / "parts/menu.xml").iter():
@@ -105,7 +107,29 @@ def theme_sources():
     return files
 
 
-def package(native, theme, output):
+ED25519_SPKI = bytes.fromhex("302a300506032b6570032100")   # the DER prefix of an Ed25519 public key
+
+
+def ed25519_public(data):
+    """The PEM of one Ed25519 public key, and nothing else."""
+    text = data.decode("ascii")
+    lines = [line.strip() for line in text.strip().splitlines()]
+    if len(lines) < 3 or lines[0] != "-----BEGIN PUBLIC KEY-----" or lines[-1] != "-----END PUBLIC KEY-----":
+        return False
+    der = base64.b64decode("".join(lines[1:-1]), validate=True)
+    return len(der) == 44 and der.startswith(ED25519_SPKI)
+
+
+def channel_keys(folder):
+    """The public keys a console trusts for kit updates: exactly the channel's key and its backup, so
+    losing the first one does not strand the consoles in use. Only Ed25519 public keys."""
+    keys = {path.name: path.read_bytes() for path in sorted(folder.glob("*.pub"))}
+    if len(keys) != 2 or len(set(keys.values())) != 2 or not all(ed25519_public(data) for data in keys.values()):
+        raise ValueError(f"En {folder} van exactamente las dos llaves públicas Ed25519 del canal: la de firma y la de respaldo.")
+    return keys
+
+
+def package(native, theme, output, keys=PUBLIC / "keys"):
     validate(theme)
     engine = (native / "emulationstation").read_bytes()
     if sha(engine) != ENGINE_SHA:
@@ -128,6 +152,12 @@ def package(native, theme, output):
         "Canica volvió al frontend de fábrica tras $failures fallos. Registro: /userdata/system/logs/canica.log")
     payload[prefix + "watchdog.sh"] = watchdog.encode()
     payload[prefix + "manifest"] = b"VERSION=scarab 2026/05/11 00:09\n"
+    # The updater: what this kit is, who may sign the next one, and the program itself.
+    payload[prefix + "release"] = f"VERSION={VERSION}\nLABEL={VERSION.rsplit('-', 1)[-1].upper()}\n".encode()
+    payload[prefix + "updater.py"] = (PUBLIC / "updater.py").read_bytes()
+    payload[prefix + "guard.py"] = (PUBLIC / "guard.py").read_bytes()
+    for name, data in channel_keys(keys).items():
+        payload[prefix + "keys/" + name] = data
     inventory = "".join(f"{sha(data)}  {name.removeprefix('share/')}\n" for name, data in sorted(payload.items())).encode()
     payload[prefix + "SHA256SUMS"] = inventory
     service = (PUBLIC / "canica").read_text()
@@ -140,7 +170,7 @@ def package(native, theme, output):
     sources.update({"nativo/fuente/" + name: data for name, data in source.items()})
     for name in ("build-es.sh", "fat_extract.py", "es-sdl-knulli.h"):
         sources["nativo/herramientas/" + name] = (native / "herramientas" / name).read_bytes()
-    for number in range(111, 129):
+    for number in range(111, 132):
         patch, = (native / "herramientas").glob(f"{number:04d}-*.patch")
         sources["nativo/herramientas/" + patch.name] = patch.read_bytes()
     sources["LEEME.md"] = (PUBLIC / "FUENTES.md").read_bytes()
@@ -163,5 +193,7 @@ if __name__ == "__main__":
     parser.add_argument("native", type=Path, help="Directorio con emulationstation, fuente y herramientas")
     parser.add_argument("theme", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--keys", type=Path, default=PUBLIC / "keys",
+                        help="Llaves públicas del canal (*.pub). Otra carpeta sólo para ensayos: ese kit no se publica.")
     args = parser.parse_args()
-    package(args.native, args.theme, args.output)
+    package(args.native, args.theme, args.output, args.keys)

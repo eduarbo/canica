@@ -1,5 +1,11 @@
 # Pruebas del motor en Scarab
 
+## RC36 · Selector, actividad, batería y actualizaciones para todos
+
+El ejecutable es nuevo (parches 0129 a 0131). FN + SELECT abre el selector de juegos, que dibuja el tema; START → Canica tiene «Continuar un juego», «Actividad» y, con el actualizador del kit, la versión y las actualizaciones; una actualización se muestra como una terminal (`POST /job-console`) y pregunta «Más tarde / Actualizar ahora». El tiempo de juego cuenta sólo con la consola despierta. El kit añade `updater.py` (preguntar, automáticas o desactivadas; firma con las llaves del kit) y `guard.py` (FN + SELECT dentro de un juego; guardar y apagar con la batería agotada), que el servicio arranca antes de sus comprobaciones.
+
+Pruebas: actualizador 23, vigía 10, instalador 14 y adaptador 7, fuera de la consola; ensayo del servicio y ensayo de una actualización completa en el entorno ARM64 de la imagen de fábrica (el actualizador de un kit instala el siguiente con su instalador real). En la consola, con una vista previa sin instalar (24 nov): FN + SELECT dentro de un juego de Game Boy cerró el juego, RetroArch escribió su partida automática con su captura, el archivo de la partida del juego no cambió y el menú abrió el selector con ese juego.
+
 ## RC35 · El progreso como aviso del tema
 
 El panel de RC34 usaba la caja de descargas del menú, que con este tema queda sin fondo, estrecha y sobre la cabecera. El ejecutable nuevo muestra el progreso de un trabajo externo como un aviso del tema que se queda en pantalla: título, detalle y barra (`POST /progress-notice`). El lanzador, el vigilante y el servicio son los mismos; el ensayo del servicio en Linux ARM64 se repitió con este ejecutable.

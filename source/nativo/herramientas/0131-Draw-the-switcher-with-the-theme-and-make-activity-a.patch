@@ -1,0 +1,826 @@
+From a4687b681bddb731d1f43abca2b135066d93a663 Mon Sep 17 00:00:00 2001
+From: Eduardo Ruiz <335073+eduarbo@users.noreply.github.com>
+Date: Tue, 24 Nov 2026 19:01:03 -0800
+Subject: [PATCH] Draw the switcher with the theme and make activity a menu
+ page
+
+The switcher takes its look from elements of the theme's screen view (switcher*): the
+decoration, the texts it fills, the area of the picture with the theme's corners, and the
+pager's dots. Pixel art grows by whole steps, and a save's screenshot is used only when it
+was taken with that save. Activity is now a page of the themed menu. The job console keeps
+its terminal, without spaced letters or scan lines, and sizes its small text from the screen.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ es-app/src/CanicaActivity.cpp       |   2 +-
+ es-app/src/guis/GuiActivity.cpp     | 172 ++++-----------------
+ es-app/src/guis/GuiActivity.h       |  33 +---
+ es-app/src/guis/GuiGameSwitcher.cpp | 227 +++++++++++++++++-----------
+ es-app/src/guis/GuiGameSwitcher.h   |  29 ++--
+ es-app/src/guis/GuiMenu.cpp         |   2 +-
+ es-core/src/guis/GuiJobConsole.cpp  |   8 +-
+ es-core/src/guis/TerminalStyle.cpp  |  34 +----
+ es-core/src/guis/TerminalStyle.h    |   9 +-
+ 9 files changed, 210 insertions(+), 306 deletions(-)
+
+diff --git a/es-app/src/CanicaActivity.cpp b/es-app/src/CanicaActivity.cpp
+index 2845fc5..8e66e1a 100644
+--- a/es-app/src/CanicaActivity.cpp
++++ b/es-app/src/CanicaActivity.cpp
+@@ -72,7 +72,7 @@ CanicaActivity::Summary CanicaActivity::summarize(size_t topCount)
+ 			if (seconds > 0)
+ 			{
+ 				summary.totalSeconds += seconds;
+-				summary.top.push_back({ game->getName(), seconds });
++				summary.top.push_back({ game->getCleanName(), seconds });
+ 			}
+ 		}
+ 	}
+diff --git a/es-app/src/guis/GuiActivity.cpp b/es-app/src/guis/GuiActivity.cpp
+index 1975622..b96f028 100644
+--- a/es-app/src/guis/GuiActivity.cpp
++++ b/es-app/src/guis/GuiActivity.cpp
+@@ -1,18 +1,13 @@
+ #include "guis/GuiActivity.h"
+ 
+-#include "renderers/Renderer.h"
+-#include "resources/Font.h"
++#include "components/TextComponent.h"
++#include "guis/GuiSettings.h"
+ #include "CanicaActivity.h"
+-#include "InputConfig.h"
+-#include "LocaleES.h"
++#include "ThemeData.h"
+ #include "Window.h"
+ 
+-#define CELLS 10
+-
+-using TerminalStyle::alpha;
+-
+-static const char* WEEKDAYS[] = { "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado" };
+-static const char* SHORT_DAYS[] = { "do", "lu", "ma", "mi", "ju", "vi", "sá" };
++static const char* WEEKDAYS[] = { "DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO" };
++static const char* WEEKDAY_NAMES[] = { "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado" };
+ 
+ static std::string thousands(long value)
+ {
+@@ -28,152 +23,51 @@ static std::string thousands(long value)
+ 	return out;
+ }
+ 
+-GuiActivity::GuiActivity(Window* window) : GuiComponent(window), mBar(0), mFoot(0)
++void GuiActivity::open(Window* window)
+ {
+-	float sw = (float)Renderer::getScreenWidth();
+-	float sh = (float)Renderer::getScreenHeight();
+-	setSize(sw, sh);
+-
+-	mStyle = TerminalStyle::get(window);
+-	auto font = mStyle.font;
+-	auto small = Font::get(Math::max(8, (int)Math::round(font->getSize() * 0.74f)), font->getPath());
+-
+-	// The whole screen, inside the console's margins
+-	float margin = Math::round(Math::max(8.0f, (sw - mStyle.size.x()) / 2));
+-	float x = margin, y = Math::round(margin * 0.5f), w = sw - margin * 2, h = sh - y * 2 - Math::round(sh * 0.05f);
+-	mBox = Vector4f(x, y, w, h);
+-
+-	float ch = font->sizeText("0").x();
+-	float line = font->getHeight(1.0f);
+-	float row = Math::round(line * 1.42f);
+-	float smallLine = small->getHeight(1.0f);
+-	float pad = Math::round(ch * 2);
+-	mBar = Math::round(smallLine * 2.3f);
+-	mFoot = Math::round(smallLine * 2.6f);
+-
+-	unsigned int ink = mStyle.color;
+-	unsigned int muted = alpha(ink, 150);
+-	unsigned int accent = mStyle.fillColor;
+-
+ 	auto data = CanicaActivity::summarize(7);
+-	time_t now = time(NULL);
++	auto theme = ThemeData::getMenuTheme();
++	GuiSettings* s = new GuiSettings(window, "ACTIVIDAD");
+ 
+-	std::string since = "—";
+-	if (data.since > 0)
++	auto value = [window, theme](const std::string& text)
+ 	{
+-		char buf[16];
+-		struct tm local;
+-		localtime_r(&data.since, &local);
+-		strftime(buf, sizeof(buf), "%d/%m/%Y", &local);
+-		since = std::string("desde ") + buf;
+-	}
+-
+-	mText.add(small, TerminalStyle::spaced("CANICA // ACTIVIDAD"), x + pad, y + (mBar - smallLine) / 2, muted);
+-	mText.addRight(small, since, x + w - pad, y + (mBar - smallLine) / 2, accent);
+-
+-	float left = x + pad, label = left + ch * 2;
+-	float half = x + w / 2 + ch;
+-	float right = x + w - pad;
+-	float ty = y + mBar + Math::round(row * 0.5f);
+-
+-	mText.add(font, "$", left, ty, accent);
+-	mText.add(font, "canica actividad", label, ty, ink);
+-	ty += row;
+-
+-	auto pair = [&](float at, const std::string& key, const std::string& value)
+-	{
+-		mText.add(font, key, at, ty, muted);
+-		mText.add(font, value, at + ch * 9, ty, ink);
++		return std::make_shared<TextComponent>(window, text, theme->Text.font, theme->Text.color, ALIGN_RIGHT);
+ 	};
+ 
+-	pair(label, "total", data.totalSeconds > 0 ? CanicaActivity::duration(data.totalSeconds, true) : "—");
+-	pair(half, "partidas", thousands(data.plays));
+-	ty += row;
+-	pair(label, "juegos", thousands(data.gamesPlayed));
+-	pair(half, "racha", data.sessions == 0 ? "—" : std::to_string(data.streak) + (data.streak == 1 ? " día" : " días") +
+-		" · mejor " + std::to_string(data.bestStreak));
+-	ty += Math::round(row * 1.5f);
++	s->addGroup("RESUMEN");
++	s->addWithLabel("TIEMPO DE JUEGO", value(data.totalSeconds > 0 ? CanicaActivity::duration(data.totalSeconds, true) : "—"));
++	s->addWithLabel("JUEGOS JUGADOS", value(thousands(data.gamesPlayed)));
++	s->addWithLabel("PARTIDAS", value(thousands(data.plays)));
+ 
+-	// Two columns: the last seven days and the most played games
+-	mText.add(small, TerminalStyle::spaced("ÚLTIMOS 7 DÍAS"), label, ty + (line - smallLine), accent);
+-	mText.add(small, TerminalStyle::spaced("MÁS JUGADOS"), half, ty + (line - smallLine), accent);
+-	ty += row;
++	if (data.bestStreak > 0)
++		s->addWithLabel("RACHA", value(std::to_string(data.streak) + (data.streak == 1 ? " día" : " días") +
++			" · mejor " + std::to_string(data.bestStreak)));
+ 
+-	long most = 1;
+-	for (long seconds : data.days)
+-		most = Math::max((int)most, (int)seconds);
+-
+-	float barX = label + ch * 6;
+-	float cell = Math::round(ch * 0.9f);
+-	float timeRight = half - ch * 2;
++	if (data.sessions > 0)
++	{
++		s->addWithLabel("HORA FAVORITA", value((data.favoriteHour < 10 ? "0" : "") + std::to_string(data.favoriteHour) + ":00"));
++		s->addWithLabel("DÍA FAVORITO", value(WEEKDAY_NAMES[data.favoriteWeekday]));
++	}
+ 
+-	for (int i = 0; i < 7; i++)
++	// Today first; the log starts with this version, so a new console says so
++	s->addGroup(data.sessions > 0 ? "ÚLTIMOS 7 DÍAS" : "ÚLTIMOS 7 DÍAS · SE CUENTAN DESDE HOY");
++	time_t now = time(NULL);
++	for (int i = 6; i >= 0; i--)
+ 	{
+-		float rowY = ty + i * row;
+ 		time_t when = now - (6 - i) * 86400;
+ 		struct tm local;
+ 		localtime_r(&when, &local);
+ 
+-		mText.add(font, std::string(SHORT_DAYS[local.tm_wday]) + " " + (local.tm_mday < 10 ? "0" : "") + std::to_string(local.tm_mday),
+-			label, rowY, i == 6 ? ink : muted);
+-
+-		long seconds = data.days[i];
+-		int full = seconds > 0 ? Math::max(1, (int)Math::round(CELLS * seconds / (float)most)) : 0;
+-		mBars.push_back({ barX, rowY + Math::round(line * 0.22f), cell, Math::round(line * 0.62f), full });
+-		mText.addRight(font, seconds > 0 ? CanicaActivity::duration(seconds) : "·", timeRight, rowY, seconds > 0 ? ink : muted);
+-
+-		if (i < (int)data.top.size())
+-		{
+-			auto& game = data.top[i];
+-			std::string time = CanicaActivity::duration(game.seconds);
+-			float timeWidth = font->sizeText(time).x();
+-
+-			mText.add(font, std::to_string(i + 1), half, rowY, accent);
+-			mText.add(font, TerminalStyle::fit(font, game.name, right - (half + ch * 2) - timeWidth - ch), half + ch * 2, rowY, ink);
+-			mText.addRight(font, time, right, rowY, muted);
+-		}
++		std::string day = i == 6 ? "HOY" : (i == 5 ? "AYER" : std::string(WEEKDAYS[local.tm_wday]) + " " + std::to_string(local.tm_mday));
++		s->addWithLabel(day, value(data.days[i] > 0 ? CanicaActivity::duration(data.days[i]) : "—"));
+ 	}
+ 
+-	ty += 7 * row + Math::round(row * 0.5f);
+-
+-	if (data.favoriteHour >= 0)
+-	{
+-		pair(label, "hora", (data.favoriteHour < 10 ? "0" : "") + std::to_string(data.favoriteHour) + ":00");
+-		pair(half, "día", WEEKDAYS[data.favoriteWeekday]);
+-	}
+-	else if (data.top.empty())
+-		mText.add(font, "aún no hay partidas", label, ty, muted);
+-
+-	std::string footer = data.sessions == 0 ? "LOS DÍAS SE CUENTAN DESDE HOY" :
+-		thousands(data.sessions) + (data.sessions == 1 ? " SESIÓN REGISTRADA" : " SESIONES REGISTRADAS");
+-	mText.add(small, TerminalStyle::spaced(footer), x + pad, y + h - mFoot + (mFoot - smallLine) / 2, accent);
+-}
+-
+-bool GuiActivity::input(InputConfig* config, Input input)
+-{
+-	if (input.value != 0 && (config->isMappedTo(BUTTON_BACK, input) || config->isMappedTo("start", input)))
++	if (!data.top.empty())
+ 	{
+-		delete this;
+-		return true;
++		s->addGroup("MÁS JUGADOS");
++		for (size_t i = 0; i < data.top.size(); i++)
++			s->addWithLabel(std::to_string(i + 1) + ". " + data.top[i].name, value(CanicaActivity::duration(data.top[i].seconds)));
+ 	}
+ 
+-	return true;
+-}
+-
+-void GuiActivity::render(const Transform4x4f& /*parentTrans*/)
+-{
+-	TerminalStyle::drawFrame(mStyle, mBox.x(), mBox.y(), mBox.z(), mBox.w(), mBar, mFoot);
+-
+-	for (auto& bar : mBars)
+-		for (int i = 0; i < CELLS; i++)
+-			Renderer::drawRect(bar.x + i * bar.cell, bar.y, Math::max(1.0f, bar.cell - 2), bar.height,
+-				i < bar.full ? mStyle.fillColor : mStyle.trackColor);
+-
+-	mText.render();
+-	TerminalStyle::drawScanLines();
+-}
+-
+-std::vector<HelpPrompt> GuiActivity::getHelpPrompts()
+-{
+-	return { HelpPrompt(BUTTON_BACK, _("BACK")) };
++	window->pushGui(s);
+ }
+diff --git a/es-app/src/guis/GuiActivity.h b/es-app/src/guis/GuiActivity.h
+index 30c8611..1a8771e 100644
+--- a/es-app/src/guis/GuiActivity.h
++++ b/es-app/src/guis/GuiActivity.h
+@@ -2,35 +2,12 @@
+ #ifndef ES_APP_GUIS_GUI_ACTIVITY_H
+ #define ES_APP_GUIS_GUI_ACTIVITY_H
+ 
+-#include "GuiComponent.h"
+-#include "guis/TerminalStyle.h"
+-#include "math/Vector4f.h"
+-#include <vector>
++class Window;
+ 
+-// What was played, drawn as a terminal: totals, the last seven days, the most played games and the
+-// favourite hour and day (CanicaActivity)
+-class GuiActivity : public GuiComponent
++// What was played, as a page of the menu (CanicaActivity): totals, the last seven days and the most played
++namespace GuiActivity
+ {
+-public:
+-	GuiActivity(Window* window);
+-
+-	bool input(InputConfig* config, Input input) override;
+-	void render(const Transform4x4f& parentTrans) override;
+-	std::vector<HelpPrompt> getHelpPrompts() override;
+-
+-private:
+-	struct Bar
+-	{
+-		float x, y, cell, height;
+-		int full;
+-	};
+-
+-	Window::PopupStyle mStyle;
+-	TerminalStyle::TextLayer mText;
+-	Vector4f mBox;
+-	float mBar;
+-	float mFoot;
+-	std::vector<Bar> mBars;
+-};
++	void open(Window* window);
++}
+ 
+ #endif // ES_APP_GUIS_GUI_ACTIVITY_H
+diff --git a/es-app/src/guis/GuiGameSwitcher.cpp b/es-app/src/guis/GuiGameSwitcher.cpp
+index f1b1dd8..f9898e3 100644
+--- a/es-app/src/guis/GuiGameSwitcher.cpp
++++ b/es-app/src/guis/GuiGameSwitcher.cpp
+@@ -1,6 +1,7 @@
+ #include "guis/GuiGameSwitcher.h"
+ 
+ #include "components/ImageComponent.h"
++#include "components/TextComponent.h"
+ #include "renderers/Renderer.h"
+ #include "resources/Font.h"
+ #include "utils/FileSystemUtil.h"
+@@ -15,13 +16,12 @@
+ #include "SystemData.h"
+ #include "Window.h"
+ #include <algorithm>
++#include <cstdlib>
+ #include <sys/stat.h>
+ 
+ #define RECENT 15
+ #define REQUEST_AGE 300		// a request older than this is from another time: it opens nothing
+ 
+-using TerminalStyle::alpha;
+-
+ const std::string GuiGameSwitcher::REQUEST = "/var/run/canica/switcher-request";
+ const std::string GuiGameSwitcher::AUTOSAVES = "/var/run/canica/game-autosaves";
+ 
+@@ -89,8 +89,13 @@ std::vector<GuiGameSwitcher::Entry> GuiGameSwitcher::recentGames(size_t count)
+ 			if (state != nullptr && state->slot == -1 && !state->fileName.empty())
+ 			{
+ 				entry.resumes = true;
+-				entry.image = state->screenshot;
+ 				entry.saved = state->creationDate.getTime();
++
++				// The screenshot only when it was taken with this save: another one shows another moment
++				struct stat picture;
++				if (!state->screenshot.empty() && stat(state->screenshot.c_str(), &picture) == 0 &&
++					std::abs((long)(picture.st_mtime - entry.saved)) <= 120)
++					entry.image = state->screenshot;
+ 			}
+ 		}
+ 
+@@ -147,19 +152,92 @@ void GuiGameSwitcher::onGameEnded()
+ 		Utils::FileSystem::removeFile(AUTOSAVES);
+ }
+ 
++// The theme's decoration first, then the texts the switcher fills: every element is optional
++static const std::vector<std::pair<std::string, bool>> PARTS = {
++	{ "switcherBackground", false }, { "switcherHeader", true }, { "switcherBrand", true }, { "switcherHeading", false },
++	{ "switcherPanel", true }, { "switcherBand", true }, { "switcherPlaysIcon", true }, { "switcherTimeIcon", true },
++	{ "switcherAction", true }, { "switcherActionKey", true }, { "switcherPrevKey", true }, { "switcherNextKey", true },
++	{ "switcherSystem", false }, { "switcherName", false }, { "switcherPlays", false }, { "switcherPlaysLabel", false },
++	{ "switcherTime", false }, { "switcherTimeLabel", false }, { "switcherLastLabel", false }, { "switcherLast", false },
++	{ "switcherStateLabel", false }, { "switcherState", false }, { "switcherDescription", false }, { "switcherActionLabel", false },
++	{ "switcherPosition", false } };
++
++static std::shared_ptr<ThemeData> currentTheme()
++{
++	for (auto system : SystemData::sSystemVector)
++		if (system->getTheme() != nullptr)
++			return system->getTheme();
++
++	return nullptr;
++}
++
+ GuiGameSwitcher::GuiGameSwitcher(Window* window, const std::vector<Entry>& entries) : GuiComponent(window),
+-	mEntries(entries), mIndex(0), mBar(0), mFoot(0)
++	mEntries(entries), mIndex(0), mCorners(0), mDotColor(0x43536BFF), mDotOnColor(0xCFCBFFFF)
+ {
+ 	float sw = (float)Renderer::getScreenWidth();
+ 	float sh = (float)Renderer::getScreenHeight();
+ 	setSize(sw, sh);
+ 
+-	mStyle = TerminalStyle::get(window);
++	mTheme = currentTheme();
++	mArea = Vector4f(sw * 0.33f, sh * 0.09f, sw * 0.64f, sh * 0.8f);
++	mDots = Vector4f(sw * 0.65f, sh * 0.95f, 5, 11);
++
++	if (mTheme)
++	{
++		for (auto& part : PARTS)
++		{
++			std::shared_ptr<GuiComponent> component;
++			if (part.second)
++				component = std::make_shared<ImageComponent>(window, true);
++			else
++				component = std::make_shared<TextComponent>(window);
++
++			const char* type = part.second ? "image" : "text";
++			if (mTheme->getElement("screen", part.first, type) == nullptr)
++				continue;
++
++			component->applyTheme(mTheme, "screen", part.first, ThemeFlags::ALL);
++			mParts.push_back(component);
++			if (!part.second)
++				mTexts[part.first] = component;
++		}
++
++		std::stable_sort(mParts.begin(), mParts.end(), [](const std::shared_ptr<GuiComponent>& a, const std::shared_ptr<GuiComponent>& b)
++		{
++			return a->getZIndex() < b->getZIndex();
++		});
++
++		auto shot = mTheme->getElement("screen", "switcherShot", "image");
++		if (shot && shot->has("pos") && shot->has("size"))
++		{
++			Vector2f pos = shot->get<Vector2f>("pos"), size = shot->get<Vector2f>("size");
++			mArea = Vector4f(pos.x() * sw, pos.y() * sh, size.x() * sw, size.y() * sh);
++			if (shot->has("roundCorners"))
++				mCorners = shot->get<float>("roundCorners");
++		}
++
++		auto dot = mTheme->getElement("screen", "switcherDot", "text");
++		if (dot && dot->has("pos") && dot->has("size"))
++		{
++			Vector2f pos = dot->get<Vector2f>("pos"), size = dot->get<Vector2f>("size");
++			mDots = Vector4f(pos.x() * sw, pos.y() * sh, Math::round(size.y() * sh), Math::round(size.x() * sw));
++			if (dot->has("color"))
++				mDotColor = dot->get<unsigned int>("color");
++		}
++
++		auto on = mTheme->getElement("screen", "switcherDotOn", "text");
++		if (on && on->has("color"))
++			mDotOnColor = on->get<unsigned int>("color");
++	}
++
+ 	select(0);
+ }
+ 
+-GuiGameSwitcher::~GuiGameSwitcher()
++void GuiGameSwitcher::setText(const std::string& part, const std::string& text)
+ {
++	auto it = mTexts.find(part);
++	if (it != mTexts.end())
++		std::static_pointer_cast<TextComponent>(it->second)->setText(text);
+ }
+ 
+ void GuiGameSwitcher::select(int index)
+@@ -168,38 +246,28 @@ void GuiGameSwitcher::select(int index)
+ 	mIndex = ((index % count) + count) % count;
+ 	const Entry& entry = mEntries[mIndex];
+ 	FileData* game = entry.game;
++	SystemData* system = game->getSourceFileData()->getSystem();
+ 
+-	float sw = (float)Renderer::getScreenWidth();
+-	float sh = (float)Renderer::getScreenHeight();
+-	auto font = mStyle.font;
+-	auto small = Font::get(Math::max(8, (int)Math::round(font->getSize() * 0.74f)), font->getPath());
+-
+-	float margin = Math::round(Math::max(8.0f, (sw - mStyle.size.x()) / 2));
+-	float x = margin, y = Math::round(margin * 0.5f), w = sw - margin * 2, h = sh - y * 2 - Math::round(sh * 0.05f);
+-	mBox = Vector4f(x, y, w, h);
+-
+-	float ch = font->sizeText("0").x();
+-	float line = font->getHeight(1.0f);
+-	float row = Math::round(line * 1.42f);
+-	float smallLine = small->getHeight(1.0f);
+-	float pad = Math::round(ch * 2);
+-	mBar = Math::round(smallLine * 2.3f);
+-	mFoot = Math::round(smallLine * 2.6f);
+-
+-	unsigned int ink = mStyle.color;
+-	unsigned int muted = alpha(ink, 150);
+-	unsigned int accent = mStyle.fillColor;
+-
+-	mText.clear();
+-	mText.add(small, TerminalStyle::spaced("CANICA // CONTINUAR"), x + pad, y + (mBar - smallLine) / 2, muted);
+-	mText.addRight(small, std::to_string(mIndex + 1) + " / " + std::to_string(count), x + w - pad, y + (mBar - smallLine) / 2, accent);
+-
+-	// The picture: the automatic state's screenshot, else the game's image. Pixel art grows by whole steps.
+-	float infoHeight = row * 3;
+-	float pagerHeight = Math::round(line * 0.5f);
+-	mArea = Vector4f(x + pad + ch * 2, y + mBar + Math::round(row * 0.4f), w - (pad + ch * 2) * 2,
+-		h - mBar - mFoot - infoHeight - pagerHeight - Math::round(row * 1.2f));
++	long seconds = atol(game->getMetadata(MetaDataId::GameTime).c_str());
++	int plays = Utils::String::toInteger(game->getMetadata(MetaDataId::PlayCount));
++	std::string last = game->getMetadata(MetaDataId::LastPlayed);
+ 
++	setText("switcherSystem", system ? system->getFullName() : "");
++	setText("switcherName", game->getName());
++	setText("switcherPlays", plays > 0 ? std::to_string(plays) : "—");
++	setText("switcherPlaysLabel", plays == 1 ? "vez" : "veces");
++	setText("switcherTime", seconds > 0 ? CanicaActivity::duration(seconds) : "—");
++	setText("switcherTimeLabel", "tiempo");
++	setText("switcherLastLabel", "Última vez");
++	setText("switcherLast", last.size() >= 15 ? when(Utils::Time::stringToTime(last)) : "—");
++	setText("switcherStateLabel", entry.resumes ? "Partida automática" : "Sin partida automática");
++	setText("switcherState", entry.resumes ? when(entry.saved) : "abre desde su guardado");
++	setText("switcherActionLabel", entry.resumes ? "Continuar" : "Jugar");
++	setText("switcherDescription", game->getMetadata(MetaDataId::Desc));
++	setText("switcherPosition", std::to_string(mIndex + 1) + " de " + std::to_string(count));
++
++	// The picture: the automatic state's screenshot, else the game's image. Pixel art grows by whole steps,
++	// sharp; anything else fits the area, smooth.
+ 	mImage = std::unique_ptr<ImageComponent>(new ImageComponent(mWindow, true));
+ 	mImage->setImage(entry.image);
+ 
+@@ -211,50 +279,16 @@ void GuiGameSwitcher::select(int index)
+ 		mImage->setResize((float)(texture.x() * scale), (float)(texture.y() * scale));
+ 	}
+ 	else
+-		mImage->setMaxSize(mArea.z(), mArea.w());
+-
+-	Vector2f size = mImage->getSize();
+-	mImage->setPosition(Math::round(mArea.x() + (mArea.z() - size.x()) / 2), Math::round(mArea.y() + (mArea.w() - size.y()) / 2));
+-
+-	// Left and right of the picture, in the margin
+-	float middle = mArea.y() + mArea.w() / 2 - line / 2;
+-	if (count > 1)
+-	{
+-		mText.add(font, "<", x + pad, middle, accent);
+-		mText.addRight(font, ">", x + w - pad, middle, accent);
+-	}
+-
+-	// Under it: the game, where and how long it was played, and how it continues
+-	float ty = mArea.y() + mArea.w() + Math::round(row * 0.4f);
+-	float textWidth = w - pad * 2;
+-	mText.add(font, TerminalStyle::fit(font, game->getName(), textWidth), x + pad, ty, ink);
+-	ty += row;
+-
+-	std::string details = game->getSourceFileData()->getSystem() ? game->getSourceFileData()->getSystem()->getFullName() : "";
+-	long seconds = atol(game->getMetadata(MetaDataId::GameTime).c_str());
+-	if (seconds > 0)
+-		details += " · jugado " + CanicaActivity::duration(seconds);
+-
+-	std::string last = game->getMetadata(MetaDataId::LastPlayed);
+-	if (last.size() >= 15)
+-		details += " · " + when(Utils::Time::stringToTime(last));
+-
+-	mText.add(font, TerminalStyle::fit(font, details, textWidth), x + pad, ty, muted);
+-	ty += row;
+-
+-	if (entry.resumes)
+ 	{
+-		mText.add(font, ">", x + pad, ty, accent);
+-		mText.add(font, TerminalStyle::fit(font, "partida automática · " + when(entry.saved), textWidth - ch * 2), x + pad + ch * 2, ty, accent);
++		mImage->setIsLinear(texture.x() > 400);
++		mImage->setMaxSize(mArea.z(), mArea.w());
+ 	}
+-	else
+-		mText.add(font, "sin partida automática: empieza desde su guardado", x + pad, ty, muted);
+ 
+-	// One cell per game along the footer's rule
+-	float cell = Math::round(ch * 1.2f);
+-	mPager = Vector4f(x + w - pad - cell * count, y + h - mFoot - pagerHeight - Math::round(row * 0.45f), cell, pagerHeight);
++	if (mCorners > 0)
++		mImage->setRoundCorners(mCorners);
+ 
+-	mText.add(small, TerminalStyle::spaced("A CONTINUAR   B VOLVER"), x + pad, y + h - mFoot + (mFoot - smallLine) / 2, accent);
++	Vector2f size = mImage->getSize();
++	mImage->setPosition(Math::round(mArea.x() + (mArea.z() - size.x()) / 2), Math::round(mArea.y() + (mArea.w() - size.y()) / 2));
+ 	updateHelpPrompts();
+ }
+ 
+@@ -286,23 +320,42 @@ bool GuiGameSwitcher::input(InputConfig* config, Input input)
+ 
+ void GuiGameSwitcher::render(const Transform4x4f& /*parentTrans*/)
+ {
+-	TerminalStyle::drawFrame(mStyle, mBox.x(), mBox.y(), mBox.z(), mBox.w(), mBar, mFoot);
++	Transform4x4f identity = Transform4x4f::Identity();
+ 
+-	// The picture sits in a dark well with a thin lit edge
+-	Renderer::drawSolidRectangle(mArea.x() - 4, mArea.y() - 4, mArea.z() + 8, mArea.w() + 8, 0x000000B0, alpha(mStyle.fillColor, 70), 1.0f, 3.0f);
++	// Without the theme's background, the menu under it is dimmed
++	if (mTexts.find("switcherBackground") == mTexts.end())
++	{
++		Renderer::setMatrix(identity);
++		Renderer::drawRect(0.0f, 0.0f, (float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight(), 0x000000E0);
++	}
+ 
+-	if (mImage)
++	bool drawn = false;
++	for (auto& part : mParts)
+ 	{
+-		Transform4x4f identity = Transform4x4f::Identity();
+-		mImage->render(identity);
++		// The picture goes under the panel's texts and over the background and the header
++		if (!drawn && part->getZIndex() >= 30)
++		{
++			if (mImage)
++				mImage->render(identity);
++			drawn = true;
++		}
++
++		part->render(identity);
+ 	}
+ 
+-	for (int i = 0; i < (int)mEntries.size(); i++)
+-		Renderer::drawRect(mPager.x() + i * mPager.z(), mPager.y(), Math::max(1.0f, mPager.z() - 3), mPager.w(),
+-			i == mIndex ? mStyle.fillColor : mStyle.trackColor);
++	if (!drawn && mImage)
++		mImage->render(identity);
+ 
+-	mText.render();
+-	TerminalStyle::drawScanLines();
++	int count = (int)mEntries.size();
++	if (count > 1)
++	{
++		Renderer::setMatrix(identity);
++		float size = mDots.z(), step = mDots.w();
++		float x = Math::round(mDots.x() - (step * (count - 1) + size) / 2);
++		for (int i = 0; i < count; i++)
++			Renderer::drawSolidRectangle(x + i * step, Math::round(mDots.y() - size / 2), size, size,
++				i == mIndex ? mDotOnColor : mDotColor, 0, 0.0f, size / 2);
++	}
+ }
+ 
+ std::vector<HelpPrompt> GuiGameSwitcher::getHelpPrompts()
+diff --git a/es-app/src/guis/GuiGameSwitcher.h b/es-app/src/guis/GuiGameSwitcher.h
+index 1b4d9c2..23e7271 100644
+--- a/es-app/src/guis/GuiGameSwitcher.h
++++ b/es-app/src/guis/GuiGameSwitcher.h
+@@ -3,18 +3,23 @@
+ #define ES_APP_GUIS_GUI_GAME_SWITCHER_H
+ 
+ #include "GuiComponent.h"
+-#include "guis/TerminalStyle.h"
+ #include "math/Vector4f.h"
++#include <map>
+ #include <memory>
+ #include <string>
+ #include <vector>
+ 
+ class FileData;
+ class ImageComponent;
++class ThemeData;
+ 
+-// The recent games, one at a time, each as its automatic save left it: left and right to go through them,
+-// A to continue. FN + SELECT opens it in the menu, and during a game too: the Canica kit's guard closes a game
+-// that keeps an automatic save state, and the menu opens this when it is back.
++// The recent games, one at a time, each as its automatic save left it: left and right (or L1 and R1) to go
++// through them, A to continue. FN + SELECT opens it in the menu, and during a game too: the Canica kit's guard
++// closes a game that keeps an automatic save state, and the menu opens this when it is back.
++//
++// The theme draws it, with elements of its screen view that are not extras (switcher*): the decoration, the
++// texts the switcher fills, the area of the picture (switcherShot) and the pager's dots (switcherDot and
++// switcherDotOn: their colour, size and the centre of the row).
+ class GuiGameSwitcher : public GuiComponent
+ {
+ public:
+@@ -28,8 +33,6 @@ public:
+ 	static void onGameStarting(FileData* game);
+ 	static void onGameEnded();
+ 
+-	~GuiGameSwitcher();
+-
+ 	bool input(InputConfig* config, Input input) override;
+ 	void render(const Transform4x4f& parentTrans) override;
+ 	std::vector<HelpPrompt> getHelpPrompts() override;
+@@ -47,18 +50,20 @@ private:
+ 	static std::vector<Entry> recentGames(size_t count);
+ 
+ 	void select(int index);
++	void setText(const std::string& part, const std::string& text);
+ 
+-	Window::PopupStyle mStyle;
++	std::shared_ptr<ThemeData> mTheme;
+ 	std::vector<Entry> mEntries;
+ 	int mIndex;
+ 
++	std::vector<std::shared_ptr<GuiComponent>> mParts;			// in the theme's order of depth
++	std::map<std::string, std::shared_ptr<GuiComponent>> mTexts;
+ 	std::unique_ptr<ImageComponent> mImage;
+-	TerminalStyle::TextLayer mText;
+-	Vector4f mBox;
+ 	Vector4f mArea;
+-	Vector4f mPager;		// x, y, cell, height
+-	float mBar;
+-	float mFoot;
++	float mCorners;
++	Vector4f mDots;			// centre x, centre y, size, step
++	unsigned int mDotColor;
++	unsigned int mDotOnColor;
+ };
+ 
+ #endif // ES_APP_GUIS_GUI_GAME_SWITCHER_H
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index a699e5e..03ba1eb 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -1269,7 +1269,7 @@ void GuiMenu::openCanicaSettings()
+ 
+ 		GuiGameSwitcher::open(window);
+ 	});
+-	s->addEntry("ACTIVIDAD", true, [window] { window->pushGui(new GuiActivity(window)); });
++	s->addEntry("ACTIVIDAD", true, [window] { GuiActivity::open(window); });
+ 
+ 	// What follows needs the kit's updater
+ 	if (status.empty())
+diff --git a/es-core/src/guis/GuiJobConsole.cpp b/es-core/src/guis/GuiJobConsole.cpp
+index de6e801..6873b6e 100644
+--- a/es-core/src/guis/GuiJobConsole.cpp
++++ b/es-core/src/guis/GuiJobConsole.cpp
+@@ -14,7 +14,6 @@
+ #define TAKEOVER_LIMIT 45000	// and so is one that does not take over after a yes
+ 
+ using TerminalStyle::alpha;
+-using TerminalStyle::spaced;
+ 
+ GuiJobConsole* GuiJobConsole::sInstance = nullptr;
+ 
+@@ -78,7 +77,7 @@ void GuiJobConsole::layout()
+ 		return;
+ 
+ 	mFont = style.font;
+-	mSmallFont = Font::get(Math::max(8, (int)Math::round(mFont->getSize() * 0.74f)), mFont->getPath());
++	mSmallFont = TerminalStyle::font(style, 0.0229f);
+ 
+ 	float x = Math::round(style.pos.x() - style.size.x() * style.origin.x());
+ 	float y = Math::round(style.pos.y() - style.size.y() * style.origin.y());
+@@ -99,7 +98,7 @@ void GuiJobConsole::layout()
+ 	unsigned int accent = style.fillColor;
+ 
+ 	// the title bar: what this is, and from which version to which
+-	add(mSmallFont, spaced(mScreen.title), x + pad, y + (mBar - small) / 2, muted);
++	add(mSmallFont, mScreen.title, x + pad, y + (mBar - small) / 2, muted);
+ 	add(mSmallFont, mScreen.tag, x + w - pad - mSmallFont->sizeText(mScreen.tag).x(), y + (mBar - small) / 2, accent);
+ 
+ 	// the log: a prompt, the steps done and the one under way with its cursor
+@@ -160,7 +159,7 @@ void GuiJobConsole::layout()
+ 		add(mFont, percent, x + w - pad - mFont->sizeText(percent).x(), gy - (line - row * 0.6f) / 2, ink);
+ 	}
+ 
+-	add(mSmallFont, spaced(mScreen.footer), x + pad, y + h - mFoot + (mFoot - small) / 2, accent);
++	add(mSmallFont, mScreen.footer, x + pad, y + h - mFoot + (mFoot - small) / 2, accent);
+ }
+ 
+ bool GuiJobConsole::input(InputConfig* config, Input input)
+@@ -250,7 +249,6 @@ void GuiJobConsole::render(const Transform4x4f& /*parentTrans*/)
+ 		Renderer::drawRect(mCursor.x(), mCursor.y(), mCursor.z(), mCursor.w(), accent);
+ 
+ 	mText.render();
+-	TerminalStyle::drawScanLines();
+ }
+ 
+ std::vector<HelpPrompt> GuiJobConsole::getHelpPrompts()
+diff --git a/es-core/src/guis/TerminalStyle.cpp b/es-core/src/guis/TerminalStyle.cpp
+index 5b6acbb..1301023 100644
+--- a/es-core/src/guis/TerminalStyle.cpp
++++ b/es-core/src/guis/TerminalStyle.cpp
+@@ -11,23 +11,6 @@ unsigned int TerminalStyle::alpha(unsigned int color, unsigned int a)
+ 	return (color & 0xFFFFFF00) | (((color & 0xFF) * a) / 255);
+ }
+ 
+-std::string TerminalStyle::spaced(const std::string& text)
+-{
+-	std::string out;
+-
+-	for (size_t i = 0; i < text.size(); )
+-	{
+-		size_t next = Utils::String::nextCursor(text, i);
+-		out += text.substr(i, next - i);
+-		if (next < text.size())
+-			out += ' ';
+-
+-		i = next;
+-	}
+-
+-	return out;
+-}
+-
+ std::string TerminalStyle::fit(const std::shared_ptr<Font>& font, const std::string& text, float width)
+ {
+ 	if (font->sizeText(text).x() <= width)
+@@ -65,6 +48,11 @@ Window::PopupStyle TerminalStyle::get(Window* window)
+ 	return style;
+ }
+ 
++std::shared_ptr<Font> TerminalStyle::font(const Window::PopupStyle& style, float screenHeight)
++{
++	return Font::get(Math::max(8, (int)Math::round(Renderer::getScreenHeight() * screenHeight)), style.font->getPath());
++}
++
+ void TerminalStyle::drawFrame(const Window::PopupStyle& style, float x, float y, float w, float h, float bar, float foot)
+ {
+ 	unsigned int accent = style.fillColor;
+@@ -84,16 +72,6 @@ void TerminalStyle::drawFrame(const Window::PopupStyle& style, float x, float y,
+ 		Renderer::drawRect(x + 1, y + h - foot, w - 2, 1.0f, alpha(accent, 60));
+ }
+ 
+-void TerminalStyle::drawScanLines()
+-{
+-	float w = (float)Renderer::getScreenWidth();
+-	float h = (float)Renderer::getScreenHeight();
+-
+-	Renderer::setMatrix(Transform4x4f::Identity());
+-	for (float line = 0; line < h; line += 3)
+-		Renderer::drawRect(0.0f, line, w, 1.0f, 0x00000022);
+-}
+-
+ void TerminalStyle::TextLayer::clear()
+ {
+ 	for (auto& text : mTexts)
+@@ -115,6 +93,8 @@ void TerminalStyle::TextLayer::addRight(const std::shared_ptr<Font>& font, const
+ 
+ void TerminalStyle::TextLayer::render()
+ {
++	// The texts are laid out on the screen, whatever an image drawn before left in the matrix
++	Renderer::setMatrix(Transform4x4f::Identity());
+ 	for (auto& text : mTexts)
+ 		text.first->renderTextCache(text.second);
+ }
+diff --git a/es-core/src/guis/TerminalStyle.h b/es-core/src/guis/TerminalStyle.h
+index a92cf17..52ac4ff 100644
+--- a/es-core/src/guis/TerminalStyle.h
++++ b/es-core/src/guis/TerminalStyle.h
+@@ -17,21 +17,18 @@ namespace TerminalStyle
+ {
+ 	unsigned int alpha(unsigned int color, unsigned int a);
+ 
+-	// Letters set apart, as on the title bar of an old terminal
+-	std::string spaced(const std::string& text);
+-
+ 	// The text cut to the width, with an ellipsis
+ 	std::string fit(const std::shared_ptr<Font>& font, const std::string& text, float width);
+ 
+ 	// The theme's console element when it styles one, else the menu's colours and font
+ 	Window::PopupStyle get(Window* window);
+ 
++	// The style's typeface at a height relative to the screen's (0.0229: the title bars and footers)
++	std::shared_ptr<Font> font(const Window::PopupStyle& style, float screenHeight);
++
+ 	// The dimmed screen, the glow of a phosphor screen, the box and the rules under its title bar and over its footer
+ 	void drawFrame(const Window::PopupStyle& style, float x, float y, float w, float h, float bar, float foot);
+ 
+-	// Scan lines over everything, barely there
+-	void drawScanLines();
+-
+ 	class TextLayer
+ 	{
+ 	public:
+-- 
+2.55.0
+

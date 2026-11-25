@@ -1,0 +1,1434 @@
+From bf810a317403f13866d9c241aea32592cfe9e561 Mon Sep 17 00:00:00 2001
+From: Eduardo Ruiz <335073+eduarbo@users.noreply.github.com>
+Date: Tue, 24 Nov 2026 18:19:53 -0800
+Subject: [PATCH] Add a game switcher and an activity page, and count play time
+ awake
+
+FN + SELECT shows the recent games one at a time, each with the screenshot of its automatic
+save state, and A continues where it stopped. During a game the kit's guard closes a game
+that writes its automatic state and the menu opens the switcher when it is back; the menu
+tells the guard which games those are. START > Canica gains the switcher and an activity
+page: total time, games and plays, the last seven days, streaks, the most played games and
+the favourite hour and day, from the menu's game time and a log of sessions. A game's time
+now counts only while the console is awake, so a suspended game adds nothing. The three
+terminal screens share their style and drawing.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ es-app/CMakeLists.txt               |   6 +
+ es-app/src/CanicaActivity.cpp       | 164 ++++++++++++++
+ es-app/src/CanicaActivity.h         |  49 +++++
+ es-app/src/CanicaUpdates.cpp        |   5 +
+ es-app/src/CanicaUpdates.h          |   3 +
+ es-app/src/FileData.cpp             |  14 +-
+ es-app/src/guis/GuiActivity.cpp     | 179 ++++++++++++++++
+ es-app/src/guis/GuiActivity.h       |  36 ++++
+ es-app/src/guis/GuiGameSwitcher.cpp | 317 ++++++++++++++++++++++++++++
+ es-app/src/guis/GuiGameSwitcher.h   |  64 ++++++
+ es-app/src/guis/GuiMenu.cpp         |  24 ++-
+ es-app/src/views/ViewController.cpp |  10 +
+ es-core/CMakeLists.txt              |   2 +
+ es-core/src/guis/GuiJobConsole.cpp  |  64 +-----
+ es-core/src/guis/GuiJobConsole.h    |  10 +-
+ es-core/src/guis/TerminalStyle.cpp  | 120 +++++++++++
+ es-core/src/guis/TerminalStyle.h    |  50 +++++
+ 17 files changed, 1050 insertions(+), 67 deletions(-)
+ create mode 100644 es-app/src/CanicaActivity.cpp
+ create mode 100644 es-app/src/CanicaActivity.h
+ create mode 100644 es-app/src/guis/GuiActivity.cpp
+ create mode 100644 es-app/src/guis/GuiActivity.h
+ create mode 100644 es-app/src/guis/GuiGameSwitcher.cpp
+ create mode 100644 es-app/src/guis/GuiGameSwitcher.h
+ create mode 100644 es-core/src/guis/TerminalStyle.cpp
+ create mode 100644 es-core/src/guis/TerminalStyle.h
+
+diff --git a/es-app/CMakeLists.txt b/es-app/CMakeLists.txt
+index 7839ff9..00254ff 100644
+--- a/es-app/CMakeLists.txt
++++ b/es-app/CMakeLists.txt
+@@ -126,6 +126,9 @@ set(ES_HEADERS
+ 
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/ApiSystem.h # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/CanicaUpdates.h
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/CanicaActivity.h
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiActivity.h
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiGameSwitcher.h
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/LibretroRatio.h # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/Win32ApiSystem.h # batocera
+ )
+@@ -247,6 +250,9 @@ set(ES_SOURCES
+ 
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/ApiSystem.cpp # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/CanicaUpdates.cpp
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/CanicaActivity.cpp
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiActivity.cpp
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiGameSwitcher.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/LibretroRatio.cpp # batocera
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/Win32ApiSystem.cpp # batocera
+ )
+diff --git a/es-app/src/CanicaActivity.cpp b/es-app/src/CanicaActivity.cpp
+new file mode 100644
+index 0000000..2845fc5
+--- /dev/null
++++ b/es-app/src/CanicaActivity.cpp
+@@ -0,0 +1,164 @@
++#include "CanicaActivity.h"
++
++#include "math/Misc.h"
++#include "utils/FileSystemUtil.h"
++#include "utils/StringUtil.h"
++#include "FileData.h"
++#include "SystemData.h"
++#include <algorithm>
++#include <fstream>
++#include <map>
++#include <set>
++
++#define FOLDER std::string("/userdata/system/canica-activity")
++#define LOG_FILE (FOLDER + "/sessions.tsv")
++#define MIN_SESSION 60	// shorter sessions do not make a day of play
++
++// The local calendar day of a moment, as a number
++static long localDay(time_t when)
++{
++	struct tm local;
++	localtime_r(&when, &local);
++	long shifted = (long)when + local.tm_gmtoff;
++	return shifted >= 0 ? shifted / 86400 : (shifted - 86399) / 86400;
++}
++
++static std::string clean(const std::string& text)
++{
++	std::string out = text;
++	for (char& c : out)
++		if (c == '\t' || c == '\n' || c == '\r')
++			c = ' ';
++
++	return out;
++}
++
++void CanicaActivity::record(FileData* game, time_t start, long seconds)
++{
++	if (game == nullptr || seconds <= 0 || !Utils::FileSystem::exists("/userdata/system"))
++		return;
++
++	if (!Utils::FileSystem::exists(FOLDER))
++		Utils::FileSystem::createDirectory(FOLDER);
++
++	std::ofstream log(LOG_FILE, std::ios::app);
++	if (!log.is_open())
++		return;
++
++	std::string system = game->getSourceFileData()->getSystem() ? game->getSourceFileData()->getSystem()->getName() : "";
++	log << (long long)start << '\t' << seconds << '\t' << clean(system) << '\t' << clean(game->getPath()) << '\n';
++}
++
++CanicaActivity::Summary CanicaActivity::summarize(size_t topCount)
++{
++	Summary summary;
++
++	// Every game the menu knows, once
++	for (auto system : SystemData::sSystemVector)
++	{
++		if (system->isCollection() || system->isGroupSystem() || SystemData::isUtilitySystem(system) || system->getRootFolder() == nullptr)
++			continue;
++
++		for (auto game : system->getRootFolder()->getFilesRecursive(GAME))
++		{
++			long seconds = atol(game->getMetadata(MetaDataId::GameTime).c_str());
++			int plays = Utils::String::toInteger(game->getMetadata(MetaDataId::PlayCount));
++			if (seconds <= 0 && plays <= 0)
++				continue;
++
++			summary.gamesPlayed++;
++			summary.plays += Math::max(0, plays);
++
++			if (seconds > 0)
++			{
++				summary.totalSeconds += seconds;
++				summary.top.push_back({ game->getName(), seconds });
++			}
++		}
++	}
++
++	std::sort(summary.top.begin(), summary.top.end(), [](const Game& a, const Game& b) { return a.seconds > b.seconds; });
++	if (summary.top.size() > topCount)
++		summary.top.resize(topCount);
++
++	// The log: days, streaks, hours
++	std::ifstream log(LOG_FILE);
++	if (!log.is_open())
++		return summary;
++
++	long today = localDay(time(NULL));
++	std::set<long> played;
++	long hours[24] = {}, weekdays[7] = {};
++	std::string line;
++
++	while (std::getline(log, line))
++	{
++		std::vector<std::string> cols = Utils::String::split(line, '\t');
++		if (cols.size() < 2)
++			continue;
++
++		time_t start = (time_t)atoll(cols[0].c_str());
++		long seconds = atol(cols[1].c_str());
++		if (start <= 0 || seconds <= 0)
++			continue;
++
++		summary.sessions++;
++		if (summary.since == 0 || start < summary.since)
++			summary.since = start;
++
++		long day = localDay(start);
++		if (day <= today && today - day < 7)
++			summary.days[6 - (today - day)] += seconds;
++
++		if (seconds >= MIN_SESSION)
++			played.insert(day);
++
++		struct tm local;
++		localtime_r(&start, &local);
++		hours[local.tm_hour] += seconds;
++		weekdays[local.tm_wday] += seconds;
++	}
++
++	if (summary.sessions == 0)
++		return summary;
++
++	summary.favoriteHour = (int)(std::max_element(hours, hours + 24) - hours);
++	summary.favoriteWeekday = (int)(std::max_element(weekdays, weekdays + 7) - weekdays);
++
++	// The current streak counts from today, or from yesterday when today has nothing yet
++	long day = played.count(today) ? today : today - 1;
++	while (played.count(day))
++	{
++		summary.streak++;
++		day--;
++	}
++
++	int run = 0;
++	long previous = 0;
++	for (long played_day : played)
++	{
++		run = (run > 0 && played_day == previous + 1) ? run + 1 : 1;
++		previous = played_day;
++		summary.bestStreak = Math::max(summary.bestStreak, run);
++	}
++
++	return summary;
++}
++
++std::string CanicaActivity::duration(long seconds, bool total)
++{
++	long minutes = seconds / 60;
++	long hours = minutes / 60;
++	minutes %= 60;
++
++	if (hours == 0)
++		return seconds < 60 && !total ? "<1 min" : std::to_string(minutes) + " min";
++
++	if (total)
++		return std::to_string(hours) + " h " + std::to_string(minutes) + " min";
++
++	if (minutes == 0 || hours >= 10)
++		return std::to_string(hours) + " h";
++
++	return std::to_string(hours) + " h " + (minutes < 10 ? "0" : "") + std::to_string(minutes);
++}
+diff --git a/es-app/src/CanicaActivity.h b/es-app/src/CanicaActivity.h
+new file mode 100644
+index 0000000..e0e863b
+--- /dev/null
++++ b/es-app/src/CanicaActivity.h
+@@ -0,0 +1,49 @@
++#pragma once
++#ifndef ES_APP_CANICA_ACTIVITY_H
++#define ES_APP_CANICA_ACTIVITY_H
++
++#include <string>
++#include <time.h>
++#include <vector>
++
++class FileData;
++
++// What was played and when. The time of each game is the menu's own (its gametime metadata); each session
++// is also written to a log, so days, streaks and the favourite hour can be counted.
++namespace CanicaActivity
++{
++	struct Game
++	{
++		std::string name;
++		long seconds;
++	};
++
++	struct Summary
++	{
++		Summary() : totalSeconds(0), gamesPlayed(0), plays(0), streak(0), bestStreak(0), favoriteHour(-1),
++			favoriteWeekday(-1), since(0), sessions(0) { for (int i = 0; i < 7; i++) days[i] = 0; }
++
++		long totalSeconds;			// every game, since the menu counts
++		int gamesPlayed;
++		int plays;
++		std::vector<Game> top;		// the most played, longest first
++
++		long days[7];				// from the log: seconds per local day, today last
++		int streak;					// days in a row up to today (or yesterday)
++		int bestStreak;
++		int favoriteHour;			// 0-23, -1 without sessions
++		int favoriteWeekday;		// 0 Sunday to 6 Saturday, -1 without sessions
++		time_t since;				// the first logged session
++		int sessions;
++	};
++
++	// After a game: when it started and how long the console was awake in it
++	void record(FileData* game, time_t start, long seconds);
++
++	Summary summarize(size_t topCount = 7);
++
++	// "35 min", "1 h 20", "24 h"; with total, "143 h 12 min"
++	std::string duration(long seconds, bool total = false);
++}
++
++#endif // ES_APP_CANICA_ACTIVITY_H
+diff --git a/es-app/src/CanicaUpdates.cpp b/es-app/src/CanicaUpdates.cpp
+index ba79f26..1a267c8 100644
+--- a/es-app/src/CanicaUpdates.cpp
++++ b/es-app/src/CanicaUpdates.cpp
+@@ -15,6 +15,11 @@ static void replace(const std::string& name, const std::string& text)
+ 	Utils::FileSystem::renameFile(FOLDER + "/" + name + ".tmp", FOLDER + "/" + name);
+ }
+ 
++bool CanicaUpdates::kitInstalled()
++{
++	return Utils::FileSystem::exists("/userdata/system/canica/SHA256SUMS");
++}
++
+ std::map<std::string, std::string> CanicaUpdates::status()
+ {
+ 	std::map<std::string, std::string> values;
+diff --git a/es-app/src/CanicaUpdates.h b/es-app/src/CanicaUpdates.h
+index 68d9759..b8c7533 100644
+--- a/es-app/src/CanicaUpdates.h
++++ b/es-app/src/CanicaUpdates.h
+@@ -9,6 +9,9 @@
+ // folder: the menu reads what the updater found, and leaves it requests. The menu runs no installer itself.
+ namespace CanicaUpdates
+ {
++	// The kit is on this card
++	bool kitInstalled();
++
+ 	// What the updater last wrote: installed, available, serial, ready, detail. Empty without an updater here.
+ 	std::map<std::string, std::string> status();
+ 
+diff --git a/es-app/src/FileData.cpp b/es-app/src/FileData.cpp
+index eea64cb..fc3b1c7 100644
+--- a/es-app/src/FileData.cpp
++++ b/es-app/src/FileData.cpp
+@@ -35,6 +35,9 @@
+ #include "resources/TextureData.h"
+ #include "ImageIO.h"
+ #include "QuickResume.h"
++#include "CanicaActivity.h"
++#include "guis/GuiGameSwitcher.h"
++#include <chrono>
+ 
+ using namespace Utils::Platform;
+ 
+@@ -775,8 +778,11 @@ bool FileData::launchGame(Window* window, LaunchGameOptions options)
+ 	const std::string basename = Utils::FileSystem::getStem(getPath());
+ 
+ 	Scripting::fireEvent("game-start", rom, basename, getName());
++	GuiGameSwitcher::onGameStarting(gameToUpdate);
+ 
++	// The play time counts while the console is awake: a game left suspended for hours is not played
+ 	time_t tstart = time(NULL);
++	auto awakeStart = std::chrono::steady_clock::now();
+ 
+ 	LOG(LogInfo) << "	" << command;
+ 
+@@ -792,6 +798,8 @@ bool FileData::launchGame(Window* window, LaunchGameOptions options)
+ 		LOG(LogWarning) << "...launch terminated with nonzero exit code " << exitCode << "!";
+ 
+ 	mRunningGame = nullptr;
++	long elapsedSeconds = (long)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - awakeStart).count();
++	GuiGameSwitcher::onGameEnded();
+ 
+ 	if (SaveStateRepository::isEnabled(this))
+ 	{
+@@ -833,11 +841,12 @@ bool FileData::launchGame(Window* window, LaunchGameOptions options)
+ 
+ 		// How long have you played that game? (more than 10 seconds, otherwise
+ 		// you might have experienced a loading problem)
+-		time_t tend = time(NULL);
+-		long elapsedSeconds = difftime(tend, tstart);
+ 		long gameTime = gameToUpdate->getMetadata().getInt(MetaDataId::GameTime) + elapsedSeconds;
+ 		if (elapsedSeconds >= 10)
++		{
+ 			gameToUpdate->setMetadata(MetaDataId::GameTime, std::to_string(static_cast<long>(gameTime)));
++			CanicaActivity::record(gameToUpdate, tstart, elapsedSeconds);
++		}
+ 
+ 		//update last played time
+ 		gameToUpdate->setMetadata(MetaDataId::LastPlayed, Utils::Time::DateTime(Utils::Time::now()));
+@@ -846,6 +855,7 @@ bool FileData::launchGame(Window* window, LaunchGameOptions options)
+ 	}
+ 
+ 	window->reactivateGui();
++	GuiGameSwitcher::openIfRequested(window);
+ 
+ 	if (system != nullptr && system->getTheme() != nullptr)
+ 		AudioManager::getInstance()->changePlaylist(system->getTheme(), true);
+diff --git a/es-app/src/guis/GuiActivity.cpp b/es-app/src/guis/GuiActivity.cpp
+new file mode 100644
+index 0000000..1975622
+--- /dev/null
++++ b/es-app/src/guis/GuiActivity.cpp
+@@ -0,0 +1,179 @@
++#include "guis/GuiActivity.h"
++
++#include "renderers/Renderer.h"
++#include "resources/Font.h"
++#include "CanicaActivity.h"
++#include "InputConfig.h"
++#include "LocaleES.h"
++#include "Window.h"
++
++#define CELLS 10
++
++using TerminalStyle::alpha;
++
++static const char* WEEKDAYS[] = { "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado" };
++static const char* SHORT_DAYS[] = { "do", "lu", "ma", "mi", "ju", "vi", "sá" };
++
++static std::string thousands(long value)
++{
++	std::string digits = std::to_string(value), out;
++	for (size_t i = 0; i < digits.size(); i++)
++	{
++		if (i > 0 && (digits.size() - i) % 3 == 0)
++			out += " ";
++
++		out += digits[i];
++	}
++
++	return out;
++}
++
++GuiActivity::GuiActivity(Window* window) : GuiComponent(window), mBar(0), mFoot(0)
++{
++	float sw = (float)Renderer::getScreenWidth();
++	float sh = (float)Renderer::getScreenHeight();
++	setSize(sw, sh);
++
++	mStyle = TerminalStyle::get(window);
++	auto font = mStyle.font;
++	auto small = Font::get(Math::max(8, (int)Math::round(font->getSize() * 0.74f)), font->getPath());
++
++	// The whole screen, inside the console's margins
++	float margin = Math::round(Math::max(8.0f, (sw - mStyle.size.x()) / 2));
++	float x = margin, y = Math::round(margin * 0.5f), w = sw - margin * 2, h = sh - y * 2 - Math::round(sh * 0.05f);
++	mBox = Vector4f(x, y, w, h);
++
++	float ch = font->sizeText("0").x();
++	float line = font->getHeight(1.0f);
++	float row = Math::round(line * 1.42f);
++	float smallLine = small->getHeight(1.0f);
++	float pad = Math::round(ch * 2);
++	mBar = Math::round(smallLine * 2.3f);
++	mFoot = Math::round(smallLine * 2.6f);
++
++	unsigned int ink = mStyle.color;
++	unsigned int muted = alpha(ink, 150);
++	unsigned int accent = mStyle.fillColor;
++
++	auto data = CanicaActivity::summarize(7);
++	time_t now = time(NULL);
++
++	std::string since = "—";
++	if (data.since > 0)
++	{
++		char buf[16];
++		struct tm local;
++		localtime_r(&data.since, &local);
++		strftime(buf, sizeof(buf), "%d/%m/%Y", &local);
++		since = std::string("desde ") + buf;
++	}
++
++	mText.add(small, TerminalStyle::spaced("CANICA // ACTIVIDAD"), x + pad, y + (mBar - smallLine) / 2, muted);
++	mText.addRight(small, since, x + w - pad, y + (mBar - smallLine) / 2, accent);
++
++	float left = x + pad, label = left + ch * 2;
++	float half = x + w / 2 + ch;
++	float right = x + w - pad;
++	float ty = y + mBar + Math::round(row * 0.5f);
++
++	mText.add(font, "$", left, ty, accent);
++	mText.add(font, "canica actividad", label, ty, ink);
++	ty += row;
++
++	auto pair = [&](float at, const std::string& key, const std::string& value)
++	{
++		mText.add(font, key, at, ty, muted);
++		mText.add(font, value, at + ch * 9, ty, ink);
++	};
++
++	pair(label, "total", data.totalSeconds > 0 ? CanicaActivity::duration(data.totalSeconds, true) : "—");
++	pair(half, "partidas", thousands(data.plays));
++	ty += row;
++	pair(label, "juegos", thousands(data.gamesPlayed));
++	pair(half, "racha", data.sessions == 0 ? "—" : std::to_string(data.streak) + (data.streak == 1 ? " día" : " días") +
++		" · mejor " + std::to_string(data.bestStreak));
++	ty += Math::round(row * 1.5f);
++
++	// Two columns: the last seven days and the most played games
++	mText.add(small, TerminalStyle::spaced("ÚLTIMOS 7 DÍAS"), label, ty + (line - smallLine), accent);
++	mText.add(small, TerminalStyle::spaced("MÁS JUGADOS"), half, ty + (line - smallLine), accent);
++	ty += row;
++
++	long most = 1;
++	for (long seconds : data.days)
++		most = Math::max((int)most, (int)seconds);
++
++	float barX = label + ch * 6;
++	float cell = Math::round(ch * 0.9f);
++	float timeRight = half - ch * 2;
++
++	for (int i = 0; i < 7; i++)
++	{
++		float rowY = ty + i * row;
++		time_t when = now - (6 - i) * 86400;
++		struct tm local;
++		localtime_r(&when, &local);
++
++		mText.add(font, std::string(SHORT_DAYS[local.tm_wday]) + " " + (local.tm_mday < 10 ? "0" : "") + std::to_string(local.tm_mday),
++			label, rowY, i == 6 ? ink : muted);
++
++		long seconds = data.days[i];
++		int full = seconds > 0 ? Math::max(1, (int)Math::round(CELLS * seconds / (float)most)) : 0;
++		mBars.push_back({ barX, rowY + Math::round(line * 0.22f), cell, Math::round(line * 0.62f), full });
++		mText.addRight(font, seconds > 0 ? CanicaActivity::duration(seconds) : "·", timeRight, rowY, seconds > 0 ? ink : muted);
++
++		if (i < (int)data.top.size())
++		{
++			auto& game = data.top[i];
++			std::string time = CanicaActivity::duration(game.seconds);
++			float timeWidth = font->sizeText(time).x();
++
++			mText.add(font, std::to_string(i + 1), half, rowY, accent);
++			mText.add(font, TerminalStyle::fit(font, game.name, right - (half + ch * 2) - timeWidth - ch), half + ch * 2, rowY, ink);
++			mText.addRight(font, time, right, rowY, muted);
++		}
++	}
++
++	ty += 7 * row + Math::round(row * 0.5f);
++
++	if (data.favoriteHour >= 0)
++	{
++		pair(label, "hora", (data.favoriteHour < 10 ? "0" : "") + std::to_string(data.favoriteHour) + ":00");
++		pair(half, "día", WEEKDAYS[data.favoriteWeekday]);
++	}
++	else if (data.top.empty())
++		mText.add(font, "aún no hay partidas", label, ty, muted);
++
++	std::string footer = data.sessions == 0 ? "LOS DÍAS SE CUENTAN DESDE HOY" :
++		thousands(data.sessions) + (data.sessions == 1 ? " SESIÓN REGISTRADA" : " SESIONES REGISTRADAS");
++	mText.add(small, TerminalStyle::spaced(footer), x + pad, y + h - mFoot + (mFoot - smallLine) / 2, accent);
++}
++
++bool GuiActivity::input(InputConfig* config, Input input)
++{
++	if (input.value != 0 && (config->isMappedTo(BUTTON_BACK, input) || config->isMappedTo("start", input)))
++	{
++		delete this;
++		return true;
++	}
++
++	return true;
++}
++
++void GuiActivity::render(const Transform4x4f& /*parentTrans*/)
++{
++	TerminalStyle::drawFrame(mStyle, mBox.x(), mBox.y(), mBox.z(), mBox.w(), mBar, mFoot);
++
++	for (auto& bar : mBars)
++		for (int i = 0; i < CELLS; i++)
++			Renderer::drawRect(bar.x + i * bar.cell, bar.y, Math::max(1.0f, bar.cell - 2), bar.height,
++				i < bar.full ? mStyle.fillColor : mStyle.trackColor);
++
++	mText.render();
++	TerminalStyle::drawScanLines();
++}
++
++std::vector<HelpPrompt> GuiActivity::getHelpPrompts()
++{
++	return { HelpPrompt(BUTTON_BACK, _("BACK")) };
++}
+diff --git a/es-app/src/guis/GuiActivity.h b/es-app/src/guis/GuiActivity.h
+new file mode 100644
+index 0000000..30c8611
+--- /dev/null
++++ b/es-app/src/guis/GuiActivity.h
+@@ -0,0 +1,36 @@
++#pragma once
++#ifndef ES_APP_GUIS_GUI_ACTIVITY_H
++#define ES_APP_GUIS_GUI_ACTIVITY_H
++
++#include "GuiComponent.h"
++#include "guis/TerminalStyle.h"
++#include "math/Vector4f.h"
++#include <vector>
++
++// What was played, drawn as a terminal: totals, the last seven days, the most played games and the
++// favourite hour and day (CanicaActivity)
++class GuiActivity : public GuiComponent
++{
++public:
++	GuiActivity(Window* window);
++
++	bool input(InputConfig* config, Input input) override;
++	void render(const Transform4x4f& parentTrans) override;
++	std::vector<HelpPrompt> getHelpPrompts() override;
++
++private:
++	struct Bar
++	{
++		float x, y, cell, height;
++		int full;
++	};
++
++	Window::PopupStyle mStyle;
++	TerminalStyle::TextLayer mText;
++	Vector4f mBox;
++	float mBar;
++	float mFoot;
++	std::vector<Bar> mBars;
++};
++
++#endif // ES_APP_GUIS_GUI_ACTIVITY_H
+diff --git a/es-app/src/guis/GuiGameSwitcher.cpp b/es-app/src/guis/GuiGameSwitcher.cpp
+new file mode 100644
+index 0000000..f1b1dd8
+--- /dev/null
++++ b/es-app/src/guis/GuiGameSwitcher.cpp
+@@ -0,0 +1,317 @@
++#include "guis/GuiGameSwitcher.h"
++
++#include "components/ImageComponent.h"
++#include "renderers/Renderer.h"
++#include "resources/Font.h"
++#include "utils/FileSystemUtil.h"
++#include "utils/StringUtil.h"
++#include "utils/TimeUtil.h"
++#include "views/ViewController.h"
++#include "CanicaActivity.h"
++#include "FileData.h"
++#include "InputConfig.h"
++#include "LocaleES.h"
++#include "SaveStateRepository.h"
++#include "SystemData.h"
++#include "Window.h"
++#include <algorithm>
++#include <sys/stat.h>
++
++#define RECENT 15
++#define REQUEST_AGE 300		// a request older than this is from another time: it opens nothing
++
++using TerminalStyle::alpha;
++
++const std::string GuiGameSwitcher::REQUEST = "/var/run/canica/switcher-request";
++const std::string GuiGameSwitcher::AUTOSAVES = "/var/run/canica/game-autosaves";
++
++static std::string when(time_t moment)
++{
++	if (moment <= 0)
++		return "";
++
++	time_t now = time(NULL);
++	struct tm local, today;
++	localtime_r(&moment, &local);
++	localtime_r(&now, &today);
++
++	char clock[8];
++	strftime(clock, sizeof(clock), "%H:%M", &local);
++
++	long days = (long)((now - moment) / 86400);
++	if (local.tm_yday == today.tm_yday && local.tm_year == today.tm_year)
++		return std::string("hoy ") + clock;
++	if (days <= 1)
++		return std::string("ayer ") + clock;
++	if (days < 30)
++		return "hace " + std::to_string(days) + " días";
++
++	char date[16];
++	strftime(date, sizeof(date), "%d/%m/%Y", &local);
++	return date;
++}
++
++std::vector<GuiGameSwitcher::Entry> GuiGameSwitcher::recentGames(size_t count)
++{
++	std::vector<std::pair<std::string, FileData*>> played;
++
++	for (auto system : SystemData::sSystemVector)
++	{
++		if (system->isCollection() || system->isGroupSystem() || SystemData::isUtilitySystem(system) || system->getRootFolder() == nullptr)
++			continue;
++
++		for (auto game : system->getRootFolder()->getFilesRecursive(GAME))
++		{
++			// Only a real date (YYYYMMDDTHHMMSS): a game never played has the default "0"
++			std::string last = game->getMetadata(MetaDataId::LastPlayed);
++			if (last.size() >= 15 && last[8] == 'T')
++				played.push_back({ last, game });
++		}
++	}
++
++	std::sort(played.begin(), played.end(), [](const std::pair<std::string, FileData*>& a, const std::pair<std::string, FileData*>& b)
++	{
++		return a.first > b.first;
++	});
++
++	std::vector<Entry> entries;
++	for (auto& item : played)
++	{
++		if (entries.size() >= count)
++			break;
++
++		FileData* game = item.second;
++		Entry entry = { game, "", false, 0 };
++
++		if (SaveStateRepository::isEnabledForGame(game) && game->getCurrentGameSetting("autosave") == "1")
++		{
++			SaveState* state = game->getSourceFileData()->getSystem()->getSaveStateRepository()->getGameAutoSave(game);
++			if (state != nullptr && state->slot == -1 && !state->fileName.empty())
++			{
++				entry.resumes = true;
++				entry.image = state->screenshot;
++				entry.saved = state->creationDate.getTime();
++			}
++		}
++
++		if (entry.image.empty() || !Utils::FileSystem::exists(entry.image))
++			entry.image = game->getImagePath();
++
++		entries.push_back(entry);
++	}
++
++	return entries;
++}
++
++void GuiGameSwitcher::open(Window* window)
++{
++	auto entries = recentGames(RECENT);
++	if (entries.empty())
++	{
++		window->displayNotificationMessage(_("NO RECENT GAMES"));
++		return;
++	}
++
++	window->pushGui(new GuiGameSwitcher(window, entries));
++}
++
++void GuiGameSwitcher::openIfRequested(Window* window)
++{
++	struct stat info;
++	if (stat(REQUEST.c_str(), &info) != 0)
++		return;
++
++	Utils::FileSystem::removeFile(REQUEST);
++	if (time(NULL) - info.st_mtime <= REQUEST_AGE)
++		open(window);
++}
++
++void GuiGameSwitcher::onGameStarting(FileData* game)
++{
++	// Only with the kit's run folder: its guard is the one that reads this
++	if (!Utils::FileSystem::exists("/var/run/canica"))
++		return;
++
++	bool autosaves = game->getEmulator() == "libretro" && SaveStateRepository::isEnabledForGame(game) &&
++		game->getCurrentGameSetting("autosave") == "1";
++
++	if (autosaves)
++		Utils::FileSystem::writeAllText(AUTOSAVES, game->getPath() + "\n");
++	else
++		Utils::FileSystem::removeFile(AUTOSAVES);
++}
++
++void GuiGameSwitcher::onGameEnded()
++{
++	if (Utils::FileSystem::exists(AUTOSAVES))
++		Utils::FileSystem::removeFile(AUTOSAVES);
++}
++
++GuiGameSwitcher::GuiGameSwitcher(Window* window, const std::vector<Entry>& entries) : GuiComponent(window),
++	mEntries(entries), mIndex(0), mBar(0), mFoot(0)
++{
++	float sw = (float)Renderer::getScreenWidth();
++	float sh = (float)Renderer::getScreenHeight();
++	setSize(sw, sh);
++
++	mStyle = TerminalStyle::get(window);
++	select(0);
++}
++
++GuiGameSwitcher::~GuiGameSwitcher()
++{
++}
++
++void GuiGameSwitcher::select(int index)
++{
++	int count = (int)mEntries.size();
++	mIndex = ((index % count) + count) % count;
++	const Entry& entry = mEntries[mIndex];
++	FileData* game = entry.game;
++
++	float sw = (float)Renderer::getScreenWidth();
++	float sh = (float)Renderer::getScreenHeight();
++	auto font = mStyle.font;
++	auto small = Font::get(Math::max(8, (int)Math::round(font->getSize() * 0.74f)), font->getPath());
++
++	float margin = Math::round(Math::max(8.0f, (sw - mStyle.size.x()) / 2));
++	float x = margin, y = Math::round(margin * 0.5f), w = sw - margin * 2, h = sh - y * 2 - Math::round(sh * 0.05f);
++	mBox = Vector4f(x, y, w, h);
++
++	float ch = font->sizeText("0").x();
++	float line = font->getHeight(1.0f);
++	float row = Math::round(line * 1.42f);
++	float smallLine = small->getHeight(1.0f);
++	float pad = Math::round(ch * 2);
++	mBar = Math::round(smallLine * 2.3f);
++	mFoot = Math::round(smallLine * 2.6f);
++
++	unsigned int ink = mStyle.color;
++	unsigned int muted = alpha(ink, 150);
++	unsigned int accent = mStyle.fillColor;
++
++	mText.clear();
++	mText.add(small, TerminalStyle::spaced("CANICA // CONTINUAR"), x + pad, y + (mBar - smallLine) / 2, muted);
++	mText.addRight(small, std::to_string(mIndex + 1) + " / " + std::to_string(count), x + w - pad, y + (mBar - smallLine) / 2, accent);
++
++	// The picture: the automatic state's screenshot, else the game's image. Pixel art grows by whole steps.
++	float infoHeight = row * 3;
++	float pagerHeight = Math::round(line * 0.5f);
++	mArea = Vector4f(x + pad + ch * 2, y + mBar + Math::round(row * 0.4f), w - (pad + ch * 2) * 2,
++		h - mBar - mFoot - infoHeight - pagerHeight - Math::round(row * 1.2f));
++
++	mImage = std::unique_ptr<ImageComponent>(new ImageComponent(mWindow, true));
++	mImage->setImage(entry.image);
++
++	Vector2i texture = mImage->getTextureSize();
++	int scale = texture.x() > 0 && texture.y() > 0 ? (int)Math::min(mArea.z() / texture.x(), mArea.w() / texture.y()) : 0;
++	if (scale >= 2)
++	{
++		mImage->setIsLinear(false);
++		mImage->setResize((float)(texture.x() * scale), (float)(texture.y() * scale));
++	}
++	else
++		mImage->setMaxSize(mArea.z(), mArea.w());
++
++	Vector2f size = mImage->getSize();
++	mImage->setPosition(Math::round(mArea.x() + (mArea.z() - size.x()) / 2), Math::round(mArea.y() + (mArea.w() - size.y()) / 2));
++
++	// Left and right of the picture, in the margin
++	float middle = mArea.y() + mArea.w() / 2 - line / 2;
++	if (count > 1)
++	{
++		mText.add(font, "<", x + pad, middle, accent);
++		mText.addRight(font, ">", x + w - pad, middle, accent);
++	}
++
++	// Under it: the game, where and how long it was played, and how it continues
++	float ty = mArea.y() + mArea.w() + Math::round(row * 0.4f);
++	float textWidth = w - pad * 2;
++	mText.add(font, TerminalStyle::fit(font, game->getName(), textWidth), x + pad, ty, ink);
++	ty += row;
++
++	std::string details = game->getSourceFileData()->getSystem() ? game->getSourceFileData()->getSystem()->getFullName() : "";
++	long seconds = atol(game->getMetadata(MetaDataId::GameTime).c_str());
++	if (seconds > 0)
++		details += " · jugado " + CanicaActivity::duration(seconds);
++
++	std::string last = game->getMetadata(MetaDataId::LastPlayed);
++	if (last.size() >= 15)
++		details += " · " + when(Utils::Time::stringToTime(last));
++
++	mText.add(font, TerminalStyle::fit(font, details, textWidth), x + pad, ty, muted);
++	ty += row;
++
++	if (entry.resumes)
++	{
++		mText.add(font, ">", x + pad, ty, accent);
++		mText.add(font, TerminalStyle::fit(font, "partida automática · " + when(entry.saved), textWidth - ch * 2), x + pad + ch * 2, ty, accent);
++	}
++	else
++		mText.add(font, "sin partida automática: empieza desde su guardado", x + pad, ty, muted);
++
++	// One cell per game along the footer's rule
++	float cell = Math::round(ch * 1.2f);
++	mPager = Vector4f(x + w - pad - cell * count, y + h - mFoot - pagerHeight - Math::round(row * 0.45f), cell, pagerHeight);
++
++	mText.add(small, TerminalStyle::spaced("A CONTINUAR   B VOLVER"), x + pad, y + h - mFoot + (mFoot - smallLine) / 2, accent);
++	updateHelpPrompts();
++}
++
++bool GuiGameSwitcher::input(InputConfig* config, Input input)
++{
++	if (input.value == 0)
++		return true;
++
++	if (config->isMappedLike("left", input) || config->isMappedTo("pageup", input))
++		select(mIndex - 1);
++	else if (config->isMappedLike("right", input) || config->isMappedTo("pagedown", input))
++		select(mIndex + 1);
++	else if (config->isMappedTo(BUTTON_OK, input))
++	{
++		FileData* game = mEntries[mIndex].game;
++		delete this;
++		ViewController::get()->launch(game);
++	}
++	else if (config->isMappedTo(BUTTON_BACK, input) || (config->hotkeyHeld() && config->isMappedTo("select", input)))
++	{
++		if (config->hotkeyHeld())
++			config->consumeHotkeyConfirm();
++
++		delete this;
++	}
++
++	return true;
++}
++
++void GuiGameSwitcher::render(const Transform4x4f& /*parentTrans*/)
++{
++	TerminalStyle::drawFrame(mStyle, mBox.x(), mBox.y(), mBox.z(), mBox.w(), mBar, mFoot);
++
++	// The picture sits in a dark well with a thin lit edge
++	Renderer::drawSolidRectangle(mArea.x() - 4, mArea.y() - 4, mArea.z() + 8, mArea.w() + 8, 0x000000B0, alpha(mStyle.fillColor, 70), 1.0f, 3.0f);
++
++	if (mImage)
++	{
++		Transform4x4f identity = Transform4x4f::Identity();
++		mImage->render(identity);
++	}
++
++	for (int i = 0; i < (int)mEntries.size(); i++)
++		Renderer::drawRect(mPager.x() + i * mPager.z(), mPager.y(), Math::max(1.0f, mPager.z() - 3), mPager.w(),
++			i == mIndex ? mStyle.fillColor : mStyle.trackColor);
++
++	mText.render();
++	TerminalStyle::drawScanLines();
++}
++
++std::vector<HelpPrompt> GuiGameSwitcher::getHelpPrompts()
++{
++	std::vector<HelpPrompt> prompts;
++	if (mEntries.size() > 1)
++		prompts.push_back(HelpPrompt("left/right", _("CHOOSE")));
++
++	prompts.push_back(HelpPrompt(BUTTON_OK, _("LAUNCH")));
++	prompts.push_back(HelpPrompt(BUTTON_BACK, _("BACK")));
++	return prompts;
++}
+diff --git a/es-app/src/guis/GuiGameSwitcher.h b/es-app/src/guis/GuiGameSwitcher.h
+new file mode 100644
+index 0000000..1b4d9c2
+--- /dev/null
++++ b/es-app/src/guis/GuiGameSwitcher.h
+@@ -0,0 +1,64 @@
++#pragma once
++#ifndef ES_APP_GUIS_GUI_GAME_SWITCHER_H
++#define ES_APP_GUIS_GUI_GAME_SWITCHER_H
++
++#include "GuiComponent.h"
++#include "guis/TerminalStyle.h"
++#include "math/Vector4f.h"
++#include <memory>
++#include <string>
++#include <vector>
++
++class FileData;
++class ImageComponent;
++
++// The recent games, one at a time, each as its automatic save left it: left and right to go through them,
++// A to continue. FN + SELECT opens it in the menu, and during a game too: the Canica kit's guard closes a game
++// that keeps an automatic save state, and the menu opens this when it is back.
++class GuiGameSwitcher : public GuiComponent
++{
++public:
++	// The guard leaves REQUEST when FN + SELECT closed the game; the menu leaves AUTOSAVES while the running
++	// game writes its automatic state when it is closed, so the guard knows that closing it loses nothing
++	static const std::string REQUEST;
++	static const std::string AUTOSAVES;
++
++	static void open(Window* window);
++	static void openIfRequested(Window* window);
++	static void onGameStarting(FileData* game);
++	static void onGameEnded();
++
++	~GuiGameSwitcher();
++
++	bool input(InputConfig* config, Input input) override;
++	void render(const Transform4x4f& parentTrans) override;
++	std::vector<HelpPrompt> getHelpPrompts() override;
++
++private:
++	struct Entry
++	{
++		FileData* game;
++		std::string image;
++		bool resumes;
++		time_t saved;
++	};
++
++	GuiGameSwitcher(Window* window, const std::vector<Entry>& entries);
++	static std::vector<Entry> recentGames(size_t count);
++
++	void select(int index);
++
++	Window::PopupStyle mStyle;
++	std::vector<Entry> mEntries;
++	int mIndex;
++
++	std::unique_ptr<ImageComponent> mImage;
++	TerminalStyle::TextLayer mText;
++	Vector4f mBox;
++	Vector4f mArea;
++	Vector4f mPager;		// x, y, cell, height
++	float mBar;
++	float mFoot;
++};
++
++#endif // ES_APP_GUIS_GUI_GAME_SWITCHER_H
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index 2ee1834..a699e5e 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -1,5 +1,7 @@
+ #include "guis/GuiMenu.h"
+ #include "CanicaUpdates.h"
++#include "guis/GuiActivity.h"
++#include "guis/GuiGameSwitcher.h"
+ 
+ #include "components/OptionListComponent.h"
+ #include "components/SliderComponent.h"
+@@ -207,8 +209,8 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
+ #endif
+ 		addEntry(_("SYSTEM SETTINGS").c_str(), true, [this] { openSystemSettings(); }, "iconSystem");
+ 
+-		// The kit's own page, on a console that has the kit's updater
+-		if (!CanicaUpdates::status().empty())
++		// The kit's own page
++		if (CanicaUpdates::kitInstalled())
+ 			addEntry("CANICA", true, [this] { openCanicaSettings(); }, "iconUpdates");
+ 	}
+ 	else
+@@ -1259,6 +1261,24 @@ void GuiMenu::openCanicaSettings()
+ 	Window* window = mWindow;
+ 	GuiSettings* s = new GuiSettings(mWindow, "CANICA");
+ 
++	s->addEntry("CONTINUAR UN JUEGO", true, [window]
++	{
++		// From the main screen: a game started from it returns there
++		while (window->peekGui() && window->peekGui() != ViewController::get())
++			delete window->peekGui();
++
++		GuiGameSwitcher::open(window);
++	});
++	s->addEntry("ACTIVIDAD", true, [window] { window->pushGui(new GuiActivity(window)); });
++
++	// What follows needs the kit's updater
++	if (status.empty())
++	{
++		mWindow->pushGui(s);
++		return;
++	}
++
++	s->addGroup("ACTUALIZACIONES");
+ 	s->addWithLabel("VERSIÓN", std::make_shared<TextComponent>(mWindow, status["installed"], theme->Text.font, theme->Text.color));
+ 
+ 	std::string mode = CanicaUpdates::mode();
+diff --git a/es-app/src/views/ViewController.cpp b/es-app/src/views/ViewController.cpp
+index 6f2f3a3..2a4c383 100644
+--- a/es-app/src/views/ViewController.cpp
++++ b/es-app/src/views/ViewController.cpp
+@@ -1,4 +1,5 @@
+ #include "views/ViewController.h"
++#include "guis/GuiGameSwitcher.h"
+ 
+ #include "animations/Animation.h"
+ #include "animations/LambdaAnimation.h"
+@@ -1089,6 +1090,15 @@ bool ViewController::input(InputConfig* config, Input input)
+ 		}
+ 	}
+ 
++	// FN + SELECT: the recent games, each where its automatic save left it
++	if (input.value && config->hotkeyHeld() && config->isMappedTo("select", input) && !config->isMappedTo("hotkey", input)
++		&& (mState.viewing == SYSTEM_SELECT || mState.viewing == GAME_LIST))
++	{
++		config->consumeHotkeyConfirm();
++		GuiGameSwitcher::open(mWindow);
++		return true;
++	}
++
+ 	// open menu
+ 	if(config->isMappedTo("start", input) && input.value != 0)
+ 	{
+diff --git a/es-core/CMakeLists.txt b/es-core/CMakeLists.txt
+index a62e6a6..2e40009 100644
+--- a/es-core/CMakeLists.txt
++++ b/es-core/CMakeLists.txt
+@@ -97,6 +97,7 @@ set(CORE_HEADERS
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiMsgBox.h
+         ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInfoPopup.h # batocera
+         ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiJobConsole.h
++        ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/TerminalStyle.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiTextEditPopup.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiTextEditPopupKeyboard.h # batocera
+ 
+@@ -236,6 +237,7 @@ set(CORE_SOURCES
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiMsgBox.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInfoPopup.cpp # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiJobConsole.cpp
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/TerminalStyle.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiTextEditPopup.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiTextEditPopupKeyboard.cpp # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemConf.cpp # batocera
+diff --git a/es-core/src/guis/GuiJobConsole.cpp b/es-core/src/guis/GuiJobConsole.cpp
+index 1e81a31..de6e801 100644
+--- a/es-core/src/guis/GuiJobConsole.cpp
++++ b/es-core/src/guis/GuiJobConsole.cpp
+@@ -1,5 +1,6 @@
+ #include "guis/GuiJobConsole.h"
+ 
++#include "guis/TerminalStyle.h"
+ #include "renderers/Renderer.h"
+ #include "resources/Font.h"
+ #include "utils/StringUtil.h"
+@@ -12,30 +13,10 @@
+ #define QUIET_LIMIT 180000		// a job that says nothing for this long is gone: the menu comes back
+ #define TAKEOVER_LIMIT 45000	// and so is one that does not take over after a yes
+ 
+-GuiJobConsole* GuiJobConsole::sInstance = nullptr;
+-
+-static unsigned int alpha(unsigned int color, unsigned int a)
+-{
+-	return (color & 0xFFFFFF00) | (((color & 0xFF) * a) / 255);
+-}
+-
+-// Letters set apart, as on the title bar of an old terminal
+-static std::string spaced(const std::string& text)
+-{
+-	std::string out;
+-
+-	for (size_t i = 0; i < text.size(); )
+-	{
+-		size_t next = Utils::String::nextCursor(text, i);
+-		out += text.substr(i, next - i);
+-		if (next < text.size())
+-			out += ' ';
+-
+-		i = next;
+-	}
++using TerminalStyle::alpha;
++using TerminalStyle::spaced;
+ 
+-	return out;
+-}
++GuiJobConsole* GuiJobConsole::sInstance = nullptr;
+ 
+ void GuiJobConsole::show(Window* window, const Screen& screen, const std::function<void(int)>& onAnswer)
+ {
+@@ -64,7 +45,6 @@ GuiJobConsole::GuiJobConsole(Window* window) : GuiComponent(window),
+ 
+ GuiJobConsole::~GuiJobConsole()
+ {
+-	clear();
+ 	PowerSaver::resume();
+ 
+ 	if (sInstance == this)
+@@ -83,23 +63,14 @@ void GuiJobConsole::set(const Screen& screen, const std::function<void(int)>& on
+ 	updateHelpPrompts();
+ }
+ 
+-void GuiJobConsole::clear()
+-{
+-	for (auto& text : mTexts)
+-		delete text.cache;
+-
+-	mTexts.clear();
+-}
+-
+ void GuiJobConsole::add(const std::shared_ptr<Font>& font, const std::string& text, float x, float y, unsigned int color)
+ {
+-	if (!text.empty())
+-		mTexts.push_back({ font, font->buildTextCache(text, Math::round(x), Math::round(y), color) });
++	mText.add(font, text, x, y, color);
+ }
+ 
+ void GuiJobConsole::layout()
+ {
+-	clear();
++	mText.clear();
+ 	mCursor = mGauge = mButtons[0] = mButtons[1] = Vector4f(0, 0, 0, 0);
+ 
+ 	const Window::PopupStyle& style = mWindow->getConsoleStyle();
+@@ -259,21 +230,8 @@ void GuiJobConsole::render(const Transform4x4f& /*parentTrans*/)
+ 	if (!style.enabled || mFont == nullptr)
+ 		return;
+ 
+-	float sw = (float)Renderer::getScreenWidth();
+-	float sh = (float)Renderer::getScreenHeight();
+-	float x = mBox.x(), y = mBox.y(), w = mBox.z(), h = mBox.w();
+ 	unsigned int accent = style.fillColor;
+-
+-	Renderer::setMatrix(Transform4x4f::Identity());
+-	Renderer::drawRect(0.0f, 0.0f, sw, sh, style.trackBorderColor);
+-
+-	// the glow of a phosphor screen, then the window with its two rules
+-	for (int i = 3; i > 0; i--)
+-		Renderer::drawSolidRectangle(x - i * 2, y - i * 2, w + i * 4, h + i * 4, 0, alpha(accent, 22 * (4 - i)), 2.0f, style.cornerRadius + i * 2);
+-
+-	Renderer::drawSolidRectangle(x, y, w, h, style.backgroundColor, style.borderColor, 1.0f, style.cornerRadius);
+-	Renderer::drawRect(x + 1, y + mBar, w - 2, 1.0f, alpha(accent, 60));
+-	Renderer::drawRect(x + 1, y + h - mFoot, w - 2, 1.0f, alpha(accent, 60));
++	TerminalStyle::drawFrame(style, mBox.x(), mBox.y(), mBox.z(), mBox.w(), mBar, mFoot);
+ 
+ 	if (mGauge.z() > 0)
+ 	{
+@@ -291,12 +249,8 @@ void GuiJobConsole::render(const Transform4x4f& /*parentTrans*/)
+ 	if (mCursor.z() > 0 && (mBlink / 530) % 2 == 0)
+ 		Renderer::drawRect(mCursor.x(), mCursor.y(), mCursor.z(), mCursor.w(), accent);
+ 
+-	for (auto& text : mTexts)
+-		text.font->renderTextCache(text.cache);
+-
+-	// scan lines over everything, barely there
+-	for (float line = 0; line < sh; line += 3)
+-		Renderer::drawRect(0.0f, line, sw, 1.0f, 0x00000022);
++	mText.render();
++	TerminalStyle::drawScanLines();
+ }
+ 
+ std::vector<HelpPrompt> GuiJobConsole::getHelpPrompts()
+diff --git a/es-core/src/guis/GuiJobConsole.h b/es-core/src/guis/GuiJobConsole.h
+index b9c320c..1f340bf 100644
+--- a/es-core/src/guis/GuiJobConsole.h
++++ b/es-core/src/guis/GuiJobConsole.h
+@@ -3,6 +3,7 @@
+ #define ES_CORE_GUIS_GUI_JOB_CONSOLE_H
+ 
+ #include "GuiComponent.h"
++#include "guis/TerminalStyle.h"
+ #include "math/Vector4f.h"
+ #include <functional>
+ #include <memory>
+@@ -45,15 +46,8 @@ public:
+ private:
+ 	GuiJobConsole(Window* window);
+ 
+-	struct Text
+-	{
+-		std::shared_ptr<Font> font;
+-		TextCache* cache;
+-	};
+-
+ 	void set(const Screen& screen, const std::function<void(int)>& onAnswer);
+ 	void layout();
+-	void clear();
+ 	void add(const std::shared_ptr<Font>& font, const std::string& text, float x, float y, unsigned int color);
+ 	void answer(int index);
+ 
+@@ -68,7 +62,7 @@ private:
+ 
+ 	std::shared_ptr<Font> mFont;
+ 	std::shared_ptr<Font> mSmallFont;
+-	std::vector<Text> mTexts;
++	TerminalStyle::TextLayer mText;
+ 	Vector4f mBox;
+ 	float mBar;
+ 	float mFoot;
+diff --git a/es-core/src/guis/TerminalStyle.cpp b/es-core/src/guis/TerminalStyle.cpp
+new file mode 100644
+index 0000000..5b6acbb
+--- /dev/null
++++ b/es-core/src/guis/TerminalStyle.cpp
+@@ -0,0 +1,120 @@
++#include "guis/TerminalStyle.h"
++
++#include "math/Transform4x4f.h"
++#include "renderers/Renderer.h"
++#include "resources/Font.h"
++#include "utils/StringUtil.h"
++#include "ThemeData.h"
++
++unsigned int TerminalStyle::alpha(unsigned int color, unsigned int a)
++{
++	return (color & 0xFFFFFF00) | (((color & 0xFF) * a) / 255);
++}
++
++std::string TerminalStyle::spaced(const std::string& text)
++{
++	std::string out;
++
++	for (size_t i = 0; i < text.size(); )
++	{
++		size_t next = Utils::String::nextCursor(text, i);
++		out += text.substr(i, next - i);
++		if (next < text.size())
++			out += ' ';
++
++		i = next;
++	}
++
++	return out;
++}
++
++std::string TerminalStyle::fit(const std::shared_ptr<Font>& font, const std::string& text, float width)
++{
++	if (font->sizeText(text).x() <= width)
++		return text;
++
++	std::string cut = text;
++	while (!cut.empty() && font->sizeText(cut + "…").x() > width)
++		cut = cut.substr(0, Utils::String::prevCursor(cut, cut.size()));
++
++	return Utils::String::trim(cut) + "…";
++}
++
++Window::PopupStyle TerminalStyle::get(Window* window)
++{
++	Window::PopupStyle style = window->getConsoleStyle();
++	if (style.enabled && style.font != nullptr)
++		return style;
++
++	auto menu = ThemeData::getMenuTheme();
++	float w = (float)Renderer::getScreenWidth();
++	float h = (float)Renderer::getScreenHeight();
++
++	style.enabled = true;
++	style.pos = Vector2f(w / 2, h / 2);
++	style.origin = Vector2f(0.5f, 0.5f);
++	style.size = Vector2f(Math::round(w * 0.894f), Math::round(h * 0.742f));
++	style.font = menu->TextSmall.font ? menu->TextSmall.font : Font::get(FONT_SIZE_SMALL);
++	style.color = menu->Text.color;
++	style.backgroundColor = (menu->Background.color & 0xFFFFFF00) | 0xF6;
++	style.fillColor = menu->Text.selectorColor | 0xFF;
++	style.borderColor = alpha(style.fillColor, 150);
++	style.trackColor = alpha(menu->Text.color, 60);
++	style.trackBorderColor = 0x000000C0;
++	style.cornerRadius = 4;
++	return style;
++}
++
++void TerminalStyle::drawFrame(const Window::PopupStyle& style, float x, float y, float w, float h, float bar, float foot)
++{
++	unsigned int accent = style.fillColor;
++
++	Renderer::setMatrix(Transform4x4f::Identity());
++	Renderer::drawRect(0.0f, 0.0f, (float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight(), style.trackBorderColor);
++
++	for (int i = 3; i > 0; i--)
++		Renderer::drawSolidRectangle(x - i * 2, y - i * 2, w + i * 4, h + i * 4, 0, alpha(accent, 22 * (4 - i)), 2.0f, style.cornerRadius + i * 2);
++
++	Renderer::drawSolidRectangle(x, y, w, h, style.backgroundColor, style.borderColor, 1.0f, style.cornerRadius);
++
++	if (bar > 0)
++		Renderer::drawRect(x + 1, y + bar, w - 2, 1.0f, alpha(accent, 60));
++
++	if (foot > 0)
++		Renderer::drawRect(x + 1, y + h - foot, w - 2, 1.0f, alpha(accent, 60));
++}
++
++void TerminalStyle::drawScanLines()
++{
++	float w = (float)Renderer::getScreenWidth();
++	float h = (float)Renderer::getScreenHeight();
++
++	Renderer::setMatrix(Transform4x4f::Identity());
++	for (float line = 0; line < h; line += 3)
++		Renderer::drawRect(0.0f, line, w, 1.0f, 0x00000022);
++}
++
++void TerminalStyle::TextLayer::clear()
++{
++	for (auto& text : mTexts)
++		delete text.second;
++
++	mTexts.clear();
++}
++
++void TerminalStyle::TextLayer::add(const std::shared_ptr<Font>& font, const std::string& text, float x, float y, unsigned int color)
++{
++	if (!text.empty())
++		mTexts.push_back({ font, font->buildTextCache(text, Math::round(x), Math::round(y), color) });
++}
++
++void TerminalStyle::TextLayer::addRight(const std::shared_ptr<Font>& font, const std::string& text, float right, float y, unsigned int color)
++{
++	add(font, text, right - font->sizeText(text).x(), y, color);
++}
++
++void TerminalStyle::TextLayer::render()
++{
++	for (auto& text : mTexts)
++		text.first->renderTextCache(text.second);
++}
+diff --git a/es-core/src/guis/TerminalStyle.h b/es-core/src/guis/TerminalStyle.h
+new file mode 100644
+index 0000000..a92cf17
+--- /dev/null
++++ b/es-core/src/guis/TerminalStyle.h
+@@ -0,0 +1,50 @@
++#pragma once
++#ifndef ES_CORE_GUIS_TERMINAL_STYLE_H
++#define ES_CORE_GUIS_TERMINAL_STYLE_H
++
++#include "Window.h"
++#include <memory>
++#include <string>
++#include <utility>
++#include <vector>
++
++class Font;
++class TextCache;
++
++// What the screens drawn as a terminal share (the job console, the game switcher, the activity page): the
++// theme's console style or one made from the menu, the window's chrome and its text.
++namespace TerminalStyle
++{
++	unsigned int alpha(unsigned int color, unsigned int a);
++
++	// Letters set apart, as on the title bar of an old terminal
++	std::string spaced(const std::string& text);
++
++	// The text cut to the width, with an ellipsis
++	std::string fit(const std::shared_ptr<Font>& font, const std::string& text, float width);
++
++	// The theme's console element when it styles one, else the menu's colours and font
++	Window::PopupStyle get(Window* window);
++
++	// The dimmed screen, the glow of a phosphor screen, the box and the rules under its title bar and over its footer
++	void drawFrame(const Window::PopupStyle& style, float x, float y, float w, float h, float bar, float foot);
++
++	// Scan lines over everything, barely there
++	void drawScanLines();
++
++	class TextLayer
++	{
++	public:
++		~TextLayer() { clear(); }
++
++		void clear();
++		void add(const std::shared_ptr<Font>& font, const std::string& text, float x, float y, unsigned int color);
++		void addRight(const std::shared_ptr<Font>& font, const std::string& text, float right, float y, unsigned int color);
++		void render();
++
++	private:
++		std::vector<std::pair<std::shared_ptr<Font>, TextCache*>> mTexts;
++	};
++}
++
++#endif // ES_CORE_GUIS_TERMINAL_STYLE_H
+-- 
+2.55.0
+

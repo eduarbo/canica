@@ -39,7 +39,7 @@ def validate(path):
             parts=PurePosixPath(name).parts
             require(parts[0]=="es-theme-canica" and ".." not in parts and len(parts)>1,"unexpected archive root")
             require((z.getinfo(name).external_attr>>28)==8,"unexpected file type")
-            require(name in ("es-theme-canica/card_screens.py","es-theme-canica/Preparar fondos de Canica.sh",*LICENSES) or name.endswith((".png",".ttf","/OFL.txt","/D-DIN-OFL.txt","/theme.xml","/bindings.xml","/gamesplash.xml","/README.md")),"unexpected payload")
+            require(name in ("es-theme-canica/card_screens.py","es-theme-canica/Preparar fondos de Canica.sh",*LICENSES) or name.endswith((".png",".ttf","/fonts/IBMPlexMono-Medium.otf","/OFL.txt","/D-DIN-OFL.txt","/IBMPlexMono-OFL.txt","/theme.xml","/bindings.xml","/gamesplash.xml","/README.md")),"unexpected payload")
         root=ET.fromstring(z.read("es-theme-canica/theme.xml"))
         order=list(root)
         include=root.find("include")
@@ -114,6 +114,11 @@ def validate(path):
         for name in names:
             if name.endswith(".png"): require(z.read(name).startswith(b"\x89PNG\r\n\x1a\n"),"invalid image")
         require(all("es-theme-canica/fonts/"+f in names for f in ("OFL.txt","D-DIN-OFL.txt","D-DINCondensed-Bold.ttf")),"title font or license missing")
+        require(all("es-theme-canica/fonts/"+f in names for f in ("IBMPlexMono-Medium.otf","IBMPlexMono-OFL.txt")),"terminal font or license missing")
+        terminal=root.find(".//view[@name='screen']/notification[@name='console']")
+        require(terminal is not None and terminal.findtext("fontPath").endswith("/IBMPlexMono-Medium.otf")
+                and all(terminal.findtext(k) for k in ("size","color","backgroundColor","borderColor","fillColor","trackColor","trackBorderColor","cornerSize")),
+                "the updater's terminal is not styled")
         require(all(name in names for name in LICENSES),"theme license missing")
         require("es-theme-canica/art/logos/README.md" in names and "es-theme-canica/art/logos/snes.png" in names,"console logos or their credit missing")
         # A stale option or first launch must select a complete baseline.

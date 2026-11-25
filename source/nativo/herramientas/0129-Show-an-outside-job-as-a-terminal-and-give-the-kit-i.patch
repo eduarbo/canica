@@ -1,0 +1,780 @@
+From 38c999198911b4fee7ead53df5808094835745bc Mon Sep 17 00:00:00 2001
+From: Eduardo Ruiz <335073+eduarbo@users.noreply.github.com>
+Date: Tue, 24 Nov 2026 01:43:53 -0800
+Subject: [PATCH] Show an outside job as a terminal and give the kit its menu
+ page
+
+A theme can now style a console: a monospaced window over the dimmed screen that an
+outside job, such as the kit updater, fills through POST /job-console with its steps, a
+gauge and a footer, or with a question of two answers. The screen takes every input, so
+nothing starts under it while the job works, and it leaves by itself when the job goes
+silent. The answer to a question goes to the updater as a request file: the menu runs no
+installer. START gains a Canica page on consoles with the kit's updater: the version, how
+it updates, a search, and the update that is ready.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+---
+ es-app/CMakeLists.txt                    |   2 +
+ es-app/src/CanicaUpdates.cpp             |  50 ++++
+ es-app/src/CanicaUpdates.h               |  23 ++
+ es-app/src/guis/GuiMenu.cpp              |  64 +++++
+ es-app/src/guis/GuiMenu.h                |   1 +
+ es-app/src/services/HttpServerThread.cpp |  64 +++++
+ es-core/CMakeLists.txt                   |   2 +
+ es-core/src/Window.cpp                   |   1 +
+ es-core/src/Window.h                     |   2 +
+ es-core/src/guis/GuiJobConsole.cpp       | 314 +++++++++++++++++++++++
+ es-core/src/guis/GuiJobConsole.h         |  80 ++++++
+ 11 files changed, 603 insertions(+)
+ create mode 100644 es-app/src/CanicaUpdates.cpp
+ create mode 100644 es-app/src/CanicaUpdates.h
+ create mode 100644 es-core/src/guis/GuiJobConsole.cpp
+ create mode 100644 es-core/src/guis/GuiJobConsole.h
+
+diff --git a/es-app/CMakeLists.txt b/es-app/CMakeLists.txt
+index eee09cd..7839ff9 100644
+--- a/es-app/CMakeLists.txt
++++ b/es-app/CMakeLists.txt
+@@ -125,6 +125,7 @@ set(ES_HEADERS
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/animations/MoveCameraAnimation.h
+ 
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/ApiSystem.h # batocera
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/CanicaUpdates.h
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/LibretroRatio.h # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/Win32ApiSystem.h # batocera
+ )
+@@ -245,6 +246,7 @@ set(ES_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/views/UIModeController.cpp
+ 
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/ApiSystem.cpp # batocera
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/CanicaUpdates.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/LibretroRatio.cpp # batocera
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/Win32ApiSystem.cpp # batocera
+ )
+diff --git a/es-app/src/CanicaUpdates.cpp b/es-app/src/CanicaUpdates.cpp
+new file mode 100644
+index 0000000..ba79f26
+--- /dev/null
++++ b/es-app/src/CanicaUpdates.cpp
+@@ -0,0 +1,50 @@
++#include "CanicaUpdates.h"
++
++#include "utils/FileSystemUtil.h"
++#include "utils/StringUtil.h"
++
++#define FOLDER std::string("/userdata/system/canica-updates")
++
++// A reader never sees half a file: written beside it, then renamed over it
++static void replace(const std::string& name, const std::string& text)
++{
++	if (!Utils::FileSystem::exists(FOLDER))
++		return;
++
++	Utils::FileSystem::writeAllText(FOLDER + "/" + name + ".tmp", text + "\n");
++	Utils::FileSystem::renameFile(FOLDER + "/" + name + ".tmp", FOLDER + "/" + name);
++}
++
++std::map<std::string, std::string> CanicaUpdates::status()
++{
++	std::map<std::string, std::string> values;
++
++	if (!Utils::FileSystem::exists(FOLDER + "/status"))
++		return values;
++
++	for (const std::string& row : Utils::String::split(Utils::FileSystem::readAllText(FOLDER + "/status"), '\n', true))
++	{
++		size_t equals = row.find('=');
++		if (equals != std::string::npos && equals > 0)
++			values[row.substr(0, equals)] = Utils::String::trim(row.substr(equals + 1));
++	}
++
++	return values;
++}
++
++std::string CanicaUpdates::mode()
++{
++	std::string mode = Utils::FileSystem::exists(FOLDER + "/mode") ? Utils::String::trim(Utils::FileSystem::readAllText(FOLDER + "/mode")) : "";
++	return mode == "auto" || mode == "off" ? mode : "ask";
++}
++
++void CanicaUpdates::setMode(const std::string& mode)
++{
++	if (mode == "ask" || mode == "auto" || mode == "off")
++		replace("mode", mode);
++}
++
++void CanicaUpdates::request(const std::string& line)
++{
++	replace("request", line);
++}
+diff --git a/es-app/src/CanicaUpdates.h b/es-app/src/CanicaUpdates.h
+new file mode 100644
+index 0000000..68d9759
+--- /dev/null
++++ b/es-app/src/CanicaUpdates.h
+@@ -0,0 +1,23 @@
++#pragma once
++#ifndef ES_APP_CANICA_UPDATES_H
++#define ES_APP_CANICA_UPDATES_H
++
++#include <map>
++#include <string>
++
++// The menu's side of the kit updater, a program outside the frontend. They talk through small files in one
++// folder: the menu reads what the updater found, and leaves it requests. The menu runs no installer itself.
++namespace CanicaUpdates
++{
++	// What the updater last wrote: installed, available, serial, ready, detail. Empty without an updater here.
++	std::map<std::string, std::string> status();
++
++	// ask (before installing), auto or off
++	std::string mode();
++	void setMode(const std::string& mode);
++
++	// One line for the updater: check, mode, install <serial> or later <serial>. A newer one replaces the last.
++	void request(const std::string& line);
++}
++
++#endif // ES_APP_CANICA_UPDATES_H
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index fd6f271..2ee1834 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -1,4 +1,5 @@
+ #include "guis/GuiMenu.h"
++#include "CanicaUpdates.h"
+ 
+ #include "components/OptionListComponent.h"
+ #include "components/SliderComponent.h"
+@@ -205,6 +206,10 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
+ 		addEntry(_("DEVICE SETTINGS"), true, [this] { openDeviceSettings(); }, "iconSystem");
+ #endif
+ 		addEntry(_("SYSTEM SETTINGS").c_str(), true, [this] { openSystemSettings(); }, "iconSystem");
++
++		// The kit's own page, on a console that has the kit's updater
++		if (!CanicaUpdates::status().empty())
++			addEntry("CANICA", true, [this] { openCanicaSettings(); }, "iconUpdates");
+ 	}
+ 	else
+ 	{
+@@ -1244,6 +1249,65 @@ void GuiMenu::openDeveloperSettings()
+ 	mWindow->pushGui(s);
+ }
+ 
++// The kit's version and how it updates. The updater is a program outside the menu: this page shows what it
++// last found and leaves it requests. Its words are Spanish, as the kit's theme: the firmware's catalogue of
++// translations cannot carry new ones.
++void GuiMenu::openCanicaSettings()
++{
++	auto status = CanicaUpdates::status();
++	auto theme = ThemeData::getMenuTheme();
++	Window* window = mWindow;
++	GuiSettings* s = new GuiSettings(mWindow, "CANICA");
++
++	s->addWithLabel("VERSIÓN", std::make_shared<TextComponent>(mWindow, status["installed"], theme->Text.font, theme->Text.color));
++
++	std::string mode = CanicaUpdates::mode();
++	auto modes = std::make_shared<OptionListComponent<std::string>>(mWindow, "ACTUALIZACIONES", false);
++	modes->add("PREGUNTAR", "ask", mode == "ask");
++	modes->add("AUTOMÁTICAS", "auto", mode == "auto");
++	modes->add("DESACTIVADAS", "off", mode == "off");
++	s->addWithDescription("ACTUALIZACIONES", status["detail"], modes);
++	s->addSaveFunc([modes]
++	{
++		if (modes->changed())
++		{
++			CanicaUpdates::setMode(modes->getSelected());
++			CanicaUpdates::request("mode");
++		}
++	});
++
++	// An action leaves its request and closes every menu: the updater answers on the main screen. Closing
++	// destroys the row that runs it, so nothing of the row is used after that.
++	auto leave = [](Window* w, const std::shared_ptr<OptionListComponent<std::string>>& chosen, const std::string& request)
++	{
++		if (chosen->changed())
++			CanicaUpdates::setMode(chosen->getSelected());
++
++		CanicaUpdates::request(request);
++
++		while (w->peekGui() && w->peekGui() != ViewController::get())
++			delete w->peekGui();
++	};
++
++	std::string serial = status["serial"];
++	if (!status["available"].empty() && status["ready"] == "1" && !serial.empty() && serial.find_first_not_of("0123456789") == std::string::npos)
++	{
++		s->addEntry("ACTUALIZAR A " + status["available"], false, [window, modes, serial, leave]
++		{
++			leave(window, modes, "install " + serial);
++		});
++	}
++
++	s->addEntry("BUSCAR ACTUALIZACIÓN", false, [window, modes, leave]
++	{
++		Window* w = window;
++		leave(w, modes, "check");
++		w->displayNotificationMessage("Buscando actualizaciones de Canica…");
++	});
++
++	mWindow->pushGui(s);
++}
++
+ void GuiMenu::openUpdatesSettings()
+ {
+ 	GuiSettings *updateGui = new GuiSettings(mWindow, _("UPDATES & DOWNLOADS").c_str());
+diff --git a/es-app/src/guis/GuiMenu.h b/es-app/src/guis/GuiMenu.h
+index a47fbb5..a51fb5f 100644
+--- a/es-app/src/guis/GuiMenu.h
++++ b/es-app/src/guis/GuiMenu.h
+@@ -52,6 +52,7 @@ private:
+         void openSoundSettings();
+         void openUISettings();
+         void openUpdatesSettings();
++        void openCanicaSettings();
+         
+         void openSystemSettings();
+         void openGamesSettings();       
+diff --git a/es-app/src/services/HttpServerThread.cpp b/es-app/src/services/HttpServerThread.cpp
+index b22d769..44125da 100644
+--- a/es-app/src/services/HttpServerThread.cpp
++++ b/es-app/src/services/HttpServerThread.cpp
+@@ -25,6 +25,8 @@
+ #include "guis/GuiUpdate.h"
+ #include "ContentInstaller.h"
+ #include "components/VideoVlcComponent.h"
++#include "guis/GuiJobConsole.h"
++#include "CanicaUpdates.h"
+ #include "utils/StringUtil.h"
+ 
+ /* 
+@@ -627,6 +629,68 @@ void HttpServerThread::run()
+ 		});
+ 	});
+ 
++	// A terminal screen for an outside job, in themes that style one: the job's steps and a gauge, or a question
++	// with two answers. Body rows: "progress <percent>" or "ask <id>", the title, a tag, the footer, the answers
++	// ("<no>\t<yes>\t<row shown once yes is chosen>", empty for progress), then the log. The answer goes to
++	// the kit updater as the request "later <id>" or "install <id>". The body "close" takes the screen away.
++	mHttpServer->Post("/job-console", [this](const httplib::Request& req, httplib::Response& res)
++	{
++		if (!isAllowed(req, res))
++			return;
++
++		bool closing = req.body == "close";
++		std::vector<std::string> rows = Utils::String::split(req.body, '\n');
++		std::vector<std::string> head = Utils::String::split(rows.empty() ? "" : rows[0], ' ');
++		std::string id = head.size() == 2 ? head[1] : "";
++
++		bool asking = head.size() == 2 && head[0] == "ask" && !id.empty() && id.size() <= 12 && id.find_first_not_of("0123456789") == std::string::npos;
++		bool working = head.size() == 2 && head[0] == "progress" && !id.empty() && id.size() <= 4 && id.find_first_not_of("-0123456789") == std::string::npos;
++		bool sane = rows.size() >= 5 && rows.size() <= 17 && req.body.size() <= 2048;
++
++		for (unsigned char c : req.body)
++			if (c < 0x20 && c != '\n' && c != '\t')
++				sane = false;
++
++		GuiJobConsole::Screen screen;
++		if (!closing && sane && (asking || working))
++		{
++			screen.title = rows[1];
++			screen.tag = rows[2];
++			screen.footer = rows[3];
++			screen.lines.assign(rows.begin() + 5, rows.end());
++
++			if (asking)
++				screen.answers = Utils::String::split(rows[4], '\t');
++			else
++				screen.percent = Utils::String::toInteger(id);
++		}
++
++		if (!closing && (!sane || !(asking || working) || (asking && screen.answers.size() < 2)))
++		{
++			res.set_content("400 bad request - not a console screen", "text/html");
++			res.status = 400;
++			return;
++		}
++
++		if (!closing && !mWindow->getConsoleStyle().enabled)
++		{
++			res.set_content("404 the theme has no console", "text/html");
++			res.status = 404;
++			return;
++		}
++
++		Window* w = mWindow;
++		mWindow->postToUiThread([w, closing, asking, screen, id]()
++		{
++			if (closing)
++				GuiJobConsole::close();
++			else if (asking)
++				GuiJobConsole::show(w, screen, [id](int yes) { CanicaUpdates::request((yes ? "install " : "later ") + id); });
++			else
++				GuiJobConsole::show(w, screen);
++		});
++	});
++
+ 	mHttpServer->Post("/launch", [this](const httplib::Request& req, httplib::Response& res)
+ 	{
+ 		if (!isAllowed(req, res))
+diff --git a/es-core/CMakeLists.txt b/es-core/CMakeLists.txt
+index 19c7278..a62e6a6 100644
+--- a/es-core/CMakeLists.txt
++++ b/es-core/CMakeLists.txt
+@@ -96,6 +96,7 @@ set(CORE_HEADERS
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInputConfig.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiMsgBox.h
+         ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInfoPopup.h # batocera
++        ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiJobConsole.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiTextEditPopup.h
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiTextEditPopupKeyboard.h # batocera
+ 
+@@ -234,6 +235,7 @@ set(CORE_SOURCES
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInputConfig.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiMsgBox.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInfoPopup.cpp # batocera
++    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiJobConsole.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiTextEditPopup.cpp
+ 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiTextEditPopupKeyboard.cpp # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemConf.cpp # batocera
+diff --git a/es-core/src/Window.cpp b/es-core/src/Window.cpp
+index 0799f18..54bb058 100644
+--- a/es-core/src/Window.cpp
++++ b/es-core/src/Window.cpp
+@@ -1657,6 +1657,7 @@ void Window::onThemeChanged(const std::shared_ptr<ThemeData>& theme)
+ 	}
+ 
+ 	mNoticeStyle = readPopupStyle(elem);
++	mConsoleStyle = readPopupStyle(theme->getElement("screen", "console", "notification"));
+ 	mMeterStyle = readPopupStyle(theme->getElement("screen", "meters", "notification"));
+ 
+ 	if (mClock)
+diff --git a/es-core/src/Window.h b/es-core/src/Window.h
+index 0675ebe..50e8758 100644
+--- a/es-core/src/Window.h
++++ b/es-core/src/Window.h
+@@ -151,6 +151,7 @@ public:
+ 	};
+ 
+ 	const PopupStyle& getNoticeStyle() const { return mNoticeStyle; }
++	const PopupStyle& getConsoleStyle() const { return mConsoleStyle; }
+ 	const PopupStyle& getMeterStyle() const { return mMeterStyle; }
+ 
+ 	std::shared_ptr<BatteryIndicatorComponent>	getBatteryIndicator() { return mBatteryIndicator; }
+@@ -227,6 +228,7 @@ private:
+ 
+ 	float mNotificationOffsetY = 0.02f;
+ 	PopupStyle mNoticeStyle;
++	PopupStyle mConsoleStyle;
+ 	PopupStyle mMeterStyle;
+ 
+ 	// The info popups shown at once (a theme's style can cap them; the others wait)
+diff --git a/es-core/src/guis/GuiJobConsole.cpp b/es-core/src/guis/GuiJobConsole.cpp
+new file mode 100644
+index 0000000..1e81a31
+--- /dev/null
++++ b/es-core/src/guis/GuiJobConsole.cpp
+@@ -0,0 +1,314 @@
++#include "guis/GuiJobConsole.h"
++
++#include "renderers/Renderer.h"
++#include "resources/Font.h"
++#include "utils/StringUtil.h"
++#include "InputConfig.h"
++#include "LocaleES.h"
++#include "PowerSaver.h"
++#include "Window.h"
++
++#define CELLS 40
++#define QUIET_LIMIT 180000		// a job that says nothing for this long is gone: the menu comes back
++#define TAKEOVER_LIMIT 45000	// and so is one that does not take over after a yes
++
++GuiJobConsole* GuiJobConsole::sInstance = nullptr;
++
++static unsigned int alpha(unsigned int color, unsigned int a)
++{
++	return (color & 0xFFFFFF00) | (((color & 0xFF) * a) / 255);
++}
++
++// Letters set apart, as on the title bar of an old terminal
++static std::string spaced(const std::string& text)
++{
++	std::string out;
++
++	for (size_t i = 0; i < text.size(); )
++	{
++		size_t next = Utils::String::nextCursor(text, i);
++		out += text.substr(i, next - i);
++		if (next < text.size())
++			out += ' ';
++
++		i = next;
++	}
++
++	return out;
++}
++
++void GuiJobConsole::show(Window* window, const Screen& screen, const std::function<void(int)>& onAnswer)
++{
++	if (sInstance == nullptr)
++	{
++		window->cancelScreenSaver();
++		sInstance = new GuiJobConsole(window);
++		window->pushGui(sInstance);
++	}
++
++	sInstance->set(screen, onAnswer);
++}
++
++void GuiJobConsole::close()
++{
++	if (sInstance != nullptr)
++		delete sInstance;
++}
++
++GuiJobConsole::GuiJobConsole(Window* window) : GuiComponent(window),
++	mFocus(0), mQuiet(0), mQuietLimit(QUIET_LIMIT), mBlink(0), mBar(0), mFoot(0)
++{
++	setSize((float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight());
++	PowerSaver::pause();	// the cursor blinks and a silent job is timed
++}
++
++GuiJobConsole::~GuiJobConsole()
++{
++	clear();
++	PowerSaver::resume();
++
++	if (sInstance == this)
++		sInstance = nullptr;
++}
++
++void GuiJobConsole::set(const Screen& screen, const std::function<void(int)>& onAnswer)
++{
++	mScreen = screen;
++	mOnAnswer = onAnswer;
++	mFocus = 0;
++	mQuiet = 0;
++	mQuietLimit = QUIET_LIMIT;
++
++	layout();
++	updateHelpPrompts();
++}
++
++void GuiJobConsole::clear()
++{
++	for (auto& text : mTexts)
++		delete text.cache;
++
++	mTexts.clear();
++}
++
++void GuiJobConsole::add(const std::shared_ptr<Font>& font, const std::string& text, float x, float y, unsigned int color)
++{
++	if (!text.empty())
++		mTexts.push_back({ font, font->buildTextCache(text, Math::round(x), Math::round(y), color) });
++}
++
++void GuiJobConsole::layout()
++{
++	clear();
++	mCursor = mGauge = mButtons[0] = mButtons[1] = Vector4f(0, 0, 0, 0);
++
++	const Window::PopupStyle& style = mWindow->getConsoleStyle();
++	if (!style.enabled || style.font == nullptr)
++		return;
++
++	mFont = style.font;
++	mSmallFont = Font::get(Math::max(8, (int)Math::round(mFont->getSize() * 0.74f)), mFont->getPath());
++
++	float x = Math::round(style.pos.x() - style.size.x() * style.origin.x());
++	float y = Math::round(style.pos.y() - style.size.y() * style.origin.y());
++	float w = style.size.x();
++	float h = style.size.y();
++	mBox = Vector4f(x, y, w, h);
++
++	float ch = mFont->sizeText("0").x();	// one cell of the monospaced grid
++	float line = mFont->getHeight(1.0f);
++	float row = Math::round(line * 1.5f);
++	float small = mSmallFont->getHeight(1.0f);
++	float pad = Math::round(ch * 2);
++	mBar = Math::round(small * 2.3f);
++	mFoot = Math::round(small * 2.6f);
++
++	unsigned int ink = style.color;
++	unsigned int muted = alpha(ink, 150);
++	unsigned int accent = style.fillColor;
++
++	// the title bar: what this is, and from which version to which
++	add(mSmallFont, spaced(mScreen.title), x + pad, y + (mBar - small) / 2, muted);
++	add(mSmallFont, mScreen.tag, x + w - pad - mSmallFont->sizeText(mScreen.tag).x(), y + (mBar - small) / 2, accent);
++
++	// the log: a prompt, the steps done and the one under way with its cursor
++	float label = x + pad + ch * 2;
++	float value = label + ch * 12;
++	float ty = y + mBar + Math::round(row * 0.6f);
++
++	for (const std::string& text : mScreen.lines)
++	{
++		std::vector<std::string> cols = Utils::String::split(text, '\t');
++
++		if (cols.size() < 2 && Utils::String::startsWith(text, "$ "))
++		{
++			add(mFont, "$", x + pad, ty, accent);
++			add(mFont, text.substr(2), label, ty, ink);
++		}
++		else if (cols.size() < 2)
++			add(mFont, text, label, ty, muted);
++		else if (cols.size() > 2)
++		{
++			add(mFont, cols[0], label, ty, muted);
++			add(mFont, cols[1], value, ty, alpha(ink, 215));
++			add(mFont, cols[2], x + w - pad - mFont->sizeText(cols[2]).x(), ty, accent);
++		}
++		else
++		{
++			add(mFont, ">", x + pad, ty, accent);
++			add(mFont, cols[0], label, ty, ink);
++			add(mFont, cols[1], value, ty, ink);
++			mCursor = Vector4f(Math::round(value + mFont->sizeText(cols[1]).x() + ch * 0.6f), ty + Math::round(line * 0.1f), Math::round(ch), Math::round(line * 0.86f));
++		}
++
++		ty += row;
++	}
++
++	// above the footer: the two answers of a question, or the gauge
++	float gy = y + h - mFoot - Math::round(row * 1.7f);
++
++	if (mScreen.answers.size() >= 2)
++	{
++		float bx = label;
++		float bh = Math::round(row * 1.3f);
++
++		for (int i = 0; i < 2; i++)
++		{
++			float bw = Math::round(mFont->sizeText(mScreen.answers[i]).x() + ch * 4);
++			mButtons[i] = Vector4f(bx, gy - Math::round(row * 0.3f), bw, bh);
++			add(mFont, mScreen.answers[i], bx + ch * 2, gy - Math::round(row * 0.3f) + (bh - line) / 2, i == mFocus ? style.backgroundColor | 0xFF : accent);
++			bx += bw + ch * 2;
++		}
++	}
++	else if (mScreen.percent >= 0)
++	{
++		std::string percent = std::to_string(Math::min(mScreen.percent, 100)) + " %";
++		float cell = (float)(int)((w - pad * 2 - ch * 2 - ch * 7) / CELLS);
++
++		mGauge = Vector4f(label, gy, Math::max(3.0f, cell), Math::round(row * 0.6f));
++		add(mFont, percent, x + w - pad - mFont->sizeText(percent).x(), gy - (line - row * 0.6f) / 2, ink);
++	}
++
++	add(mSmallFont, spaced(mScreen.footer), x + pad, y + h - mFoot + (mFoot - small) / 2, accent);
++}
++
++bool GuiJobConsole::input(InputConfig* config, Input input)
++{
++	if (mScreen.answers.size() >= 2 && input.value != 0)
++	{
++		if (config->isMappedLike("left", input) || config->isMappedLike("right", input))
++		{
++			mFocus = 1 - mFocus;
++			layout();
++		}
++		else if (config->isMappedTo(BUTTON_OK, input))
++			answer(mFocus);
++		else if (config->isMappedTo(BUTTON_BACK, input))
++			answer(0);
++	}
++
++	return true;	// nothing under this screen may start while the job works
++}
++
++void GuiJobConsole::answer(int index)
++{
++	auto told = mOnAnswer;
++
++	if (index == 0)
++	{
++		delete this;
++
++		if (told)
++			told(0);
++
++		return;
++	}
++
++	// The job takes over from here: its next word replaces this screen
++	Screen next = mScreen;
++	if (mScreen.answers.size() > 2)
++	{
++		std::vector<std::string> row(mScreen.answers.begin() + 2, mScreen.answers.end());
++		next.lines.push_back(Utils::String::join(row, "\t"));
++	}
++
++	next.answers.clear();
++	set(next, nullptr);
++	mQuietLimit = TAKEOVER_LIMIT;
++
++	if (told)
++		told(1);
++}
++
++void GuiJobConsole::update(int deltaTime)
++{
++	mBlink += deltaTime;
++	mQuiet += deltaTime;
++
++	// A question waits for its answer. A job that went silent does not keep the menu.
++	if (mScreen.answers.size() < 2 && mQuiet > mQuietLimit)
++	{
++		mQuiet = 0;
++		mWindow->postToUiThread([] { GuiJobConsole::close(); });
++	}
++}
++
++void GuiJobConsole::render(const Transform4x4f& /*parentTrans*/)
++{
++	const Window::PopupStyle& style = mWindow->getConsoleStyle();
++	if (!style.enabled || mFont == nullptr)
++		return;
++
++	float sw = (float)Renderer::getScreenWidth();
++	float sh = (float)Renderer::getScreenHeight();
++	float x = mBox.x(), y = mBox.y(), w = mBox.z(), h = mBox.w();
++	unsigned int accent = style.fillColor;
++
++	Renderer::setMatrix(Transform4x4f::Identity());
++	Renderer::drawRect(0.0f, 0.0f, sw, sh, style.trackBorderColor);
++
++	// the glow of a phosphor screen, then the window with its two rules
++	for (int i = 3; i > 0; i--)
++		Renderer::drawSolidRectangle(x - i * 2, y - i * 2, w + i * 4, h + i * 4, 0, alpha(accent, 22 * (4 - i)), 2.0f, style.cornerRadius + i * 2);
++
++	Renderer::drawSolidRectangle(x, y, w, h, style.backgroundColor, style.borderColor, 1.0f, style.cornerRadius);
++	Renderer::drawRect(x + 1, y + mBar, w - 2, 1.0f, alpha(accent, 60));
++	Renderer::drawRect(x + 1, y + h - mFoot, w - 2, 1.0f, alpha(accent, 60));
++
++	if (mGauge.z() > 0)
++	{
++		int full = (int)Math::round(CELLS * Math::min(mScreen.percent, 100) / 100.0f);
++
++		for (int i = 0; i < CELLS; i++)
++			Renderer::drawRect(mGauge.x() + i * mGauge.z(), mGauge.y(), Math::max(1.0f, mGauge.z() - 3), mGauge.w(), i < full ? accent : style.trackColor);
++	}
++
++	for (int i = 0; i < 2; i++)
++		if (mButtons[i].z() > 0)
++			Renderer::drawSolidRectangle(mButtons[i].x(), mButtons[i].y(), mButtons[i].z(), mButtons[i].w(),
++				i == mFocus ? accent : 0, i == mFocus ? accent : alpha(accent, 150), 1.0f, 2.0f);
++
++	if (mCursor.z() > 0 && (mBlink / 530) % 2 == 0)
++		Renderer::drawRect(mCursor.x(), mCursor.y(), mCursor.z(), mCursor.w(), accent);
++
++	for (auto& text : mTexts)
++		text.font->renderTextCache(text.cache);
++
++	// scan lines over everything, barely there
++	for (float line = 0; line < sh; line += 3)
++		Renderer::drawRect(0.0f, line, sw, 1.0f, 0x00000022);
++}
++
++std::vector<HelpPrompt> GuiJobConsole::getHelpPrompts()
++{
++	std::vector<HelpPrompt> prompts;
++
++	if (mScreen.answers.size() >= 2)
++	{
++		prompts.push_back(HelpPrompt("left/right", _("CHOOSE")));
++		prompts.push_back(HelpPrompt(BUTTON_OK, _("SELECT")));
++		prompts.push_back(HelpPrompt(BUTTON_BACK, mScreen.answers[0]));
++	}
++
++	return prompts;
++}
+diff --git a/es-core/src/guis/GuiJobConsole.h b/es-core/src/guis/GuiJobConsole.h
+new file mode 100644
+index 0000000..b9c320c
+--- /dev/null
++++ b/es-core/src/guis/GuiJobConsole.h
+@@ -0,0 +1,80 @@
++#pragma once
++#ifndef ES_CORE_GUIS_GUI_JOB_CONSOLE_H
++#define ES_CORE_GUIS_GUI_JOB_CONSOLE_H
++
++#include "GuiComponent.h"
++#include "math/Vector4f.h"
++#include <functional>
++#include <memory>
++#include <string>
++#include <vector>
++
++class Font;
++class TextCache;
++
++// A terminal window over the dimmed screen while an outside job works, such as the kit updater: its steps as a
++// log, a gauge and a footer; or a question with two answers. It takes every input, so nothing starts under it.
++// Its look and place come from the theme: the "console" notification element of the screen view.
++class GuiJobConsole : public GuiComponent
++{
++public:
++	struct Screen
++	{
++		Screen() : percent(-1) {}
++
++		std::string title;
++		std::string tag;
++		std::string footer;
++		std::vector<std::string> lines;		// "$ command", "label\tvalue\tok" (done) or "label\tvalue" (under way)
++		int percent;						// below 0: no gauge
++		std::vector<std::string> answers;	// a question: two labels, the first one focused, then the fields of
++											// the row shown while the job takes over after the second answer
++	};
++
++	// On the UI thread. show() opens the console or replaces what it says; onAnswer gets 0 or 1.
++	static void show(Window* window, const Screen& screen, const std::function<void(int)>& onAnswer = nullptr);
++	static void close();
++
++	~GuiJobConsole();
++
++	bool input(InputConfig* config, Input input) override;
++	void update(int deltaTime) override;
++	void render(const Transform4x4f& parentTrans) override;
++	std::vector<HelpPrompt> getHelpPrompts() override;
++
++private:
++	GuiJobConsole(Window* window);
++
++	struct Text
++	{
++		std::shared_ptr<Font> font;
++		TextCache* cache;
++	};
++
++	void set(const Screen& screen, const std::function<void(int)>& onAnswer);
++	void layout();
++	void clear();
++	void add(const std::shared_ptr<Font>& font, const std::string& text, float x, float y, unsigned int color);
++	void answer(int index);
++
++	static GuiJobConsole* sInstance;
++
++	Screen mScreen;
++	std::function<void(int)> mOnAnswer;
++	int mFocus;
++	int mQuiet;			// ms since the job last said something
++	int mQuietLimit;
++	int mBlink;
++
++	std::shared_ptr<Font> mFont;
++	std::shared_ptr<Font> mSmallFont;
++	std::vector<Text> mTexts;
++	Vector4f mBox;
++	float mBar;
++	float mFoot;
++	Vector4f mCursor;		// the block after the step under way; no width: none
++	Vector4f mGauge;		// x, y, cell pitch, cell height; no pitch: none
++	Vector4f mButtons[2];
++};
++
++#endif // ES_CORE_GUIS_GUI_JOB_CONSOLE_H
+-- 
+2.55.0
+

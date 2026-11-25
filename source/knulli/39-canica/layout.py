@@ -17,6 +17,7 @@ ART = ROOT + "/art/"
 LOOK = ART + "${look}/"
 FONT = ROOT + "/fonts/Roboto-"
 DISPLAY_FONT = ROOT + "/fonts/D-DINCondensed-Bold.ttf"
+MONO_FONT = ROOT + "/fonts/IBMPlexMono-Medium.otf"
 UTILS = ("tools", "emulators", "imageviewer")
 UTILITY = " || ".join("{system.name} == '" + name + "'" for name in UTILS)
 GAMES = "!({system:theme} == 'tools' || {system:theme} == 'emulators' || {system:theme} == 'imageviewer')"

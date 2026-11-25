@@ -13,10 +13,11 @@ from xml.etree import ElementTree as ET
 import theme_options as setting
 from artwork import generate
 from games import card_sizes, games, save_cards, tile_badge_geometry
-from layout import (ART, CAT, COL, FONT, HERE, HOME, KIT, LOOK, RED, element, option, prop,
+from switcher import game_switcher
+from layout import (ART, CAT, COL, FONT, HERE, HOME, KIT, LOOK, MONO_FONT, RED, element, option, prop,
                     system_data, systems, variables, view)
 
-VERSION="1.0.1-rc35"
+VERSION="1.0.1-rc36"
 KIT["label"]=VERSION.rsplit("-",1)[-1].upper()
 # The theme and its art are CC BY-SA 4.0; the project's own code is MIT.
 LICENSES=("CC-BY-SA-4.0.txt","MIT.txt")
@@ -46,12 +47,22 @@ def make_screen(root):
                       "borderColor":"${ctaInk}","iconPath":LOOK+"notice.png","iconSize":"0.03750"}.items():
         notice.find(tag).text=value
 
+    game_switcher(screen)
+
     meter=screen.find("notification[@name='meters']")
     for tag,value in {"size":"0.08125 0.316667","iconSize":"0.03750","fontSize":"0.02552",
                       "color":"${ctaInk}","backgroundColor":"${accent}","borderColor":"${ctaInk}",
                       "trackColor":"${meterTrack}","fillColor":"${ctaInk}"}.items():
         meter.find(tag).text=value
     prop(meter,"trackBorderColor","${ctaInk}")
+    # The updater's terminal: a monospaced window over the dimmed screen, lit in the palette's accent.
+    # fillColor is that light (prompts, gauge, focus), trackColor the unlit gauge, trackBorderColor the dimming.
+    console=ET.SubElement(screen,"notification",{"name":"console"})
+    for tag,value in {"pos":"0.5 0.5","origin":"0.5 0.5","size":"0.89375 0.741667","fontPath":MONO_FONT,
+                      "fontSize":"0.03125","color":"${ink}","backgroundColor":"${top}f6","borderColor":"${accent}96",
+                      "fillColor":"${accent}","trackColor":"${rail}96","trackBorderColor":"${canvas}de",
+                      "cornerSize":"${consoleCorner}"}.items():
+        prop(console,tag,value)
 
 
 def make_menu(root, dest, palettes):
@@ -134,7 +145,7 @@ def build(dest):
     fonts.mkdir()
     for name in ("Roboto-Regular.ttf","Roboto-Bold.ttf","Roboto-Black.ttf","Roboto-SemiBold.ttf","Roboto-Medium.ttf","Roboto-ExtraBold.ttf","OFL.txt"):
         shutil.copyfile(RED/"fonts"/name,fonts/name)
-    for asset in ("D-DINCondensed-Bold.ttf","D-DIN-OFL.txt"):
+    for asset in ("D-DINCondensed-Bold.ttf","D-DIN-OFL.txt","IBMPlexMono-Medium.otf","IBMPlexMono-OFL.txt"):
         shutil.copyfile(HERE/"fonts"/asset,fonts/asset)
     # Console logos from Art Book Next (CC BY-NC-SA 2.0), with their credit; see logos/README.md.
     shutil.copytree(HERE/"logos", dest/"art/logos")
@@ -164,6 +175,7 @@ def build(dest):
     variables(root,{"animateSystems":"0","stillSystems":"1"},ifSubset=f"{setting.MOTION}:fijas")
     for index,(key,p) in enumerate(palettes.items()):
         tokens={k:p[k] for k in ("canvas","panel","top","ink","muted","accent","rail","cardWash","frameCorner","tileRadius","ctaInk","meterTrack","menuGroup","menuLine")}
+        tokens["consoleCorner"]=f"{int(p['tileRadius'])/480:.5f}"
         variables(root,{"look":key,**tokens},**({"ifSubset":f"{setting.STYLE}:{key}"} if index else {}))
     variables(root,{"videoDelay":"450"})
     variables(root,{"videoDelay":"-1"},ifSubset=f"{setting.VIDEO}:no")

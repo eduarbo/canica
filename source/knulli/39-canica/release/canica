@@ -3,6 +3,7 @@
 set -eu
 pack=/userdata/system/canica
 run=/var/run/canica
+updates=/userdata/system/canica-updates
 target=/usr/bin/emulationstation
 stock=$run/emulationstation.stock
 sha_stock=d02c1f349952151ba5cd5b67125e848e95279483230d1582203efd44cf37af64
@@ -16,8 +17,17 @@ die() {
 }
 same() { test -e "$1" && test "$1" -ef "$2"; }
 digest() { sha256sum "$1" | cut -d' ' -f1; }
+# The kit whose menu did not start on this console: the updater leaves its inventory digest here.
+held() { [ -f "$updates/hold" ] && [ "$(tr -d ' \n' <"$updates/hold")" = "$(digest "$pack/SHA256SUMS")" ]; }
 
 start() {
+    # Before any check: the updater brings the next kit even when this one cannot run. It keeps
+    # one loop by itself and must not inherit this service's lock.
+    # The guard (FN + SELECT in a game, the battery running out) keeps one loop by itself too.
+    for job in updater guard; do
+        [ -f "$pack/$job.py" ] || continue
+        ( exec 9>&-; setsid python3 -I "$pack/$job.py" loop </dev/null >/dev/null 2>&1 & )
+    done
     [ "$(tr -d '\000' </proc/device-tree/model)" = "Anbernic RG35XX-H" ] || die "Modelo incompatible"
     [ "$(cat /usr/share/knulli/knulli.version)" = "$version" ] || die "Versión de Scarab incompatible"
     services=$(knulli-settings-get system.services) || die "No se pudieron leer los servicios de KNULLI"
@@ -31,6 +41,10 @@ start() {
         touch "$run/resume.enabled"
     fi
     if same "$run/launcher" "$target"; then return 0; fi
+    if held; then
+        log "Esta versión no arrancó en esta consola: sigue el menú de fábrica hasta la siguiente"
+        return 0
+    fi
     [ "$(digest "$target")" = "$sha_stock" ] || die "El frontend de fábrica no coincide"
     # Check the whole transfer before taking over. Settings and library data stay outside this manifest.
     [ "$(digest "$pack/SHA256SUMS")" = "@INVENTORY_SHA256@" ] || die "Índice de archivos incompleto"
@@ -93,6 +107,8 @@ status() {
         if [ "$active" = yes ]; then echo "Canica en ejecución"; else echo "Canica preparado para el siguiente inicio del menú"; fi
     elif [ "$active" = yes ]; then
         echo "Canica sigue en ejecución hasta que reinicies el menú"
+    elif held; then
+        echo "Canica retenido: esta versión no arrancó aquí y se espera la siguiente"
     else
         echo "Servicio Canica inactivo"
     fi

@@ -4,7 +4,7 @@ Canica es el tema de mi RG35XX H y usa mi fork de EmulationStation. La configura
 
 ## Instalar Canica
 
-Copia el instalador completo de RC35 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc35-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
+Copia el instalador completo de RC36 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc36-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
 
 ## Ajustes
 
@@ -18,6 +18,22 @@ Copia el instalador completo de RC35 a `roms/tools` dentro de la unidad comparti
 
 KNULLI también ofrece **Tamaño pred. de cuadrícula**. Déjalo en **Automático** para respetar el tamaño de tarjetas del tema y las tres columnas de PICO-8. Una cuadrícula manual global o por sistema tiene prioridad.
 
+## Actualizaciones
+
+Canica se mantiene al día por sí mismo. Con el servicio activo, consulta en GitHub si hay una versión nueva al arrancar y después cada seis horas: descarga un archivo pequeño firmado desde `github.com/eduarbo/knulli-console-bundles` y, si hay versión, su instalador. No envía ningún dato de la consola ni de tu biblioteca. La primera vez lo avisa en pantalla.
+
+Una versión sólo se usa si su firma coincide con una de las llaves públicas que trae el kit instalado y corresponde a esta consola y a este firmware. Antes de ofrecértela, su instalador comprueba que cabe y que no pisa ningún archivo que hayas cambiado.
+
+En **START → Canica** eliges cómo actualizar:
+
+- **Preguntar** (por defecto): cuando hay versión, una pantalla te pregunta si actualizar ahora o más tarde. Si eliges más tarde, la versión queda disponible en ese mismo menú.
+- **Automáticas**: se instala sola dos días después de publicarse, al arrancar o con el cargador conectado, nunca durante un juego.
+- **Desactivadas**: no consulta nada hasta que pulses **Buscar actualización**.
+
+Actualizar tarda alrededor de un minuto y reinicia el menú; no toca partidas, ajustes ni tu biblioteca. Si una versión nueva no llegara a arrancar, la consola vuelve sola al menú de fábrica y espera a la siguiente.
+
+También puedes cambiar el modo sin el menú: el archivo `system/canica-updates/mode` de la unidad compartida `share` contiene `ask`, `auto` u `off`. Apagar el servicio Canica en Servicios detiene el tema y sus actualizaciones. El registro está en `system/logs/canica-updates.log`.
+
 ## Controles
 
 - Inicio usa derecha para enfocar las consolas. En las tarjetas, izquierda y derecha cambian la selección en círculo. A abre y B vuelve.
@@ -26,6 +42,17 @@ KNULLI también ofrece **Tamaño pred. de cuadrícula**. Déjalo en **Automátic
 - **A · Jugar.** En la lista, A inicia el juego seleccionado con la reanudación configurada. Para cambiar favoritos, mantén A y elige la acción en Opciones del juego.
 - **X · Partidas.** Elige «Nueva partida» para arrancar desde el inicio o una ranura para retomar ese momento. Las tarjetas muestran la captura completa, con la ranura y la fecha sobre el degradado inferior. Una ranura sin imagen conserva su fecha y muestra el icono de guardado. Cuando existe un autoguardado, aparece con su fecha y hora. Las partidas de hoy y ayer muestran el día en palabras y la hora local en formato de 24 horas. Las anteriores muestran día y mes, además del año si es distinto del actual. En juegos que guardan el avance dentro del propio juego, la ficha indica dónde cargarlo. En la vista de consolas, X continúa la partida o abre la sugerencia que muestra la ficha.
 - FN + A continúa el último juego en instalaciones que tengan ese atajo habilitado. El triángulo de la barra superior identifica ese juego. «Últimos jugados» abre Extras y recorre el historial del más reciente al más antiguo. «Todos los juegos» y «Sugerencias del chef» recorren su colección en orden aleatorio. Con las fichas animadas, el siguiente juego aparece al terminar el vídeo. Un juego sin vídeo muestra su imagen durante ocho segundos. En Extras, la línea encima de la imagen identifica la consola del juego visible. En la ficha de cada consola, el recorrido comienza por su último juego y sigue por los anteriores. Si sólo hay uno jugado, continúa con sugerencias de esa consola. X abre ese juego. Los controles de brillo y volumen muestran un medidor vertical en el lateral derecho, lavanda en Iris y dorado en Ámbar.
+- **FN + SELECT · Continuar.** Muestra tus últimos quince juegos, uno a la vez, con la captura de su partida automática. Izquierda y derecha los recorren; A continúa justo donde quedó; B vuelve. Durante un juego, FN + SELECT lo cierra guardando su partida automática y abre la misma pantalla para cambiar de juego. Si ese juego no guarda partida automática, la consola vibra dos veces y el juego sigue abierto. También está en START → Canica.
+
+## Actividad
+
+**START → Canica → Actividad** muestra el tiempo total de juego, cuántos juegos jugaste y cuántas veces, tus horas de los últimos siete días, la racha de días seguidos, los siete juegos más jugados y tu hora y día favoritos. El tiempo de cada juego aparece también en su ficha.
+
+El tiempo cuenta sólo con la consola despierta: un juego suspendido no suma horas. Las sesiones se anotan en la tarjeta, en `system/canica-activity/sessions.tsv`, para contar días, rachas y horas; los totales usan el tiempo que el menú ya guardaba de cada juego. Nada de esto sale de la consola.
+
+## Batería
+
+Cuando la batería se agota, Canica guarda la partida y apaga la consola antes de que se corte sola: cierra el juego como lo hace el sistema, lo que escribe su partida automática, y al volver a encender el «Reanudar rápido» de KNULLI te deja donde estabas. Avisa una vez en el menú al 5 %. Actúa sólo descargando, tras tres lecturas seguidas en el 2 % o menos, o bajo 3,40 V, y nunca en los dos primeros minutos tras encender. El registro está en `system/logs/canica-guard.log`.
 
 ## Biblioteca y personalización
 
@@ -33,7 +60,7 @@ Canica lee las capturas, vídeos, carátulas, favoritos, puntuaciones y estadís
 
 El corazón indica favorito. De cinco estrellas se encienden, de izquierda a derecha, una por debajo de 40 puntos, dos desde 40, tres desde 60, cuatro desde 80 y cinco desde 90, según la puntuación redondeada del catálogo. Si falta la puntuación, la ficha muestra las cinco apagadas y la tarjeta oculta las estrellas. Un degradado cubre la parte superior de cada tarjeta, con la partida guardada seguida del corazón en el extremo derecho. Los iconos son más pequeños en densidad compacta. El título y los marcadores recuperan su contraste al salir del vídeo. Herramientas y Emuladores comparten pictogramas transparentes entre tarjeta y ficha. Para personalizar uno, guarda un PNG en `/userdata/decorations/canica/utility-icons/<variante>/<nombre de imagen original sin extensión>.png`. Las fichas reservan las mismas posiciones para los datos ausentes y centran el arte vertical y horizontal.
 
-Los títulos usan D-DIN Condensed Bold de Datto ([fuente original](https://github.com/amcchord/datto-d-din/tree/e199c8441e758d6e492cd01ef52c3c67ba4bae26)), con su licencia en `fonts/D-DIN-OFL.txt`. Roboto se distribuye con la licencia incluida en `fonts/OFL.txt`. Los elementos visuales del tema y los controles se generaron para este proyecto. Las imágenes de los juegos y los logotipos aportados por cada instalación permanecen en su biblioteca. El tema no incluye ROMs, BIOS, capturas comerciales ni archivos de configuración personales.
+Los títulos usan D-DIN Condensed Bold de Datto ([fuente original](https://github.com/amcchord/datto-d-din/tree/e199c8441e758d6e492cd01ef52c3c67ba4bae26)), con su licencia en `fonts/D-DIN-OFL.txt`. Roboto se distribuye con la licencia incluida en `fonts/OFL.txt`. La pantalla de actualización usa IBM Plex Mono Medium 2.005 de IBM, sin modificar, con su licencia en `fonts/IBMPlexMono-OFL.txt`. Los elementos visuales del tema y los controles se generaron para este proyecto. Las imágenes de los juegos y los logotipos aportados por cada instalación permanecen en su biblioteca. El tema no incluye ROMs, BIOS, capturas comerciales ni archivos de configuración personales.
 
 Canica © 2026 Eduardo Ruiz Macias. El tema y su arte se distribuyen bajo CC BY-SA 4.0 (`licencias/CC-BY-SA-4.0.txt`), salvo los logos de consola de `art/logos`, que son de Art Book Next bajo CC BY-NC-SA 2.0 (`art/logos/README.md`), y el código propio bajo la licencia MIT (`licencias/MIT.txt`). Los componentes de terceros conservan sus avisos y licencias.
 
