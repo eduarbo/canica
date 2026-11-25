@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from PIL import Image, ImageEnhance, ImageOps, ImageStat, UnidentifiedImageError
+from PIL import Image, ImageEnhance, ImageOps, UnidentifiedImageError
 
 COUNT = 5
 FRAME = (144, 140)
@@ -83,7 +83,9 @@ def candidates(system, theme):
     return [row[2] for row in result]
 
 
-def display_image(source, theme, bounds, keep_ds=False):
+def display_image(source, theme, bounds, keep_ds=False, cover=False):
+    """The capture at its console's display aspect, inside bounds; with cover, at least as large as bounds in
+    both directions (the caller cuts it)."""
     with Image.open(source) as src:
         im = src.convert("RGB")
     w, h = im.size
@@ -118,8 +120,15 @@ def display_image(source, theme, bounds, keep_ds=False):
         saturation = {"gba": 0.8, "gbc": 0.88, "nds": 0.9}.get(theme, 0.92)
         im = ImageEnhance.Color(im).enhance(saturation)
     max_width, max_height = bounds
-    width = max(1, min(max_width, round(max_height * aspect)))
-    height = max(1, min(max_height, round(width / aspect)))
+    if cover and aspect >= max_width / max_height:
+        height = max_height
+        width = max(max_width, round(max_height * aspect))
+    elif cover:
+        width = max_width
+        height = max(max_height, round(max_width / aspect))
+    else:
+        width = max(1, min(max_width, round(max_height * aspect)))
+        height = max(1, min(max_height, round(width / aspect)))
     return im.resize(
         (width, height),
         Image.Resampling.LANCZOS
@@ -129,14 +138,11 @@ def display_image(source, theme, bounds, keep_ds=False):
 
 
 def screen(source, theme):
-    resized = display_image(source, theme, (134, 130))
-    width, height = resized.size
-    # Extend only the matte. The entire game screen remains centred and keeps its display aspect.
-    fill = ImageStat.Stat(resized.resize((1, 1))).mean
-    matte = tuple(int(v * 0.34) for v in fill)
-    canvas = Image.new("RGB", FRAME, matte)
-    canvas.paste(resized, ((FRAME[0] - width) // 2, (FRAME[1] - height) // 2))
-    return canvas
+    # A console card's background: the game screen at its display aspect, scaled to cover the whole card and
+    # cut from the centre, so no band of the card is left without picture.
+    shown = display_image(source, theme, FRAME, cover=True)
+    left, top = (shown.width - FRAME[0]) // 2, (shown.height - FRAME[1]) // 2
+    return shown.crop((left, top, left + FRAME[0], top + FRAME[1]))
 
 
 def prepare_game_cards(share, systems):

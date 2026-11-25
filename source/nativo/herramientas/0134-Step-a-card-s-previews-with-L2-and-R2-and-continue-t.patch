@@ -1,0 +1,143 @@
+From 5e123f70c0967938fcb9a5b8ef6ba46f44871179 Mon Sep 17 00:00:00 2001
+From: Eduardo Ruiz <335073+eduarbo@users.noreply.github.com>
+Date: Wed, 25 Nov 2026 14:02:35 -0800
+Subject: [PATCH] Step a card's previews with L2 and R2, and continue the last
+ game with FN + START
+
+On a focused card whose panel goes through several previews (a console's
+play history, a collection's games), L2 and R2 show the previous or next one
+at once instead of waiting for the shown one to end; elsewhere they still
+page the cards. The chord that continues the last game moves from FN + A to
+FN + START, claimed before START opens the menu.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ es-app/src/HomeSlides.cpp           |  9 +++++++++
+ es-app/src/HomeSlides.h             |  4 ++++
+ es-app/src/SystemData.cpp           | 18 ++++++++++++++++++
+ es-app/src/SystemData.h             |  2 ++
+ es-app/src/views/SystemView.cpp     | 16 +++++++++++++++-
+ es-app/src/views/ViewController.cpp |  5 +++--
+ 6 files changed, 51 insertions(+), 3 deletions(-)
+
+diff --git a/es-app/src/HomeSlides.cpp b/es-app/src/HomeSlides.cpp
+index 8b070a4..c9c19ab 100644
+--- a/es-app/src/HomeSlides.cpp
++++ b/es-app/src/HomeSlides.cpp
+@@ -235,4 +235,13 @@ namespace HomeSlides
+ 		mIndex = 0;
+ 		return true;
+ 	}
++
++	bool Deck::previous()
++	{
++		if (mItems.size() < 2)
++			return false;
++
++		mIndex = mIndex == 0 ? mItems.size() - 1 : mIndex - 1;
++		return true;
++	}
+ }
+diff --git a/es-app/src/HomeSlides.h b/es-app/src/HomeSlides.h
+index 7cd5552..6869fe9 100644
+--- a/es-app/src/HomeSlides.h
++++ b/es-app/src/HomeSlides.h
+@@ -77,6 +77,10 @@ namespace HomeSlides
+ 		// Moves to the next item; false (and stays) when there is no other one
+ 		bool next(std::mt19937& rng);
+ 
++		// Moves back to the item shown before in this round, or to the round's last one from its first;
++		// false (and stays) when there is no other one
++		bool previous();
++
+ 	private:
+ 		std::vector<std::string> mItems;
+ 		size_t mIndex;
+diff --git a/es-app/src/SystemData.cpp b/es-app/src/SystemData.cpp
+index ef6835f..882dca4 100644
+--- a/es-app/src/SystemData.cpp
++++ b/es-app/src/SystemData.cpp
+@@ -2562,6 +2562,24 @@ FileData* SystemData::homePreview(bool advance)
+ 	return mCollectionPreviews.empty() ? nullptr : findByPath(mCollectionPreviews.current());
+ }
+ 
++FileData* SystemData::stepHomePreview(int direction)
++{
++	if (homePreview(false) == nullptr)            // also builds the deck when the library changed
++		return nullptr;
++
++	if (isPlayHistory() || !isCollection())
++	{
++		size_t count = mHistoryPreviews.size();
++		if (count < 2)
++			return nullptr;
++		mHistoryPreviewIndex = (mHistoryPreviewIndex + (direction < 0 ? count - 1 : 1)) % count;
++		return findByPath(mHistoryPreviews[mHistoryPreviewIndex]);
++	}
++
++	bool moved = direction < 0 ? mCollectionPreviews.previous() : mCollectionPreviews.next(homeRandom(getName() + ":previews"));
++	return moved ? findByPath(mCollectionPreviews.current()) : nullptr;
++}
++
+ FileData* SystemData::getContinueGame()
+ {
+ 	if (usesRandomCollectionPreview() || rotatesHomePreview())
+diff --git a/es-app/src/SystemData.h b/es-app/src/SystemData.h
+index bff8344..0f4c18f 100644
+--- a/es-app/src/SystemData.h
++++ b/es-app/src/SystemData.h
+@@ -125,6 +125,8 @@ public:
+ 	void enterHomePreview();
+ 	bool hasOtherHomePreview() const;
+ 	FileData* homePreview(bool advance);
++	// L2/R2 on a card: the panel's previous (direction < 0) or next preview at once; nullptr when it has no other
++	FileData* stepHomePreview(int direction);
+ 	static bool isUtilitySystem(SystemData* system);
+ 	// The game played last on the console (tools and screenshots left out)
+ 	static FileData* getConsoleLastPlayedGame();
+diff --git a/es-app/src/views/SystemView.cpp b/es-app/src/views/SystemView.cpp
+index 919f893..4ef71a3 100644
+--- a/es-app/src/views/SystemView.cpp
++++ b/es-app/src/views/SystemView.cpp
+@@ -660,7 +660,21 @@ bool SystemView::input(InputConfig* config, Input input)
+ 		{
+ 			if (config->isMappedTo("l2", input) || config->isMappedTo("r2", input))
+ 			{
+-				grid->pageRows(config->isMappedTo("l2", input) ? -1 : 1);
++				// On a card whose panel goes through several previews, L2 and R2 show the previous or next
++				// one at once; elsewhere they page the cards
++				int direction = config->isMappedTo("l2", input) ? -1 : 1;
++				auto system = getSelected();
++				if (system && homePanelActive() && (system->rotatesHomePreview() || system->usesRandomCollectionPreview()) &&
++					system->hasOtherHomePreview())
++				{
++					if (system->stepHomePreview(direction))
++					{
++						mStillElapsed = 0;
++						updateExtraTextBinding();
++					}
++					return true;
++				}
++				grid->pageRows(direction);
+ 				return true;
+ 			}
+ 			if (config->isMappedTo(BUTTON_BACK, input))
+diff --git a/es-app/src/views/ViewController.cpp b/es-app/src/views/ViewController.cpp
+index 14208f1..1668507 100644
+--- a/es-app/src/views/ViewController.cpp
++++ b/es-app/src/views/ViewController.cpp
+@@ -1079,8 +1079,9 @@ bool ViewController::input(InputConfig* config, Input input)
+ 	    Settings::getInstance()->saveFile();
+ 	  }
+ 
+-	// Claim A before the browser opens the focused card. Modal dialogs and games own their own input.
+-	if (input.value && config->hotkeyHeld() && config->isMappedTo("a", input) && !config->isMappedTo("hotkey", input)
++	// FN + START continues the last game: claimed before START opens the menu. Modal dialogs and games own
++	// their own input.
++	if (input.value && config->hotkeyHeld() && config->isMappedTo("start", input) && !config->isMappedTo("hotkey", input)
+ 		&& (mState.viewing == SYSTEM_SELECT || mState.viewing == GAME_LIST) && mState.system)
+ 	{
+ 		auto theme = mState.system->getTheme();
+-- 
+2.55.0
+

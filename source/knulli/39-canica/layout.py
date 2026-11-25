@@ -177,9 +177,10 @@ def tool_overview(v):
 def header(v):
     image(v,"headerBand",0,0,640,31,LOOK+"top.png",z=51)
     chord='exists("/var/run/canica/resume.enabled") && !empty({global:lastPlayed:name})'
-    image(v,"chord",11,8,47,15,LOOK+"chord.png",show=chord,z=62)
-    image(v,"resumePlay",70,9,13,13,LOOK+"resume-play.png",show=chord,z=62)
-    group=element(v,"stackpanel","resumeInfo",{"pos":norm(89,7),"size":norm(330,17),
+    # FN + START, then the last game: the badge is 73 px wide
+    image(v,"chord",11,8,73,15,LOOK+"chord.png",show=chord,z=62)
+    image(v,"resumePlay",96,9,13,13,LOOK+"resume-play.png",show=chord,z=62)
+    group=element(v,"stackpanel","resumeInfo",{"pos":norm(115,7),"size":norm(304,17),
                   "orientation":"horizontal","separator":"4","visible":chord,"zIndex":62})
     for i,(name,value,weight,color) in enumerate([
         ("resumeName","{global:lastPlayed:cleanName}","Bold","${ink}"),

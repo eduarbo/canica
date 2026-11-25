@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC40 · Tarjetas de consola sin franjas, L2/R2 en las vistas previas y FN + START
+
+El ejecutable es nuevo (parche 0134). En una tarjeta enfocada cuyo panel recorre varias vistas previas, L2 y R2 muestran la anterior o la siguiente al momento; donde no las hay siguen pasando filas de tarjetas. El atajo para continuar el último juego pasa de FN + A a FN + START (la insignia de la barra superior lo dice). Los fondos de las tarjetas de consola (`card_screens.py`) ya no dejan una franja: la captura, a la proporción de su consola, cubre toda la tarjeta y se recorta al centro. En la consola, con una vista previa: las siete pestañas sin franjas (16 BITS y Portátiles revisadas al doble); en Nintendo, R2, R2 y L2 llevan el panel de Adventure Island 3 a The Punisher, Bomberman y de vuelta a The Punisher; la barra dice «FN + START ▶ Gunpey · WonderSwan». FN + START no se probó lanzando un juego para no tocar partidas ni el historial de RomM. 27 pruebas del actualizador y 10 del vigía.
+
 ## RC39 · Un «sí» que espera a poder instalarse
 
 Mismo ejecutable que RC38. Si el dueño elige «Actualizar ahora» y algo lo impide (batería baja, un juego abierto, la pantalla apagada u otra actualización), el actualizador guarda esa respuesta: avisa una vez cuándo seguirá («Se instalará al conectar el cargador»), lo muestra en START → Canica, revisa sólo esa condición cada dos minutos sin descargar nada ni volver a preguntar, e instala en cuanto puede. «Más tarde» o una versión más nueva descartan esa respuesta. La fila que el menú añade al responder dice «inicio · arrancando el actualizador»: «actualizador» ocupaba toda la columna de 12 letras y se leía pegado al valor. Pruebas: 27 del actualizador (tres nuevas: el «sí» guardado hasta el cargador, «más tarde» y una versión nueva lo descartan, ninguna etiqueta llena su columna) y 10 del vigía.
