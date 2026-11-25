@@ -226,25 +226,17 @@ def tile_badge_geometry(root):
             prop(block,tag,norm(x,y,w,h))
 
 
-def games(root):
-    v=view(root,"grid")
-    element(v,"text","logoText",{"visible":"false"},extra=False)
-    element(v,"image","background",{"path":LOOK+"canvas.png","pos":"0 0","size":"1 1","zIndex":"0"},extra=False)
-    image(v,"detailsPanel",0,31,200,449,LOOK+"panel.png",z=1,show=GAMES)
-    header(v)
-    grid(v)
-    key(v,"L1",6,37,"("+GAMES+") && !empty({system:prevConsole})")
-    key(v,"R1",163,37,"("+GAMES+") && !empty({system:nextConsole})")
+def details_column(v, consoles, action, action_key="cta-x.png"):
+    """A game's sheet in the left column: the console, the art, the title, the plays, the time and the players,
+    the credits, the last play, the action, the rating, the genre and the description. The game list and the
+    game switcher draw the same one; consoles=(L1, R1 conditions) puts the keys that change console beside it."""
+    if consoles:
+        key(v,"L1",6,37,consoles[0])
+        key(v,"R1",163,37,consoles[1])
     identity(v,0,context=True,show=GAMES)
-    key(v,"L2",208,37)
-    text(v,"prevPage",240,36,65,24,"Anterior",11.5,weight="Bold")
-    metrics(v,311,33,show=GAMES,compact=True)
-    text(v,"nextPage",523,36,78,24,"Siguiente",11.5,align="right",weight="Bold")
-    key(v,"R2",602,37)
     # The native handler owns X throughout the game list; unsupported emulators explain their save model.
     selected_game="("+GAMES+") && !empty({game:cleanName}) && !{game:folder}"
-    cta(v,"save",0,368,selected_game,[("","Abrir partidas","{game:saveStatesSupported}"),
-                                     ("InGame","Partidas","!{game:saveStatesSupported}")])
+    cta(v,"save",0,368,selected_game,action,key_art=action_key)
     badges(v)
     genre_visible="("+GAMES+") && !empty({game:genre}) && {game:genre} != 'Desconocido' && {game:genre} != 'Unknown'"
     image(v,"genreIcon",15,GENRE_Y+2,12,12,ART+"genre.png",show=genre_visible)
@@ -267,6 +259,22 @@ def games(root):
          12,weight="Bold",align="right",show="("+GAMES+") && "+has_date)
     text(v,"lastMissing",86,341,101,18,"—",12,weight="Bold",align="right",show="("+GAMES+") && !("+has_date+")")
     text(v,"description",15,407,172,67,"{game:desc}",11.5,weight="Regular",color="${muted}",wrap=True,scroll=True,show="("+GAMES+") && !empty({game:desc}) && {game:desc} != 'Desconocido' && {game:desc} != 'Unknown'")
+
+
+def games(root):
+    v=view(root,"grid")
+    element(v,"text","logoText",{"visible":"false"},extra=False)
+    element(v,"image","background",{"path":LOOK+"canvas.png","pos":"0 0","size":"1 1","zIndex":"0"},extra=False)
+    image(v,"detailsPanel",0,31,200,449,LOOK+"panel.png",z=1,show=GAMES)
+    header(v)
+    grid(v)
+    key(v,"L2",208,37)
+    text(v,"prevPage",240,36,65,24,"Anterior",11.5,weight="Bold")
+    metrics(v,311,33,show=GAMES,compact=True)
+    text(v,"nextPage",523,36,78,24,"Siguiente",11.5,align="right",weight="Bold")
+    key(v,"R2",602,37)
+    details_column(v,("("+GAMES+") && !empty({system:prevConsole})","("+GAMES+") && !empty({system:nextConsole})"),
+                   [("","Abrir partidas","{game:saveStatesSupported}"),("InGame","Partidas","!{game:saveStatesSupported}")])
     # A utility library has the full canvas and its native primary action.
     u=view(root,"grid",UTILITY)
     for n in ("buttonL2","prevPage"):

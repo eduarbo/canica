@@ -17,7 +17,7 @@ from switcher import game_switcher
 from layout import (ART, CAT, COL, FONT, HERE, HOME, KIT, LOOK, MONO_FONT, RED, element, option, prop,
                     system_data, systems, variables, view)
 
-VERSION="1.0.1-rc36"
+VERSION="1.0.1-rc37"
 KIT["label"]=VERSION.rsplit("-",1)[-1].upper()
 # The theme and its art are CC BY-SA 4.0; the project's own code is MIT.
 LICENSES=("CC-BY-SA-4.0.txt","MIT.txt")
@@ -46,8 +46,6 @@ def make_screen(root):
                       "fontSize":"0.02760","color":"${ctaInk}","backgroundColor":"${accent}",
                       "borderColor":"${ctaInk}","iconPath":LOOK+"notice.png","iconSize":"0.03750"}.items():
         notice.find(tag).text=value
-
-    game_switcher(screen)
 
     meter=screen.find("notification[@name='meters']")
     for tag,value in {"size":"0.08125 0.316667","iconSize":"0.03750","fontSize":"0.02552",
@@ -187,6 +185,7 @@ def build(dest):
     tile_badge_geometry(root)
     systems(root)
     games(root)
+    game_switcher(root)
     helpers=view(root,"system,grid")
     element(helpers,"helpsystem","help",{"pos":"0 1.5","textColor":"00000000","iconColor":"00000000"},extra=False)
     make_screen(root)

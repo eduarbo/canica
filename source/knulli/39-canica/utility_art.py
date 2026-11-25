@@ -34,6 +34,8 @@ EXTRAS = (
     ("auto-allgames","library","Todos los juegos"),("auto-favorites","chef","Sugerencias del chef"),
     ("auto-lastplayed","recent","Últimos jugados"),("tools","tool","Herramientas"),
     ("emulators","chip","Emuladores"),("imageviewer","gallery","Capturas"),
+    # Last, so the six above keep their colours: the game switcher's entry
+    ("auto-continue","resume","Continuar"),
 )
 
 

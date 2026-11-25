@@ -1,0 +1,422 @@
+From 09b1db20e81345566d24289531ccd434c52e5b87 Mon Sep 17 00:00:00 2001
+From: Eduardo Ruiz <335073+eduarbo@users.noreply.github.com>
+Date: Tue, 24 Nov 2026 20:12:45 -0800
+Subject: [PATCH] Draw the switcher with the game list's own column and open it
+ from Extras
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The switcher now takes the theme's custom view «switcher» and binds its extras to the game
+shown, as a game list binds its own to the selected game: a theme can give it the very column
+of its game list. The view also places the picture, the line about the automatic save over it
+and the pager, and it is not offered as a game list style. A new automatic collection,
+«continue», holds the recent games and opens the switcher instead of a list; it is there
+whenever the Canica kit is installed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ es-app/src/CollectionSystemManager.cpp |  26 ++++--
+ es-app/src/CollectionSystemManager.h   |   1 +
+ es-app/src/guis/GuiGameSwitcher.cpp    | 108 ++++++++++---------------
+ es-app/src/guis/GuiGameSwitcher.h      |  17 ++--
+ es-app/src/views/ViewController.cpp    |   7 ++
+ es-core/src/ThemeData.cpp              |   3 +-
+ 6 files changed, 83 insertions(+), 79 deletions(-)
+
+diff --git a/es-app/src/CollectionSystemManager.cpp b/es-app/src/CollectionSystemManager.cpp
+index 15f3106..d7202da 100644
+--- a/es-app/src/CollectionSystemManager.cpp
++++ b/es-app/src/CollectionSystemManager.cpp
+@@ -23,10 +23,12 @@
+ #include "Genres.h"
+ #include "Paths.h"
+ #include "Scripting.h"
++#include "CanicaUpdates.h"
+ 
+ std::string myCollectionsName = "collections";
+ 
+ #define LAST_PLAYED_MAX	50
++#define CONTINUE_MAX	15	// the game switcher's games
+ 
+ /* Handling the getting, initialization, deinitialization, saving and deletion of
+  * a CollectionSystemManager Instance */
+@@ -39,6 +41,7 @@ std::vector<CollectionSystemDecl> CollectionSystemManager::getSystemDecls()
+ 		//type						name            long name                 default sort					  theme folder               isCustom     displayIfEmpty
+ 		{ AUTO_ALL_GAMES,			"all",				_("all games"),         FileSorts::FILENAME_ASCENDING,    "auto-allgames",           false,       true },
+ 		{ AUTO_LAST_PLAYED,			"recent",			_("last played"),       FileSorts::LASTPLAYED_ASCENDING,  "auto-lastplayed",         false,       true },
++		{ AUTO_CONTINUE,			"continue",			"Continuar",            FileSorts::LASTPLAYED_ASCENDING,  "auto-continue",           false,       false },
+ 		{ AUTO_FAVORITES,			"favorites",		_("favorites"),         FileSorts::FILENAME_ASCENDING,    "auto-favorites",          false,       true },
+ 		{ AUTO_AT2PLAYERS,			"2players",			_("2 players"),         FileSorts::FILENAME_ASCENDING,    "auto-at2players",         false,       true }, 
+ 		{ AUTO_AT4PLAYERS,			"4players",			_("4 players"),         FileSorts::FILENAME_ASCENDING,    "auto-at4players",         false,       true }, 
+@@ -359,6 +362,12 @@ void CollectionSystemManager::loadCollectionSystems()
+ 	loadEnabledListFromSettings();	
+ }
+ 
++// The game switcher's collection is there whenever the Canica kit is: it is how Extras opens it
++static bool alwaysEnabled(const std::string& name)
++{
++	return name == "continue" && CanicaUpdates::kitInstalled();
++}
++
+ // loads settings
+ void CollectionSystemManager::loadEnabledListFromSettings()
+ {
+@@ -367,7 +376,8 @@ void CollectionSystemManager::loadEnabledListFromSettings()
+ 
+ 	// iterate the map
+ 	for(auto& item : mAutoCollectionSystemsData)
+-		item.second.isEnabled = (std::find(autoSelected.cbegin(), autoSelected.cend(), item.first) != autoSelected.cend());
++		item.second.isEnabled = (std::find(autoSelected.cbegin(), autoSelected.cend(), item.first) != autoSelected.cend()) ||
++			alwaysEnabled(item.first);
+ 
+ 	// we parse the custom collection settings list
+ 	std::vector<std::string> customSelected = Utils::String::split(Settings::getInstance()->getString("CollectionSystemsCustom"), ',', true);
+@@ -499,7 +509,7 @@ void CollectionSystemManager::updateCollectionSystem(FileData* file, const Colle
+ 	else
+ 	{
+ 		// we didn't find it here - we need to check if we should add it
+-		if (name == "recent" && isPlayedGame(file) && includeFileInAutoCollections(file) ||
++		if ((name == "recent" || name == "continue") && isPlayedGame(file) && includeFileInAutoCollections(file) ||
+ 			name == "favorites" && file->getFavorite())
+ 		{
+ 			auto newGame = new CollectionFileData(file, curSys);
+@@ -510,10 +520,10 @@ void CollectionSystemManager::updateCollectionSystem(FileData* file, const Colle
+ 
+ 	curSys->updateDisplayedGameCount();
+ 
+-	if (name == "recent")
++	if (name == "recent" || name == "continue")
+ 	{
+ 		sortLastPlayed(curSys);
+-		trimCollectionCount(rootFolder, LAST_PLAYED_MAX);
++		trimCollectionCount(rootFolder, name == "continue" ? CONTINUE_MAX : LAST_PLAYED_MAX);
+ 	}
+ 	
+ 	if (view != nullptr)
+@@ -932,7 +942,8 @@ SystemData* CollectionSystemManager::createNewCollectionEntry(std::string name,
+ 	
+ 	// we parse the auto collection settings list
+ 	std::vector<std::string> selected = Utils::String::split(Settings::getInstance()->getString(sysDecl.isCustom ? "CollectionSystemsCustom" : "CollectionSystemsAuto"), ',', true);
+-	bool loadThemeIfEnabled = (name == myCollectionsName || (std::find(selected.cbegin(), selected.cend(), name) != selected.cend()));
++	bool loadThemeIfEnabled = (name == myCollectionsName || (std::find(selected.cbegin(), selected.cend(), name) != selected.cend())) ||
++		alwaysEnabled(name);
+ 
+ 	SystemData* newSys = new SystemData(md, mCollectionEnvData, NULL, true, false, loadThemeIfEnabled); 
+ 		
+@@ -1031,6 +1042,7 @@ void CollectionSystemManager::populateAutoCollection(CollectionSystemData* sysDa
+ 				include = game->hasCheevos();
+ 				break;
+ 			case AUTO_LAST_PLAYED:
++			case AUTO_CONTINUE:
+ 				include = isPlayedGame(game);
+ 				break;
+ 			case AUTO_NEVER_PLAYED:
+@@ -1080,10 +1092,10 @@ void CollectionSystemManager::populateAutoCollection(CollectionSystemData* sysDa
+ 		}
+ 	}
+ 
+-	if (sysDecl.type == AUTO_LAST_PLAYED)
++	if (sysDecl.type == AUTO_LAST_PLAYED || sysDecl.type == AUTO_CONTINUE)
+ 	{
+ 		sortLastPlayed(newSys);
+-		trimCollectionCount(rootFolder, LAST_PLAYED_MAX);
++		trimCollectionCount(rootFolder, sysDecl.type == AUTO_CONTINUE ? CONTINUE_MAX : LAST_PLAYED_MAX);
+ 	}
+ 
+ 	sysData->isPopulated = true;
+diff --git a/es-app/src/CollectionSystemManager.h b/es-app/src/CollectionSystemManager.h
+index 27b1f10..0c69210 100644
+--- a/es-app/src/CollectionSystemManager.h
++++ b/es-app/src/CollectionSystemManager.h
+@@ -29,6 +29,7 @@ enum CollectionSystemType
+ 	AUTO_WHEEL,
+ 	AUTO_TRACKBALL,
+ 	AUTO_SPINNER,
++	AUTO_CONTINUE,		// the recent games, opened as the game switcher (Canica)
+ 	CUSTOM_COLLECTION,	
+ };
+ 
+diff --git a/es-app/src/guis/GuiGameSwitcher.cpp b/es-app/src/guis/GuiGameSwitcher.cpp
+index f9898e3..e99998d 100644
+--- a/es-app/src/guis/GuiGameSwitcher.cpp
++++ b/es-app/src/guis/GuiGameSwitcher.cpp
+@@ -8,6 +8,8 @@
+ #include "utils/StringUtil.h"
+ #include "utils/TimeUtil.h"
+ #include "views/ViewController.h"
++#include "BindingManager.h"
++#include "ThemeData.h"
+ #include "CanicaActivity.h"
+ #include "FileData.h"
+ #include "InputConfig.h"
+@@ -152,15 +154,7 @@ void GuiGameSwitcher::onGameEnded()
+ 		Utils::FileSystem::removeFile(AUTOSAVES);
+ }
+ 
+-// The theme's decoration first, then the texts the switcher fills: every element is optional
+-static const std::vector<std::pair<std::string, bool>> PARTS = {
+-	{ "switcherBackground", false }, { "switcherHeader", true }, { "switcherBrand", true }, { "switcherHeading", false },
+-	{ "switcherPanel", true }, { "switcherBand", true }, { "switcherPlaysIcon", true }, { "switcherTimeIcon", true },
+-	{ "switcherAction", true }, { "switcherActionKey", true }, { "switcherPrevKey", true }, { "switcherNextKey", true },
+-	{ "switcherSystem", false }, { "switcherName", false }, { "switcherPlays", false }, { "switcherPlaysLabel", false },
+-	{ "switcherTime", false }, { "switcherTimeLabel", false }, { "switcherLastLabel", false }, { "switcherLast", false },
+-	{ "switcherStateLabel", false }, { "switcherState", false }, { "switcherDescription", false }, { "switcherActionLabel", false },
+-	{ "switcherPosition", false } };
++#define VIEW "switcher"
+ 
+ static std::shared_ptr<ThemeData> currentTheme()
+ {
+@@ -179,35 +173,21 @@ GuiGameSwitcher::GuiGameSwitcher(Window* window, const std::vector<Entry>& entri
+ 	setSize(sw, sh);
+ 
+ 	mTheme = currentTheme();
+-	mArea = Vector4f(sw * 0.33f, sh * 0.09f, sw * 0.64f, sh * 0.8f);
+-	mDots = Vector4f(sw * 0.65f, sh * 0.95f, 5, 11);
++	mArea = Vector4f(sw * 0.33f, sh * 0.15f, sw * 0.64f, sh * 0.78f);
++	mDots = Vector4f(sw * 0.65f, sh * 0.96f, 5, 11);
+ 
+ 	if (mTheme)
+ 	{
+-		for (auto& part : PARTS)
+-		{
+-			std::shared_ptr<GuiComponent> component;
+-			if (part.second)
+-				component = std::make_shared<ImageComponent>(window, true);
+-			else
+-				component = std::make_shared<TextComponent>(window);
+-
+-			const char* type = part.second ? "image" : "text";
+-			if (mTheme->getElement("screen", part.first, type) == nullptr)
+-				continue;
+-
+-			component->applyTheme(mTheme, "screen", part.first, ThemeFlags::ALL);
+-			mParts.push_back(component);
+-			if (!part.second)
+-				mTexts[part.first] = component;
+-		}
++		mExtras = ThemeData::makeExtras(mTheme, VIEW, window, true);
++		std::stable_sort(mExtras.begin(), mExtras.end(), [](GuiComponent* a, GuiComponent* b) { return a->getZIndex() < b->getZIndex(); });
+ 
+-		std::stable_sort(mParts.begin(), mParts.end(), [](const std::shared_ptr<GuiComponent>& a, const std::shared_ptr<GuiComponent>& b)
++		if (mTheme->getElement(VIEW, "switcherState", "text") != nullptr)
+ 		{
+-			return a->getZIndex() < b->getZIndex();
+-		});
++			mState = std::make_shared<TextComponent>(window);
++			mState->applyTheme(mTheme, VIEW, "switcherState", ThemeFlags::ALL);
++		}
+ 
+-		auto shot = mTheme->getElement("screen", "switcherShot", "image");
++		auto shot = mTheme->getElement(VIEW, "switcherShot", "image");
+ 		if (shot && shot->has("pos") && shot->has("size"))
+ 		{
+ 			Vector2f pos = shot->get<Vector2f>("pos"), size = shot->get<Vector2f>("size");
+@@ -216,7 +196,7 @@ GuiGameSwitcher::GuiGameSwitcher(Window* window, const std::vector<Entry>& entri
+ 				mCorners = shot->get<float>("roundCorners");
+ 		}
+ 
+-		auto dot = mTheme->getElement("screen", "switcherDot", "text");
++		auto dot = mTheme->getElement(VIEW, "switcherDot", "text");
+ 		if (dot && dot->has("pos") && dot->has("size"))
+ 		{
+ 			Vector2f pos = dot->get<Vector2f>("pos"), size = dot->get<Vector2f>("size");
+@@ -225,7 +205,7 @@ GuiGameSwitcher::GuiGameSwitcher(Window* window, const std::vector<Entry>& entri
+ 				mDotColor = dot->get<unsigned int>("color");
+ 		}
+ 
+-		auto on = mTheme->getElement("screen", "switcherDotOn", "text");
++		auto on = mTheme->getElement(VIEW, "switcherDotOn", "text");
+ 		if (on && on->has("color"))
+ 			mDotOnColor = on->get<unsigned int>("color");
+ 	}
+@@ -233,11 +213,10 @@ GuiGameSwitcher::GuiGameSwitcher(Window* window, const std::vector<Entry>& entri
+ 	select(0);
+ }
+ 
+-void GuiGameSwitcher::setText(const std::string& part, const std::string& text)
++GuiGameSwitcher::~GuiGameSwitcher()
+ {
+-	auto it = mTexts.find(part);
+-	if (it != mTexts.end())
+-		std::static_pointer_cast<TextComponent>(it->second)->setText(text);
++	for (auto extra : mExtras)
++		delete extra;
+ }
+ 
+ void GuiGameSwitcher::select(int index)
+@@ -246,28 +225,17 @@ void GuiGameSwitcher::select(int index)
+ 	mIndex = ((index % count) + count) % count;
+ 	const Entry& entry = mEntries[mIndex];
+ 	FileData* game = entry.game;
+-	SystemData* system = game->getSourceFileData()->getSystem();
+-
+-	long seconds = atol(game->getMetadata(MetaDataId::GameTime).c_str());
+-	int plays = Utils::String::toInteger(game->getMetadata(MetaDataId::PlayCount));
+-	std::string last = game->getMetadata(MetaDataId::LastPlayed);
+-
+-	setText("switcherSystem", system ? system->getFullName() : "");
+-	setText("switcherName", game->getName());
+-	setText("switcherPlays", plays > 0 ? std::to_string(plays) : "—");
+-	setText("switcherPlaysLabel", plays == 1 ? "vez" : "veces");
+-	setText("switcherTime", seconds > 0 ? CanicaActivity::duration(seconds) : "—");
+-	setText("switcherTimeLabel", "tiempo");
+-	setText("switcherLastLabel", "Última vez");
+-	setText("switcherLast", last.size() >= 15 ? when(Utils::Time::stringToTime(last)) : "—");
+-	setText("switcherStateLabel", entry.resumes ? "Partida automática" : "Sin partida automática");
+-	setText("switcherState", entry.resumes ? when(entry.saved) : "abre desde su guardado");
+-	setText("switcherActionLabel", entry.resumes ? "Continuar" : "Jugar");
+-	setText("switcherDescription", game->getMetadata(MetaDataId::Desc));
+-	setText("switcherPosition", std::to_string(mIndex + 1) + " de " + std::to_string(count));
++
++	// The column is the game list's: its elements take this game as a game list's take the selected one
++	for (auto extra : mExtras)
++		BindingManager::updateBindings(extra, game);
++
++	if (mState)
++		std::static_pointer_cast<TextComponent>(mState)->setText(entry.resumes ? "Partida automática · " + when(entry.saved) :
++			"Sin partida automática: abre desde su guardado");
+ 
+ 	// The picture: the automatic state's screenshot, else the game's image. Pixel art grows by whole steps,
+-	// sharp; anything else fits the area, smooth.
++	// sharp; anything else fits the area.
+ 	mImage = std::unique_ptr<ImageComponent>(new ImageComponent(mWindow, true));
+ 	mImage->setImage(entry.image);
+ 
+@@ -318,34 +286,46 @@ bool GuiGameSwitcher::input(InputConfig* config, Input input)
+ 	return true;
+ }
+ 
++void GuiGameSwitcher::update(int deltaTime)
++{
++	for (auto extra : mExtras)
++		extra->update(deltaTime);
++
++	GuiComponent::update(deltaTime);
++}
++
+ void GuiGameSwitcher::render(const Transform4x4f& /*parentTrans*/)
+ {
+ 	Transform4x4f identity = Transform4x4f::Identity();
+ 
+-	// Without the theme's background, the menu under it is dimmed
+-	if (mTexts.find("switcherBackground") == mTexts.end())
++	// Without the theme's view, the menu under it is dimmed
++	if (mExtras.empty())
+ 	{
+ 		Renderer::setMatrix(identity);
+ 		Renderer::drawRect(0.0f, 0.0f, (float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight(), 0x000000E0);
+ 	}
+ 
++	// The picture goes over the background and the panel, under everything drawn above it
+ 	bool drawn = false;
+-	for (auto& part : mParts)
++	for (auto extra : mExtras)
+ 	{
+-		// The picture goes under the panel's texts and over the background and the header
+-		if (!drawn && part->getZIndex() >= 30)
++		if (!drawn && extra->getZIndex() >= 30)
+ 		{
+ 			if (mImage)
+ 				mImage->render(identity);
+ 			drawn = true;
+ 		}
+ 
+-		part->render(identity);
++		if (extra->isVisible())
++			extra->render(identity);
+ 	}
+ 
+ 	if (!drawn && mImage)
+ 		mImage->render(identity);
+ 
++	if (mState)
++		mState->render(identity);
++
+ 	int count = (int)mEntries.size();
+ 	if (count > 1)
+ 	{
+diff --git a/es-app/src/guis/GuiGameSwitcher.h b/es-app/src/guis/GuiGameSwitcher.h
+index 23e7271..138bafc 100644
+--- a/es-app/src/guis/GuiGameSwitcher.h
++++ b/es-app/src/guis/GuiGameSwitcher.h
+@@ -15,11 +15,12 @@ class ThemeData;
+ 
+ // The recent games, one at a time, each as its automatic save left it: left and right (or L1 and R1) to go
+ // through them, A to continue. FN + SELECT opens it in the menu, and during a game too: the Canica kit's guard
+-// closes a game that keeps an automatic save state, and the menu opens this when it is back.
++// closes a game that keeps an automatic save state, and the menu opens this when it is back. The collection
++// "continue" (Extras) opens it as well.
+ //
+-// The theme draws it, with elements of its screen view that are not extras (switcher*): the decoration, the
+-// texts the switcher fills, the area of the picture (switcherShot) and the pager's dots (switcherDot and
+-// switcherDotOn: their colour, size and the centre of the row).
++// The theme draws it in its custom view "switcher": its extras, bound to the game shown as a game list binds
++// its own, the area of the picture (switcherShot), the line about the save over it (switcherState) and the
++// pager's dots (switcherDot and switcherDotOn: their colour, size and the centre of the row).
+ class GuiGameSwitcher : public GuiComponent
+ {
+ public:
+@@ -33,7 +34,10 @@ public:
+ 	static void onGameStarting(FileData* game);
+ 	static void onGameEnded();
+ 
++	~GuiGameSwitcher();
++
+ 	bool input(InputConfig* config, Input input) override;
++	void update(int deltaTime) override;
+ 	void render(const Transform4x4f& parentTrans) override;
+ 	std::vector<HelpPrompt> getHelpPrompts() override;
+ 
+@@ -50,14 +54,13 @@ private:
+ 	static std::vector<Entry> recentGames(size_t count);
+ 
+ 	void select(int index);
+-	void setText(const std::string& part, const std::string& text);
+ 
+ 	std::shared_ptr<ThemeData> mTheme;
+ 	std::vector<Entry> mEntries;
+ 	int mIndex;
+ 
+-	std::vector<std::shared_ptr<GuiComponent>> mParts;			// in the theme's order of depth
+-	std::map<std::string, std::shared_ptr<GuiComponent>> mTexts;
++	std::vector<GuiComponent*> mExtras;		// the theme's, in its order of depth
++	std::shared_ptr<GuiComponent> mState;
+ 	std::unique_ptr<ImageComponent> mImage;
+ 	Vector4f mArea;
+ 	float mCorners;
+diff --git a/es-app/src/views/ViewController.cpp b/es-app/src/views/ViewController.cpp
+index 2a4c383..14208f1 100644
+--- a/es-app/src/views/ViewController.cpp
++++ b/es-app/src/views/ViewController.cpp
+@@ -275,6 +275,13 @@ void ViewController::goToGameList(SystemData* system, bool forceImmediate)
+ 	if (system == nullptr)
+ 		return;
+ 
++	// Extras > Continuar is the game switcher, not a list
++	if (system->isCollection() && system->getName() == "continue")
++	{
++		GuiGameSwitcher::open(mWindow);
++		return;
++	}
++
+ 	mCycleFrom.reset();
+ 	SystemData* destinationSystem = system;
+ 	FolderData* collectionFolder = nullptr;
+diff --git a/es-core/src/ThemeData.cpp b/es-core/src/ThemeData.cpp
+index 99f4f74..55b8a38 100644
+--- a/es-core/src/ThemeData.cpp
++++ b/es-core/src/ThemeData.cpp
+@@ -2736,7 +2736,8 @@ std::vector<std::pair<std::string, std::string>> ThemeData::getViewsOfTheme()
+ 	std::vector<std::pair<std::string, std::string>> ret;
+ 	for (auto it = mViews.cbegin(); it != mViews.cend(); ++it)
+ 	{
+-		if (it->first == "menu" || it->first == "system" || it->first == "screen" || it->first == "splash")
++		// "switcher" is the game switcher's own view, not a way to show a game list
++		if (it->first == "menu" || it->first == "system" || it->first == "screen" || it->first == "splash" || it->first == "switcher")
+ 			continue;
+ 
+ 		ret.push_back(std::pair<std::string, std::string>(it->first, it->second.displayName.empty() ? it->first : it->second.displayName));
+-- 
+2.55.0
+

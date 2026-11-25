@@ -361,7 +361,7 @@ def validate(path):
                     for n in systems.findall("video") if n.get("name","").startswith("lastVideo")) and
                 defaults["esRotateCollectionPreview"]=="true" and defaults["esRotateConsolePreview"]=="true" and
                 "{system:previewIsLatest}" in systems.findtext("text[@name='lastLabel']/text") and
-                defaults["systemtabs"].startswith("EXTRAS=recent,all,favorites,") and
+                defaults["systemtabs"].startswith("EXTRAS=continue,recent,all,favorites,") and
                 "${previewHeading}" in systems.findtext("text[@name='lastLabel']/text") and
                 "{system:continue:lastplayedDays}" in systems.findtext("text[@name='lastWhen']/visible"),
                 "collection panel must use the shared selected game")

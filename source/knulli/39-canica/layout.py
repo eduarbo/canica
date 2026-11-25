@@ -40,6 +40,7 @@ PORTABLE_DESCRIPTIONS = {
     "imageviewer":"Capturas guardadas en esta consola.",
     "emulators":"Emuladores disponibles en esta instalación.",
     "recent":"Los juegos que abriste, del más reciente al más antiguo.",
+    "continue":"Tus últimos quince juegos, cada uno donde lo dejaste.",
     "all":"Juegos de todos tus sistemas en una sola lista.",
     "mame":"Juegos de máquinas recreativas compatibles con MAME.",
     "arcade":"Juegos de máquinas recreativas de distintos fabricantes.",
@@ -122,7 +123,8 @@ def system_data(root):
     for tab in CAT["tabs"]:
         systems=tab["systems"]
         if tab["name"]=="EXTRAS":
-            systems=["recent"]+[system for system in systems if system!="recent"]
+            # The game switcher first, then the recent games
+            systems=["continue","recent"]+[system for system in systems if system not in ("continue","recent")]
         tabs.append(tab["name"]+"="+",".join(systems))
     if not tabs[-1].endswith(",*"):tabs[-1]+=",*"
     variables(root,{"systemtabs":";".join(tabs),"esColumnPan":"0.3125","esColumnSlide":"0.6875",
@@ -140,7 +142,8 @@ def system_data(root):
               "previewHeading":"",
               "esNoSaveStatesText":"Partidas\n\nEste emulador no ofrece estados rápidos en este menú. Si el juego guarda progreso, puedes cargarlo desde el propio juego.",
               "esRenderOnChange":"true","esBindShownOnly":"true","esIdlePause":"60","sysDesc":"","sysLabel":"{system:fullName}"})
-    for system,heading in (("recent","ÚLTIMOS JUGADOS"),("all","DE TU BIBLIOTECA"),("favorites","SUGERENCIAS DEL CHEF")):
+    variables(root,{"sysDesc":PORTABLE_DESCRIPTIONS["continue"],"sysLabel":"Continuar"},**{"if":"{system.name} == 'continue'"})
+    for system,heading in (("continue","CONTINUAR"),("recent","ÚLTIMOS JUGADOS"),("all","DE TU BIBLIOTECA"),("favorites","SUGERENCIAS DEL CHEF")):
         variables(root,{"previewHeading":heading,"previewHeadingPos":norm(653,178),"showPreviewPlatform":"1"},**{"if":"{system.name} == '"+system+"'"})
     for k,d in data.items():
         desc=PORTABLE_DESCRIPTIONS.get(k,d.get("desc",""))
@@ -234,13 +237,13 @@ def metrics(v,x,y,show=None,compact=False):
 
 
 
-def cta(v,prefix,panel,y,show,choices):
+def cta(v,prefix,panel,y,show,choices,key_art="cta-x.png"):
     image(v,prefix+"Action",panel+13,y,174,31,LOOK+"cta.png",show=show)
     for suffix,label,predicate in choices:
         visible="("+show+") && ("+predicate+")"
         width=category_label_width(label,"ExtraBold",13)
         x=panel+100-(16+5+width)/2
-        image(v,prefix+"Key"+suffix,x,y+7.5,16,16,LOOK+"cta-x.png",show=visible,z=33)
+        image(v,prefix+"Key"+suffix,x,y+7.5,16,16,LOOK+key_art,show=visible,z=33)
         text(v,prefix+"Label"+suffix,x+21,y,panel+180-(x+21),31,label,13,weight="ExtraBold",
              color="${ctaInk}",show=visible,z=33)
 

@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC37 · El selector con la columna de la lista de juegos y en Extras
+
+El ejecutable es nuevo (parche 0132): el selector toma la vista «switcher» del tema y enlaza sus elementos al juego mostrado, como la lista de juegos enlaza los suyos; el tema le da la misma columna que la lista, sin los gatillos que cambian de consola, con L1 y R1 bajo la captura. Una colección automática nueva, «continue», abre el selector desde Extras → Continuar. La vista de la lista de juegos del tema es idéntica a la de RC36. En la consola, con una vista previa: Extras muestra «Continuar» primero, A abre el selector y B vuelve; FN + SELECT sigue igual.
+
 ## RC36 · Selector, actividad, batería y actualizaciones para todos
 
 El ejecutable es nuevo (parches 0129 a 0131). FN + SELECT abre el selector de juegos, que dibuja el tema; START → Canica tiene «Continuar un juego», «Actividad» y, con el actualizador del kit, la versión y las actualizaciones; una actualización se muestra como una terminal (`POST /job-console`) y pregunta «Más tarde / Actualizar ahora». El tiempo de juego cuenta sólo con la consola despierta. El kit añade `updater.py` (preguntar, automáticas o desactivadas; firma con las llaves del kit) y `guard.py` (FN + SELECT dentro de un juego; guardar y apagar con la batería agotada), que el servicio arranca antes de sus comprobaciones.
