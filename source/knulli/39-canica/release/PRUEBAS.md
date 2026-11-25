@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC39 · Un «sí» que espera a poder instalarse
+
+Mismo ejecutable que RC38. Si el dueño elige «Actualizar ahora» y algo lo impide (batería baja, un juego abierto, la pantalla apagada u otra actualización), el actualizador guarda esa respuesta: avisa una vez cuándo seguirá («Se instalará al conectar el cargador»), lo muestra en START → Canica, revisa sólo esa condición cada dos minutos sin descargar nada ni volver a preguntar, e instala en cuanto puede. «Más tarde» o una versión más nueva descartan esa respuesta. La fila que el menú añade al responder dice «inicio · arrancando el actualizador»: «actualizador» ocupaba toda la columna de 12 letras y se leía pegado al valor. Pruebas: 27 del actualizador (tres nuevas: el «sí» guardado hasta el cargador, «más tarde» y una versión nueva lo descartan, ninguna etiqueta llena su columna) y 10 del vigía.
+
 ## RC38 · Continuar en orden y con su rótulo
 
 El ejecutable es nuevo (parche 0133): la colección «continue» se ordena antes de recortarse a quince, así que guarda los quince juegos jugados más recientes, y su vista previa recorre el historial del más reciente al más antiguo, como Últimos jugados; en RC37 podía guardar quince juegos jugados cualesquiera y mostraba uno al azar. Extras → Continuar lleva el rótulo «PARTIDAS POR CONTINUAR», dibujado como los otros rótulos en español. La pantalla de actualización corta la nota a 46 letras, lo que cabe entre su sangría y la columna «ok»; con RC37 una nota de 51 letras se salía del recuadro. Los bucles del actualizador y del vigía trabajan desde `/`. En la consola, con una vista previa sobre RC37 instalada por su propio actualizador: Continuar muestra el rótulo nuevo y Link’s Awakening («Hoy · 20:54»), el mismo juego que Últimos jugados; A abre el selector, R1 pasa al siguiente juego y B vuelve. Pruebas: 24 del actualizador (una nueva para la nota larga) y 10 del vigía.

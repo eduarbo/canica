@@ -12,7 +12,8 @@ The Canica service starts it before any of its own checks (python3 -I, as root):
 Who decides: canica-updates/mode holds ask (the default), auto or off. START > Canica writes
 it; so can anyone by hand, the folder is on the console's network share.
   ask   a newer kit is downloaded and checked, then the menu asks: now or later. After the
-        answer only START > Canica offers that kit.
+        answer only START > Canica offers that kit. A «now» that cannot start yet (a low
+        battery, a game) is kept: the kit installs as soon as it can, without asking again.
   auto  it installs by itself SOAK_HOURS after it was published, at boot or on the charger.
   off   nothing is fetched until the owner searches from the menu.
 Nothing is done while the Canica service is off in Services, nor while the console's own
@@ -78,6 +79,7 @@ DEFAULTS = dict(
     RETRY_MIN='600',
     RETRY_MAX='21600',
     BUSY_RETRY='600',
+    WANTED_RETRY='120',
     BOOT_WINDOW='900',
     MIN_BATTERY='20',
     SOAK_HOURS='48',
@@ -97,15 +99,15 @@ CREATED = '%Y-%m-%dT%H:%M:%SZ'
 MENU_EXE = re.compile(r'/emulationstation(\.stock)?( \(deleted\))?$')
 DISCLOSE = 'Canica busca actualizaciones en GitHub (START > Canica).'
 TITLE = 'Canica · Actualización'
-# why an install cannot start now: (for the log, for the owner who asked)
+# why an install cannot start now: (for the log, for the owner who asked, when it goes ahead)
 WHY = dict(
-    menu=('the menu does not answer', 'el menú no responde'),
-    game=('a game is running', 'hay un juego abierto'),
-    battery=('the battery is low', 'batería baja; conecta el cargador'),
-    window=('not at boot and not charging', 'espera al cargador o al próximo arranque'),
-    paused=('the menu is paused or its launcher is', 'la pantalla está apagada'),
-    launcher=('the menu is not the one the system relaunches', 'el menú no se puede reiniciar ahora'),
-    other=('another updater is working', 'otra actualización está en curso'),
+    menu=('the menu does not answer', 'el menú no responde', 'cuando el menú responda'),
+    game=('a game is running', 'hay un juego abierto', 'al cerrar el juego'),
+    battery=('the battery is low', 'batería baja', 'al conectar el cargador'),
+    window=('not at boot and not charging', 'espera al cargador o al próximo arranque', 'al cargar o al arrancar'),
+    paused=('the menu is paused or its launcher is', 'la pantalla está apagada', 'al encender la pantalla'),
+    launcher=('the menu is not the one the system relaunches', 'el menú no se puede reiniciar ahora', 'en cuanto se pueda'),
+    other=('another updater is working', 'otra actualización está en curso', 'al terminar la otra actualización'),
 )
 
 
@@ -771,7 +773,7 @@ def activate(st, m, restart=True):
     if verdict != 'ok' and pend['tries'] <= num('MAX_RESTARTS'):
         return later % 'the new menu has not answered yet', num('BUSY_RETRY')
     st['installed'] = dict(serial=m['serial'], version=m['version'], label=m['label'], at=now())
-    for key in ('pending', 'available', 'asked'):
+    for key in ('pending', 'available', 'asked', 'wanted'):
         st.pop(key, None)
     st['failed'].pop(str(m['serial']), None)
     save_state(st)
@@ -806,14 +808,25 @@ def failed(st, m, reason, attempts):
         num('CHECK_INTERVAL') if last else num('BUSY_RETRY')
 
 
-def install(st, m, by_owner=False, resumed=False):
-    """Install and activate. by_owner: asked for at the menu, so the boot window does not apply
-    and a refusal is said on screen. Returns (result, seconds)."""
+def defer(st, m, why, quiet):
+    """The owner said «now» but it cannot start yet: keep that answer, say when it goes ahead
+    (once, unless quiet), and try again soon."""
+    st['wanted'] = dict(serial=m['serial'], label=m['label'], why=why, since=now())
+    if not quiet:
+        notify('Canica %s: ahora no, %s. Se instalará %s.' % (m['label'], WHY[why][1], WHY[why][2]))
+    write_status(st, '%s se instalará %s.' % (m['label'], WHY[why][2]))
+    return 'waiting: %s; kit %s installs once it can, as the owner asked' % (WHY[why][0], m['label']), num('WANTED_RETRY')
+
+
+def install(st, m, by_owner=False, resumed=False, quiet=False):
+    """Install and activate. by_owner: asked for at the menu, so the boot window does not apply,
+    a refusal is said on screen (not when quiet: the owner's earlier answer) and the answer is
+    kept until it can start. Returns (result, seconds)."""
     if not resumed:
         why = busy(window=not by_owner)
         if why:
             if by_owner:
-                notify('Canica %s: ahora no; %s.' % (m['label'], WHY[why][1]))
+                return defer(st, m, why, quiet)
             return 'waiting: %s' % WHY[why][0], num('BUSY_RETRY')
     other = None
     if os.path.exists(OTHER_LOCK):
@@ -823,8 +836,9 @@ def install(st, m, by_owner=False, resumed=False):
         except OSError:
             other.close()
             if by_owner:
-                notify('Canica %s: ahora no; %s.' % (m['label'], WHY['other'][1]))
+                return defer(st, m, 'other', quiet)
             return 'waiting: %s' % WHY['other'][0], num('BUSY_RETRY')
+    st.pop('wanted', None)                      # it starts: the owner's answer is used
     try:
         entry = st['failed'].setdefault(str(m['serial']), {})
         attempts = entry['attempts'] = entry.get('attempts', 0) + 1     # counted before the try
@@ -898,7 +912,7 @@ def offer(st, m):
     # 46 monospaced letters fit between the screen's indent and its «ok» column (640 × 480)
     rows = ['%s\t%s\tok' % step for step in settled(m)] + textwrap.wrap(m.get('note', ''), 46)
     asked = console(m, 'ask %d' % m['serial'], 'Tarda alrededor de un minuto y reinicia el menú.', rows,
-                    'MÁS TARDE\tACTUALIZAR AHORA\tactualizador\tarrancando')
+                    'MÁS TARDE\tACTUALIZAR AHORA\tinicio\tarrancando el actualizador')
     if not asked and not notify('Canica %s disponible: START > Canica.' % m['label'], tries=2):
         return False
     st['asked'] = dict(serial=m['serial'], boot=boot_id(), answered=not asked)
@@ -923,6 +937,8 @@ def cycle(st, fw, verb=None, arg=None):
     if verb == 'later' and (st.get('asked') or {}).get('serial') == arg:
         st['asked']['answered'] = True
         log('kit %d: the owner chose later' % arg)
+    if verb == 'later' and (st.get('wanted') or {}).get('serial') == arg:
+        st.pop('wanted')
 
     def backoff(result):
         st['fail_streak'] += 1
@@ -933,9 +949,15 @@ def cycle(st, fw, verb=None, arg=None):
         if done:
             return done
     how = mode()
-    if how == 'off' and not owner and not held():
+    wanted = st.get('wanted')
+    if how == 'off' and not owner and not held() and not wanted:
         write_status(st, 'Actualizaciones desactivadas.')
         return 'updates are off', num('CHECK_INTERVAL')
+    if wanted and not owner:                    # waiting to say yes again: no download, no network
+        why = busy(window=False)
+        if why:
+            write_status(st, '%s se instalará %s.' % (wanted['label'], WHY[why][2]))
+            return 'waiting: %s; kit %s installs once it can, as the owner asked' % (WHY[why][0], wanted['label']), num('WANTED_RETRY')
     if not st.get('disclosed'):         # say once, before the first request, where it looks
         if es('/runningGame')[0] != 201 or not notify(DISCLOSE, tries=2):
             return 'waiting for the menu to say where updates come from', num('BUSY_RETRY')
@@ -973,7 +995,10 @@ def cycle(st, fw, verb=None, arg=None):
     st['max_serial'] = max(st['max_serial'], m['serial'])
     st['min_serial'] = max(st['min_serial'], m.get('min_serial', 0))
     name = '%s (%d)' % (m['label'], m['serial'])
+    if (st.get('wanted') or {}).get('serial') not in (None, m['serial']):
+        st.pop('wanted')                       # another kit is published now: the menu asks again
     if m['serial'] in st['bad']:
+        st.pop('wanted', None)
         write_status(st, '%s no arrancó aquí; se espera la siguiente.' % m['label'])
         return 'kit %s did not start here before; waiting for a later one' % name, num('CHECK_INTERVAL')
     installed = kit_digest()
@@ -981,6 +1006,7 @@ def cycle(st, fw, verb=None, arg=None):
         if (st.get('installed') or {}).get('serial') != m['serial']:
             st['installed'] = dict(serial=m['serial'], version=m['version'], label=m['label'], at=now())
         st.pop('available', None)
+        st.pop('wanted', None)
         if os.path.exists(payload_path(m)):
             os.remove(payload_path(m))
         if verb == 'check':
@@ -1025,6 +1051,8 @@ def cycle(st, fw, verb=None, arg=None):
         if st.get('asked'):
             st['asked']['answered'] = True
         return install(st, m, by_owner=True)
+    if (st.get('wanted') or {}).get('serial') == m['serial'] and verb != 'check':
+        return install(st, m, by_owner=True, quiet=True)
     if held() or (how == 'auto' and verb != 'check'):
         left = 0 if held() else soak_left(m)
         if left > 0:

@@ -298,6 +298,16 @@ class AskTest(unittest.TestCase):
         self.assertIn('waiting for the menu to say where updates come from', self.c.run())
         self.assertEqual((self.c.fetched, self.c.notices), ([], []))
 
+    def test_every_label_leaves_room_before_its_column(self):
+        # the terminal screen puts values 12 letters after the label: a label of 12 runs into them
+        self.c.publish(20)
+        self.c.run()
+        self.assertIn('installed and running', self.c.run(request='install 20'))
+        steps = [row for rows in self.c.screens for row in rows[5:] if '\t' in row]
+        starting = self.c.screens[0][4].split('\t')[2]           # the row the menu adds on «now»
+        labels = {row.split('\t')[0] for row in steps} | {starting}
+        self.assertTrue(len(labels) > 5 and all(len(label) <= 10 for label in labels), labels)
+
     def test_a_long_note_is_wrapped_to_the_screen(self):
         note = 'Novedades: el selector usa la ficha de juego y está en Extras.'
         self.c.publish(20, note=note)
@@ -312,7 +322,7 @@ class AskTest(unittest.TestCase):
         self.assertEqual(self.c.offers, [['20', 'RC36', 'Novedades: actualizaciones desde el menú.']])
         rows = self.c.screens[-1]
         self.assertEqual(rows[:7], ['ask 20', 'Canica · Actualización', 'RC35 → RC36', 'Tarda alrededor de un minuto y reinicia el menú.',
-                                    'MÁS TARDE\tACTUALIZAR AHORA\tactualizador\tarrancando', '$ canica update --to rc36',
+                                    'MÁS TARDE\tACTUALIZAR AHORA\tinicio\tarrancando el actualizador', '$ canica update --to rc36',
                                     'firma\ted25519 · test\tok'])
         self.assertRegex(rows[7], r'^descarga\t0\.0 MB · sha256 [0-9a-f]{4}…[0-9a-f]{4}\tok$')
         self.assertEqual(rows[8:], ['prueba\tcabe y no pisa nada tuyo\tok', 'Novedades: actualizaciones desde el menú.'])
@@ -362,13 +372,55 @@ class AskTest(unittest.TestCase):
         (self.c.root / 'sys/class/power_supply/battery/status').write_text('Discharging\n')
         (self.c.root / 'sys/class/power_supply/battery/capacity').write_text('12\n')
         self.assertIn('waiting: the battery is low', self.c.run(request='install 20'))
-        self.assertEqual(self.c.notices[1:], ['Canica RC36: ahora no; hay un juego abierto.',
-                                              'Canica RC36: ahora no; batería baja; conecta el cargador.'])
+        self.assertEqual(self.c.notices[1:], ['Canica RC36: ahora no, hay un juego abierto. Se instalará al cerrar el juego.',
+                                              'Canica RC36: ahora no, batería baja. Se instalará al conectar el cargador.'])
         self.assertFalse(self.c.installed())
         # away from the charger and long after boot, the owner's word is enough
         (self.c.root / 'sys/class/power_supply/battery/capacity').write_text('60\n')
         (self.c.root / 'proc/uptime').write_text('5000.0 5000.0\n')
         self.assertIn('installed and running', self.c.run(request='install 20'))
+
+    def low_battery(self, charging=False):
+        (self.c.root / 'sys/class/power_supply/battery/status').write_text('Charging\n' if charging else 'Discharging\n')
+        (self.c.root / 'sys/class/power_supply/battery/capacity').write_text('12\n')
+
+    def test_a_yes_that_cannot_start_is_kept_until_it_can(self):
+        self.c.publish(20)
+        self.assertIn('offered on the menu', self.c.run())
+        self.low_battery()
+        out = self.c.run(request='install 20')
+        self.assertIn('waiting: the battery is low; kit RC36 installs once it can, as the owner asked', out)
+        self.assertIn('as the owner asked; next in 120s', out)
+        self.assertEqual(self.c.notices[-1], 'Canica RC36: ahora no, batería baja. Se instalará al conectar el cargador.')
+        self.assertEqual(self.c.status()['detail'], 'RC36 se instalará al conectar el cargador.')
+        # it waits without asking, saying or downloading anything again
+        seen = (len(self.c.notices), len(self.c.fetched), len(self.c.offers))
+        self.assertIn('installs once it can, as the owner asked', self.c.run())
+        self.assertEqual((len(self.c.notices), len(self.c.fetched), len(self.c.offers)), seen)
+        self.assertFalse(self.c.installed())
+        # on the charger it goes ahead by itself, long after boot
+        (self.c.root / 'proc/uptime').write_text('5000.0 5000.0\n')
+        self.low_battery(charging=True)
+        self.assertIn('installed and running', self.c.run())
+        self.assertNotIn('wanted', self.c.state())
+        self.assertEqual(len(self.c.offers), seen[2])
+
+    def test_later_or_a_newer_kit_drops_a_kept_yes(self):
+        self.c.publish(20)
+        self.c.run()
+        self.low_battery()
+        self.c.run(request='install 20')
+        self.assertEqual(self.c.state()['wanted']['serial'], 20)
+        self.c.run(request='later 20')
+        self.assertNotIn('wanted', self.c.state())
+        self.assertIn('waiting for the owner', self.c.run())
+        # a kept yes is for that kit only: a newer one is asked about again
+        self.c.run(request='install 20')
+        self.c.publish(21, label='RC37')
+        self.low_battery(charging=True)
+        self.assertIn('kit RC37 (21) offered on the menu', self.c.run())
+        self.assertNotIn('wanted', self.c.state())
+        self.assertFalse(self.c.installed())
 
     def test_a_theme_without_the_terminal_gets_notices_and_a_pointer_to_the_menu(self):
         self.c.has_console, self.c.has_notice = False, True
