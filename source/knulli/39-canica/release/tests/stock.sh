@@ -80,7 +80,7 @@ in_sc bash "$svc" start
 test "$sc$target" -ef "$sc/var/run/canica/launcher"
 env LD_BIND_NOW=1 chroot "$sc" "$target" --help >/tmp/candidate-usage
 grep '^Version' /tmp/candidate-usage
-test "$(sha256sum "$sc/var/run/canica/bin/emulationstation" | cut -d' ' -f1)" = 9e953bd26d9e02846c205aea6ad11dc435f04063b1c88b261bb467bc18bd4fb7
+test "$(sha256sum "$sc/var/run/canica/bin/emulationstation" | cut -d' ' -f1)" = f3b59db12e3ad04cb1afa29b6170b7db00b0afc815af76feff55c985c538c991
 in_sc knulli-services stop canica
 check_stock
 test "$(loops)" = 1                # stopping Canica leaves the updater, and starts never add a second one

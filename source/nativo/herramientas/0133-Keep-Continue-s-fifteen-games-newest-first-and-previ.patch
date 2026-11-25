@@ -1,0 +1,89 @@
+From 218afd057b9a9b354174c13057abab391f293f20 Mon Sep 17 00:00:00 2001
+From: Eduardo Ruiz <335073+eduarbo@users.noreply.github.com>
+Date: Tue, 24 Nov 2026 20:35:12 -0800
+Subject: [PATCH] Keep Continue's fifteen games newest first and preview them
+ like recent
+
+The continue collection was trimmed before it was sorted, so it could keep
+any fifteen played games, and its home preview was a random pick. Both
+play-history collections now sort before trimming and run their preview
+through the history, newest first.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ es-app/src/CollectionSystemManager.cpp |  3 ++-
+ es-app/src/SystemData.cpp              | 11 ++++++++---
+ es-app/src/SystemData.h                |  2 ++
+ 3 files changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/es-app/src/CollectionSystemManager.cpp b/es-app/src/CollectionSystemManager.cpp
+index d7202da..972c8e3 100644
+--- a/es-app/src/CollectionSystemManager.cpp
++++ b/es-app/src/CollectionSystemManager.cpp
+@@ -532,7 +532,8 @@ void CollectionSystemManager::updateCollectionSystem(FileData* file, const Colle
+ 
+ void CollectionSystemManager::sortLastPlayed(SystemData* system)
+ {
+-	if (system->getName() != "recent")
++	// Both keep the games played last: sorted before they are trimmed
++	if (!system->isPlayHistory())
+ 		return;
+ 
+ 	FolderData* rootFolder = system->getRootFolder();
+diff --git a/es-app/src/SystemData.cpp b/es-app/src/SystemData.cpp
+index e0c5f8e..ef6835f 100644
+--- a/es-app/src/SystemData.cpp
++++ b/es-app/src/SystemData.cpp
+@@ -2451,12 +2451,17 @@ bool SystemData::usesRandomCollectionPreview()
+ 		mTheme && mTheme->getVariable("esRandomCollectionPreview") == "true";
+ }
+ 
++bool SystemData::isPlayHistory()
++{
++	return isCollection() && (getName() == "recent" || getName() == "continue");
++}
++
+ bool SystemData::rotatesHomePreview()
+ {
+ 	if (!mTheme)
+ 		return false;
+ 	if (isCollection())
+-		return (getName() == "all" || getName() == "favorites" || getName() == "recent") &&
++		return (getName() == "all" || getName() == "favorites" || isPlayHistory()) &&
+ 			mTheme->getVariable("esRotateCollectionPreview") == "true";
+ 	if (mTheme->getVariable("esRotateConsolePreview") != "true" || !isGameSystem() || isUtilitySystem(this))
+ 		return false;
+@@ -2471,7 +2476,7 @@ bool SystemData::hasOtherHomePreview() const
+ 
+ void SystemData::enterHomePreview()
+ {
+-	if (getName() == "recent" || !isCollection())
++	if (isPlayHistory() || !isCollection())
+ 	{
+ 		homePreview(false);
+ 		mHistoryPreviewIndex = 0;
+@@ -2489,7 +2494,7 @@ FileData* SystemData::homePreview(bool advance)
+ 	if (mRootFolder == nullptr)
+ 		return nullptr;
+ 
+-	bool history = getName() == "recent" || !isCollection();
++	bool history = isPlayHistory() || !isCollection();
+ 	if (mCollectionPreviewsDirty)
+ 	{
+ 		std::vector<std::string> candidates;
+diff --git a/es-app/src/SystemData.h b/es-app/src/SystemData.h
+index ee9d952..bff8344 100644
+--- a/es-app/src/SystemData.h
++++ b/es-app/src/SystemData.h
+@@ -119,6 +119,8 @@ public:
+ 	// What X continues: getLastPlayedGame(true), nothing on a utility system
+ 	FileData* getContinueGame();
+ 	bool usesRandomCollectionPreview();
++	// The collections of played games (recent, continue): newest first, their previews run through that history
++	bool isPlayHistory();
+ 	bool rotatesHomePreview();
+ 	void enterHomePreview();
+ 	bool hasOtherHomePreview() const;
+-- 
+2.55.0
+

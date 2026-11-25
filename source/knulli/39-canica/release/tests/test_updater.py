@@ -298,6 +298,14 @@ class AskTest(unittest.TestCase):
         self.assertIn('waiting for the menu to say where updates come from', self.c.run())
         self.assertEqual((self.c.fetched, self.c.notices), ([], []))
 
+    def test_a_long_note_is_wrapped_to_the_screen(self):
+        note = 'Novedades: el selector usa la ficha de juego y está en Extras.'
+        self.c.publish(20, note=note)
+        self.assertIn('offered on the menu', self.c.run())
+        lines = self.c.screens[-1][9:]
+        self.assertEqual(lines, ['Novedades: el selector usa la ficha de juego y', 'está en Extras.'])
+        self.assertTrue(all(len(line) <= 46 for line in lines))
+
     def test_a_newer_kit_is_checked_and_offered_not_installed(self):
         self.c.publish(20, note='Novedades: actualizaciones desde el menú.')
         self.assertIn('kit RC36 (20) offered on the menu', self.c.run())

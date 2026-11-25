@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC38 · Continuar en orden y con su rótulo
+
+El ejecutable es nuevo (parche 0133): la colección «continue» se ordena antes de recortarse a quince, así que guarda los quince juegos jugados más recientes, y su vista previa recorre el historial del más reciente al más antiguo, como Últimos jugados; en RC37 podía guardar quince juegos jugados cualesquiera y mostraba uno al azar. Extras → Continuar lleva el rótulo «PARTIDAS POR CONTINUAR», dibujado como los otros rótulos en español. La pantalla de actualización corta la nota a 46 letras, lo que cabe entre su sangría y la columna «ok»; con RC37 una nota de 51 letras se salía del recuadro. Los bucles del actualizador y del vigía trabajan desde `/`. En la consola, con una vista previa sobre RC37 instalada por su propio actualizador: Continuar muestra el rótulo nuevo y Link’s Awakening («Hoy · 20:54»), el mismo juego que Últimos jugados; A abre el selector, R1 pasa al siguiente juego y B vuelve. Pruebas: 24 del actualizador (una nueva para la nota larga) y 10 del vigía.
+
 ## RC37 · El selector con la columna de la lista de juegos y en Extras
 
 El ejecutable es nuevo (parche 0132): el selector toma la vista «switcher» del tema y enlaza sus elementos al juego mostrado, como la lista de juegos enlaza los suyos; el tema le da la misma columna que la lista, sin los gatillos que cambian de consola, con L1 y R1 bajo la captura. Una colección automática nueva, «continue», abre el selector desde Extras → Continuar. La vista de la lista de juegos del tema es idéntica a la de RC36. En la consola, con una vista previa: Extras muestra «Continuar» primero, A abre el selector y B vuelve; FN + SELECT sigue igual.

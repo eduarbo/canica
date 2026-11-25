@@ -895,7 +895,8 @@ def offer(st, m):
     without the terminal screen gets one notice that points at START > Canica."""
     if es('/runningGame')[0] != 201:
         return False
-    rows = ['%s\t%s\tok' % step for step in settled(m)] + textwrap.wrap(m.get('note', ''), 56)
+    # 46 monospaced letters fit between the screen's indent and its «ok» column (640 × 480)
+    rows = ['%s\t%s\tok' % step for step in settled(m)] + textwrap.wrap(m.get('note', ''), 46)
     asked = console(m, 'ask %d' % m['serial'], 'Tarda alrededor de un minuto y reinicia el menú.', rows,
                     'MÁS TARDE\tACTUALIZAR AHORA\tactualizador\tarrancando')
     if not asked and not notify('Canica %s disponible: START > Canica.' % m['label'], tries=2):
@@ -1117,6 +1118,7 @@ def main():
     if cmd == 'selftest':
         return selftest()
     if cmd == 'loop':
+        os.chdir('/')      # the folder it was started from may be removed (an install); its cycles inherit /
         return loop()
     os.makedirs(HOME, exist_ok=True)
     st = load_state()

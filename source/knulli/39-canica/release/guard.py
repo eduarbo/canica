@@ -312,6 +312,7 @@ def selftest():
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
     if cmd == 'loop':
+        os.chdir('/')      # the folder it was started from may be removed (an install)
         return loop()
     if cmd == 'selftest':
         return selftest()
