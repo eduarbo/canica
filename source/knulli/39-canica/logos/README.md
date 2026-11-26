@@ -4,6 +4,6 @@ Estos logos no forman parte del arte propio de Canica ni de su licencia. Procede
 
 Cambios respecto al original: se convirtieron a PNG en blanco al tamaño de las tarjetas; en `nes`, `nds` y `ngpc` se ajustó el peso o se recortó una línea para que se lean a 640 × 480; `auto-verticalarcade` añade la palabra VERTICAL al logo de Arcade. Esas versiones conservan la misma licencia.
 
-Los rótulos en español (`auto-allgames`, `auto-continue`, `auto-favorites`, `auto-lastplayed`, `emulators`, `imageviewer`, `tools`, `ports`) y el de `eduke32` se dibujaron para Canica con Roboto y se entregan aquí bajo esa misma licencia.
+Los rótulos con palabras (`auto-allgames`, `auto-continue`, `auto-favorites`, `auto-lastplayed`, `emulators`, `imageviewer`, `tools`), `ports` y el de `eduke32` se dibujaron para Canica con Roboto y se entregan aquí bajo esa misma licencia. Los rótulos en español están en `es/` y una consola en español los lee primero; los de esta carpeta están en inglés y los dibuja `logo_words.py` del generador.
 
 Los logos son marcas de sus propietarios y sólo identifican cada sistema. Un PNG tuyo en `/userdata/decorations/canica/logos/<sistema>.png` sustituye al de esta carpeta.

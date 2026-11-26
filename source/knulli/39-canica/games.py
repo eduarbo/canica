@@ -4,6 +4,7 @@ from copy import deepcopy
 import theme_options as setting
 from layout import (ART, LOOK, FONT, DISPLAY_FONT, COL, GAMES, SCREEN_TINT, UTILITY, ET,
                     element, game_title, game_credits, identity, utility_icon, image, key, cta, counter_cell, metrics, norm, prop, ring, text, view, header, font_size)
+from strings import written_date, t
 
 
 ART_LEFT, ART_RIGHT, BADGE_Y = 14, 186, 63
@@ -250,16 +251,17 @@ def details_column(v, consoles, action, action_key="cta-x.png"):
     image(v,"sessionBand",5,274,190,40,LOOK+"metric-band.png",show=GAMES,z=24)
     for x,width,inset,name,icon,value,label in [
             (5,52,8,"Plays","played",'{game:playcount} > 0 ? tostring({game:playcount}) : "—"',
-             '{game:playcount} == 1 ? "vez" : "veces"'),
-            (57,87,2,"Time","time",'tostring({game:gametime}) + "s"',"tiempo"),
-            (139,56,8,"Players","players",'empty({game:players}) ? "—" : {game:players}','{game:players} == "1" ? "jugador" : "jugadores"')]:
+             '{game:playcount} == 1 ? "'+t("playOnce")+'" : "'+t("playMany")+'"'),
+            (57,87,2,"Time","time",'tostring({game:gametime}) + "s"',t("time")),
+            (139,56,8,"Players","players",'empty({game:players}) ? "—" : {game:players}',
+             '{game:players} == "1" ? "'+t("playerOne")+'" : "'+t("playerMany")+'"')]:
         node=counter_cell(v,name,x,279,width,icon,value,label,GAMES,inset=inset)
         if name=="Time":
             duration_counter(v,node,x,279,width,GAMES)
     game_credits(v,"game",15,325,172,"{game:developer}","year({game:releasedate})",GAMES)
-    text(v,"lastLabel",15,342,70,16,"Última vez",11,color="${muted}",show=GAMES)
+    text(v,"lastLabel",15,342,70,16,t("lastTime"),11,color="${muted}",show=GAMES)
     has_date="!empty(year({game:lastplayed}))"
-    text(v,"lastValue",86,341,101,18,'day({game:lastplayed}) + "/" + month({game:lastplayed}) + "/" + year({game:lastplayed})',
+    text(v,"lastValue",86,341,101,18,written_date("{game:lastplayed}"),
          12,weight="Bold",align="right",show="("+GAMES+") && "+has_date)
     text(v,"lastMissing",86,341,101,18,"—",12,weight="Bold",align="right",show="("+GAMES+") && !("+has_date+")")
     text(v,"description",15,407,172,67,"{game:desc}",11.5,weight="Regular",color="${muted}",wrap=True,scroll=True,show="("+GAMES+") && !empty({game:desc}) && {game:desc} != 'Desconocido' && {game:desc} != 'Unknown'")
@@ -273,12 +275,12 @@ def games(root):
     header(v)
     grid(v)
     key(v,"L2",208,37)
-    text(v,"prevPage",240,36,65,24,"Anterior",11.5,weight="Bold")
+    text(v,"prevPage",240,36,65,24,t("previous"),11.5,weight="Bold")
     metrics(v,311,33,show=GAMES,compact=True)
-    text(v,"nextPage",523,36,78,24,"Siguiente",11.5,align="right",weight="Bold")
+    text(v,"nextPage",523,36,78,24,t("next"),11.5,align="right",weight="Bold")
     key(v,"R2",602,37)
     details_column(v,("("+GAMES+") && !empty({system:prevConsole})","("+GAMES+") && !empty({system:nextConsole})"),
-                   [("","Abrir partidas","{game:saveStatesSupported}"),("InGame","Partidas","!{game:saveStatesSupported}")])
+                   [("","openSaves","{game:saveStatesSupported}"),("InGame","saves","!{game:saveStatesSupported}")])
     # A utility library has the full canvas and its native primary action.
     u=view(root,"grid",UTILITY)
     for n in ("buttonL2","prevPage"):
@@ -286,7 +288,7 @@ def games(root):
         el=element(u,original.tag,n,extra=True)
         prop(el,"pos",norm(11 if n=="buttonL2" else 40,39 if n=="buttonL2" else 36))
     text(u,"utilityContext",100,37,440,23,
-         '{system:theme} == "tools" ? "Herramientas" : ({system:theme} == "emulators" ? "Emuladores" : "Capturas")',
+         '{system:theme} == "tools" ? "'+t("tools")+'" : ({system:theme} == "emulators" ? "'+t("emulators")+'" : "'+t("screenshots")+'")',
          14,align="center",weight="Black")
     element(u,"imagegrid","gamegrid",{"pos":norm(0,64),"size":"1 .84","autoLayout":"3 2","peekSize":".025"},extra=False)
     apps=view(root,"grid","{system.name} == 'tools' || {system.name} == 'emulators'")

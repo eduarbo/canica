@@ -23,7 +23,9 @@ ADAPTER = 'system/configs/emulationstation/resume/emulatorlauncher'
 ADAPTER_SHA = 'cc43ab2aff9a156e1942cf02990110f5b0b005b030cceca1838828b649b67079'
 ROOT = Path('/userdata')
 LOCK = '/var/run/canica-installer.lock'
+CONF = '/userdata/system/knulli.conf'
 PACKAGES = {
+    'canica-1.0.1-rc42-rg35xx-h.zip': '75b03b337578d551ba4ea5971e18ac7cb6d586b13149525b87ce92d10beeabbe',
     'canica-1.0.1-rc41.3-rg35xx-h.zip': '4d8eb9df585706eb00e7b468f7cbfd1553768e244ea9dc6bd79a585820dcb857',
     'canica-1.0.1-rc41.2-rg35xx-h.zip': 'a25bd693782f7204eee81a74e5ec04b6ab923f725e4e0913940d7deca0d298ec',
     'canica-1.0.1-rc41.1-rg35xx-h.zip': '3228985b42b09b3a302ab962f54e1e8bbb9024d695eaa58d3c101013f73d493f',
@@ -49,6 +51,182 @@ PACKAGES = {
 # An upgrade may replace an untouched file from a known earlier kit.
 # Each destination digest is paired with its permitted predecessors.
 PREVIOUS = {
+    # RC42: Canica in English
+    ('system/canica/SHA256SUMS',
+     '3a528f635d38af3a47f07fea60efc34f87202e9180cb8d5908b0e46af51a1bda'): {
+        '065f244ce30535917bb1b33a3a2ac2290466c522fa5c17b18d8a7407bef315ae',
+        '13a65765d47dda47b4a0a1e143b49a38e0e3905883deb1fab731f8244ea3a997',
+        '2534d448237a741768b6022f691c8c161b698603d649c81746b5199693ade708',
+        '2996245ed9597511764a974667a6d7ff722963ec2b6fe26efc0ab9fa478f85e4',
+        '2b311fdffadd2e464101d2bbf40cc4fc2548f1aa62bc239bac68a3dcbf050107',
+        '30bc3d09c12632e6abb0d89acaee3942272bacc1af546cd16faa83b030cc161b',
+        '3375eb0db2b58c67df329805dadb27cc82489a11781838e9c1638bf625ac2015',
+        '3c3cd01a961afddd6abb3394e2aad9ec0899689558975f0d58471cb985c1ac0c',
+        '416140e77db2c524caa22ded53b29a98e6f88faa7e7530d4912c5cd40b42d0e4',
+        '432da89593a9c4261cc71886bf51ec06c955838d39231923a76b87a31d42b0ef',
+        '53ee7afc01dca02e599e7aa53cd1e98d707576a157101b6f146aec5c85918d1f',
+        '59992ac2663926b698e022d97c4612f7efa03510364c04eb152879d795d9cc56',
+        '63caf5e4d9f8e95d77631cc56b7a404d951f8e94d0578f31d91f2294c25741a2',
+        '71d4f6ae6249c63941efa237cb63f068dd5a0ecdcbad10d2be0675cdec27429c',
+        '73cb1f37e61d9d74067584a03a6911f3199546782d54800b56930036d5090c86',
+        '86c5ed0776c76851f96c56e0f3496d2689bd55709e678e8f94dc1bb4a9ab25b7',
+        '97fc1b701e5e7a066b82c9c13734cf5abc437cf9ba765d77a230243814050fd7',
+        'a04d84433887d06e3d0bec8d451a0363a2b7744c380c616091012ef52681f62c',
+        'a17bc52f800f118b2c22d9a6a7b67d2749b6225e3f2d546d096ede28961bd78a',
+        'c95c8620a394f241a2e1f9a403b6816ab0de2e8f67d58eb37961f565151957c0',
+        'f91248aa2f4a71face0ec382fe4894501bb32aa8de789c236426a6c09fdeee85',
+    },
+    ('system/canica/bin/emulationstation',
+     'bdb0cf47eaae6060b9f7716a7fc7e2543b23bbf4e862c7ccd9857a712d55cabc'): {
+        '19f3dfe9de2b562f67590e0bd84310eeeb7b11ba02dd3f70a39231b307b036df',
+        '39235ef32ef9aa0ee3ec6274ab0877346cc5594446e2535f4e80cd41661f8314',
+        '720bcdd11fe1d4e0be39b316050253fb921d092bf62efe9291e0b7221dbbd797',
+        '9004a0051146a68389c2b04ee46182281e9b3685ec112b6467b885f4dbf61e84',
+        '9e953bd26d9e02846c205aea6ad11dc435f04063b1c88b261bb467bc18bd4fb7',
+        'a7d7044503aebe3d0c12b71a18e079a1449f8dd946ff8c6ef846cc245905d9d7',
+        'da85c76166dfd47928f660ecb90d2a929deb527298542e1b4a3f8b6486871df0',
+        'e01811482186db924a2c855f81084c800d6782621445b43a2cdc2600ba812c4f',
+        'f3b59db12e3ad04cb1afa29b6170b7db00b0afc815af76feff55c985c538c991',
+        'ff8eb0b23b3989cd7777f9461e5aba303a8d492bbcc3c908da914f682590153c',
+    },
+    ('system/canica/guard.py',
+     '62c7392651fe2627d20ac07baf7ee0f4b289e321cbaf884abbf59a24aeb96d96'): {
+        'd2b679ba1c2906ed3db92e496048fc9e943c8430de7f817ab19af2159ef1276c',
+        'f4b1c05b4bbaa8fab73562160b5da3f700b4d4773ededa9c20ff79bff8622776',
+    },
+    ('system/canica/release',
+     'c51540bcb98c5f6eb7e9acb5df55b2e40cc7008f2b34fb877b35c73a14256d1f'): {
+        '417945bb3e11c3b0674772a4722274565b15c2c741dd759dbf2e3ff5b9ee1790',
+        '613d0e52951eb65c09c9ea3f16a82c1bd10bbb07f4aab62686d924913f89da22',
+        '62ace0457e2778ddf68ee4c85fa17ce288921a30b62d15c910e1880a3c872a54',
+        '7867d48016f3ceca98f9f3c340b6efaf6f209b28381d030edef0099ad1d5ca9f',
+        '80f89d28767f03ef44e7bbfdd81ce698054ae6976bb4172501f2a2a50cf86241',
+        '886ed4388fa805af9790df7ad1c0680bf5dda19dbc3f7fad41185d45d28f77e9',
+        'a9c7703b1741348a6dc3283afea14716f9d1f0ef48fc46133e96241b197f3b09',
+        'bde6959df310d528b9dc0624bb2736e063e0a0a758701b486c4f518a322b2efa',
+        'cde782656d944ebb8b60cba1572c56869e949aa4a6bce7beecd3fdac827ac1df',
+    },
+    ('system/canica/updater.py',
+     'bffc7d5c990e8b57cac2b6ade6558dd3aa26d73eeea99e91017be638b3c63332'): {
+        '107f21cbe4c0f3df69b2786fe4414fa2f08a6ffabd7331671a9a15d9238761f7',
+        '35b4867ddfe548e3fe4033e80ff56411eda8a7549891784e70455af70445e148',
+        '8fc66a68b3565d5b9a9b74b9a3422e6f74712bfd82e9f1b077ab341beded4991',
+    },
+    ('system/canica/watchdog.sh',
+     '63207a6a7eb144d7a9bec70c55a41b58b45acbfbcd3d76c2acda79278e7e16b4'): {
+        '7c76b54a7d2de33cb19a03e7ce91ed64c58e43c7f3895fd7af8f9b371565ef8d',
+    },
+    ('system/services/canica',
+     'fced9306f5f032ccae5578bd14baa58741e3715a0ef99f35260c15ef3ccfe6b3'): {
+        '12a6d9c99ea5a8559beda40897b2399dd29d2c5cf6d022bb8e3bda287e2e0498',
+        '251ef74893151c75de854d8b46bccb23d5f8fb4c4fb3073f2c89236279928d7d',
+        '27928228e36e2db417cf46ac11d674580a7c12efa95ed7e728c986e1cbbc8794',
+        '2d834b0414ff1fca8378a617ac6a2b50f8589ea3dec5baa573d48900e148c7cd',
+        '390bc1dcc4e1e4f0875d30c3c56c8d61fc06d7dcc05e566ecb89bd4bb61f2993',
+        '4c40fd415383a92492f2fe4ff8dd9318c6b0fed03ff6c6210d650cfcc0db3b3e',
+        '5ec4b917b3f8346e048440e96c7bda50c8cbfaea5d9f47df5ceb660ab679bd57',
+        '5fcb55c9e39ff83df5f8657ad0564152b00d87a2c0deb0b2a55997e1ee40c564',
+        '7005543bba9a40d27410cb70ba0c248619fb7dec97fc80c69bf6d34b4d963b94',
+        '71eca699c971d070e33cb97a9ae1fee11829f6a8c6340cf240b707271b3475c8',
+        '7610cfeece1465a95ae235300c650113634c352204ec1608546b70d7f579aca9',
+        '881df126d7d63662683e9c9e5f1f69544911b074ac8e06bf1623c0cf2dd14d20',
+        '9fb19f5567231117339d951a72117a69901c87426b92ac69b6033c7cbe95e092',
+        'a58f9e9bc9cbc0213645e9e3cfa3944f71dd3d8e03e6f83b0f28972f439e6054',
+        'a6469093ae926920cdd9761839e69cecb4b3a877ecd9074555a3d1a08e5922f9',
+        'aa204decfbcd7f535803b794f682060deb2c877f4fd21b9df885322ba3225e0a',
+        'b44bb00631609283c39b4c4d2dccae4325d5038327d9969ba9448a4eb533ef10',
+        'd1b1695db398649468781550ac880fd4094b379bf5b05691002d14cd1f0403e1',
+        'e2e7f45b3dcf197a842d6f4dc2056e36701fb90c10f73cbb9329286763bf7b4a',
+        'eb9caaaa8ee80b7e785391b1ca8493584fd62612667abe2c1c9632e86a52dbce',
+        'ffdf96c6d9cb19f2d0845d178270b617949536ec88641725ec3134d214c0c4f1',
+    },
+    ('themes/es-theme-canica/README.md',
+     'b35b04d47677f71a4c7a47a8f9af045a096a30f213dbe75cd05b2df867fdb0f7'): {
+        '10f15f06bf77f992825161b1891463f140657a58d3233c36d15f7ecd4e74093b',
+        '13fdba2e05b76d9d2763ad5564214374809078348a98aa4e0f9ba3fcc3b37f85',
+        '15985c16a3973dc2c4b4fb349ee7fecf83cc52c23ceb4079e3258a70b426a73d',
+        '1acd949b55259b54399d41d64bc4a1828de7120acf3bcaa12632011d60945631',
+        '20b609bb34f7975494483d7b94e855043d96821126d1b25317a546f2ec36d27a',
+        '32bf92075794123dc9c73349a46a93c0ad3958a6e8d57f50ebd6008d023adce3',
+        '403305aa227666b4b589cd0e6bcfcae6fd2cefc0c27c12a0f5f82a445df69766',
+        '5786893db1b2387efa254f38b93223cb2d67b94575eb852e3db86943c4aeb6e1',
+        '592589ccaa4d3321d35e55814161ca608f8b10a5252669f15bb29c738652086c',
+        '5b9c4c4cae35a5c944624ca9f4c4434a2455fb9f8e4ec01e4e7837dbee75e401',
+        '6fa9e34cf6a7ae19bfd6f7b9ab90481ac30f556cc8410d990116ffd45513aa08',
+        '75189ae3661b286e7a4fb5781af851ede2172af827fa99df81f324b0fd21791a',
+        '7b15691a5d9c766c0fbb268eb6febe4b8a35fa9a357fd092ca7fe1d1e84498c3',
+        '870483c23a357c756f27b48030c6cd75dff7ed0fea217400c1c276c43c007c4a',
+        '9bd2c05f9df081dfbbbcd86eadbcbabad35981462958cbb81167ab1cad3fe074',
+        'b8a8998e506feedcf3b2096eb8bf1ba8f542dc1faff51ce14c66c55528b68915',
+        'c33775f5eb7e18fed9f7dee6a506c1ffffd23476cbcfdc208c232ff305903b82',
+        'cd40a51e6aeb7a53c57adca9d7f2b863aa3647fa89d82306149ada71b973a81a',
+        'e487c3d801b700a2554ff774cb10e26e6a5b221952c41458885ea4879df034b6',
+        'e4dd7083d64a62e851f1a289116fc31c6d8f4a1a45c1aa4cfd2448daf6d5f5a4',
+        'ffdc7da73ac53f78922b132c9428d2155f08093fbbf5c1307003bcb17a46deea',
+    },
+    ('themes/es-theme-canica/art/logos/README.md',
+     '0ff101cbb7e021366cea28eee47163e4587ef74db2783e1e20922aa2c881f306'): {
+        '2ee6701eabbda9ac5c5ab7d4a295562ea75cb8d8e60761e717073dfe43f211fd',
+        '957c0bff8a56e6d2e84730b68aa8580f9993d511e6071e83cb39ca06f7fe935c',
+    },
+    ('themes/es-theme-canica/art/logos/auto-allgames.png',
+     '8ced719fd46b42341298d744dd205daec789ef39ed3cbf84e5d073a52b66685e'): {
+        '174837e084067ea0e65d3ed0079c8145f43ffcb763328be212f957d88b29e6b3',
+    },
+    ('themes/es-theme-canica/art/logos/auto-continue.png',
+     '5380cb3a79bfff24be8be28f39e8e12500c7ecba09be8027e9400b02595ca91e'): {
+        '37ffa1ab535363f319197f559a5efcb2063259b52b8e5e8905f233c1b7ffa398',
+    },
+    ('themes/es-theme-canica/art/logos/auto-favorites.png',
+     '40921b0579ccb51e6e3810b5d206043e66f4a1072403baee3656ddc7098b4827'): {
+        '716a01670c02d8df602283021bdce21c5fa64176a435303d596ff1eda91b5d1a',
+    },
+    ('themes/es-theme-canica/art/logos/auto-lastplayed.png',
+     'c9ffd7520b7f47af147321ef29f5fb6f1fe8feaac884bd8107551d905791eb3c'): {
+        '1f031d73a993f9ee53b9d83892e77bea8c9c1c55250391f77013cadfd3e493d7',
+    },
+    ('themes/es-theme-canica/art/logos/emulators.png',
+     '95fd2a784f3965caa5793daf2ac266a0276d026b99b0a908e1cecc459d7f387e'): {
+        '8d955d73cf1f0e8c7d4f83842d39cc2466c50f90fbfef3e4a8606e5736fd4a3d',
+    },
+    ('themes/es-theme-canica/art/logos/imageviewer.png',
+     '0d3dc40992345e8e814e31ee415d44b46d4ca218084f8e1d1465ead3c1816834'): {
+        'b2276d598681f95e870aa16ccfe0be4b6515b186857ab53f16094c3ecf7237d6',
+    },
+    ('themes/es-theme-canica/art/logos/tools.png',
+     '3b39c483492409386129f10399a1a3dcf36ae5238ea30860b32e4ebbad3d2cb5'): {
+        'a35bf1483a583c13e9e4c36d82276350d534a400573aa2775103749b98d020cf',
+    },
+    ('themes/es-theme-canica/bindings.xml',
+     '499a6257e45345d28cd0dc22324b712f3f4b688902ae1fb456e3a3259eb7fb74'): {
+        '0776d55cf6e9b45197069c030a18897f16543a020c60672ba8680442b63aa0b2',
+        '3e3693e568a04c22fe55092d7bf824005253bf7adc2d612ca6ba64a8c0f3772a',
+        'e4a254f171403edd55c557f0392f9f6f03425b6517d8c31b8e5eac549207e9bb',
+        'f74f7135e30cf585d96e400a615ede64667b0f202584882786cf4fd9bd2c197f',
+        'f9cb8101fa4b6d942995817cd2a977bbe49112ad99d2265e6be0a87d543b5406',
+        'faed290a945791e7ae40ba556810f8916040c8562ac4272d4e1f24787480560c',
+    },
+    ('themes/es-theme-canica/theme.xml',
+     'fc55cd396e826a58f4474137967845b9ee16145ad66afab2e6236261699e43d6'): {
+        '020c13cbd8de6c67e46a412fb62b208bcb9128b64b6e8f80836b7917c4b1ef7f',
+        '0a5b3bcb84b9150e50520e961b6eb301ff449ae75355a8b7a68bb0d0d6374f2a',
+        '19840ccbfd7e03d882b55f1093d7004ae52ecf5e715c1a422a6687b6cbd2bbc2',
+        '1ac1ff18f91a5a2ab58bdc007289b7993188496349de57a03619c2ce017b2365',
+        '1c42716796064bfbca89312a2650211f5645a1f2370675eedad86b3d81f4f9f7',
+        '1fca27928565643c5f709ec5d95bb244134c4c389041cdf676c5a44bc1d7b7da',
+        '39c63e330d00c9b1d4a10d53e5cd2b6ea8d2c0c6c1b83ed546beed5ec71c0285',
+        '3b0a9c5217a8ac6dc74ab1418093d99029faf5ee60d6c0ae1df918b75d33e1a3',
+        '4a5b36e851d2e2262dcd906b71851e204bcc13e8b6e289129e5f5437984f5dd5',
+        '5f528246aca86111c32a6929907aaf0ef54aef5174df436348273f59d9912626',
+        '82007d158d183a71f85ba7c85ddabfa69c9d4e4112807a5299f5b4e7b0aa6435',
+        '9dc276c83ecab58fe341cfccd877c54f35c3148b34fa06104db553937948459d',
+        'a39d31b4bbe1447e9f275131f79f70040fddf5530dd12ac6f7e9c88dc2da83b9',
+        'b7e57324b4634fbe40ffff25c6cf3792d779f860edd5b9745c5db527fd688e70',
+        'bb3e6542a8d59341c8ce7166f0927d473a7ad1e55945d94f0e85de07da194b3d',
+        'c49b5f323218bafbfd518483c372a6863cfcc262ec13c3788f7cfcefd258f602',
+        'e55d1a85b4127318ef2f257c0850817b46b2ccfd8ad177b9303e69e8c92ff33e',
+        'f6fcec2b712284c21a107c2694ac0b2f45879fdf577dd357d5f7dcb625fdf142',
+    },
     # RC41.3 tints Game Boy and WonderSwan card videos like the console view.
     ('system/canica/SHA256SUMS',
      '30bc3d09c12632e6abb0d89acaee3942272bacc1af546cd16faa83b030cc161b'): {
@@ -1333,15 +1511,34 @@ def stream_digest(stream):
     return h.hexdigest()
 
 
+def spanish():
+    """The console's language is Spanish (system.language es or es_*): every message to the owner
+    is Spanish there and English on any other console."""
+    try:
+        lines = Path(CONF).read_text(errors='replace').splitlines()
+    except OSError:
+        lines = []
+    language = ''
+    for line in lines:
+        key, sep, value = line.partition('=')
+        if sep and key.strip() == 'system.language':
+            language = value.strip().strip('"').strip("'").lower()
+    return language == 'es' or language.startswith(('es_', 'es-', 'es.'))
+
+
+def say(spanish_text, english_text):
+    return spanish_text if spanish() else english_text
+
+
 def child(root, name):
     rel = PurePosixPath(name)
     if rel.is_absolute() or '..' in rel.parts or not rel.parts:
-        raise ValueError('Ruta de instalación inválida')
+        raise ValueError(say('Ruta de instalación inválida', 'Invalid installation path'))
     if name not in (SERVICE, ADAPTER) and not name.startswith((THEME + '/', ENGINE + '/')):
-        raise ValueError('Archivo fuera del paquete de Canica')
+        raise ValueError(say('Archivo fuera del paquete de Canica', 'File outside the Canica package'))
     path = root / rel
     if path.resolve() != path:
-        raise ValueError('Se conserva el enlace existente en ' + name)
+        raise ValueError(say('Se conserva el enlace existente en ', 'The existing link is kept at ') + name)
     return path
 
 
@@ -1352,27 +1549,27 @@ class Console:
         if result.returncode == 1 and not result.stderr and not result.stdout:
             return []
         if result.returncode:
-            raise RuntimeError('No se pudieron leer los servicios de KNULLI.')
+            raise RuntimeError(say('No se pudieron leer los servicios de KNULLI.', "KNULLI's services could not be read."))
         return result.stdout.split()
 
     def enable(self, value):
         subprocess.run(['/usr/bin/knulli-services', 'enable' if value else 'disable', 'canica'], check=True)
         if ('canica' in self.services()) != value:
-            raise RuntimeError('KNULLI no guardó el ajuste de Canica.')
+            raise RuntimeError(say('KNULLI no guardó el ajuste de Canica.', 'KNULLI did not save the Canica setting.'))
 
     def check(self):
         if Path('/proc/device-tree/model').read_bytes().rstrip(b'\0').decode() != MODEL:
-            raise ValueError('Se necesita una Anbernic RG35XX H.')
+            raise ValueError(say('Se necesita una Anbernic RG35XX H.', 'An Anbernic RG35XX H is needed.'))
         if Path('/usr/share/knulli/knulli.version').read_text().strip() != FIRMWARE:
-            raise ValueError('Se necesita KNULLI Scarab del 11 de mayo de 2026.')
+            raise ValueError(say('Se necesita KNULLI Scarab del 11 de mayo de 2026.', 'KNULLI Scarab of May 11, 2026 is needed.'))
         conflicts = sorted(set(self.services()) & {'fosforo', 'es_patched'})
         if conflicts:
-            raise ValueError('En Servicios, desactiva ' + ', '.join(conflicts) + ', reinicia y vuelve a abrir el instalador.')
+            raise ValueError(say('En Servicios, desactiva ', 'In Services, turn off ') + ', '.join(conflicts) + say(', reinicia y vuelve a abrir el instalador.', ', restart and open the installer again.'))
         live = Path('/usr/bin/emulationstation')
         launcher = Path('/var/run/canica/launcher')
         stock = Path('/var/run/canica/emulationstation.stock') if launcher.exists() and live.samefile(launcher) else live
         if file_digest(stock) != STOCK:
-            raise ValueError('El menú instalado no coincide con Scarab para la RG35XX H.')
+            raise ValueError(say('El menú instalado no coincide con Scarab para la RG35XX H.', 'The installed menu does not match Scarab for the RG35XX H.'))
 
 
 @contextmanager
@@ -1380,7 +1577,7 @@ def read_package(tool):
     with ZipFile(tool) as app:
         adapter = app.read('resume-emulatorlauncher')
         if digest(adapter) != ADAPTER_SHA:
-            raise ValueError('Vuelve a copiar el instalador completo.')
+            raise ValueError(say('Vuelve a copiar el instalador completo.', 'Copy the whole installer again.'))
         embedded = next((name for name in PACKAGES if name in app.namelist()), None)
         if embedded:
             # The sealed embedded ZIP is small. Keeping its compressed bytes seekable
@@ -1390,12 +1587,12 @@ def read_package(tool):
         else:
             sibling = next((tool.with_name(n) for n in PACKAGES if tool.with_name(n).is_file()), None)
             if sibling is None:
-                raise ValueError('Copia también el ZIP de Canica para RG35XX H junto al instalador, sin extraerlo.')
+                raise ValueError(say('Copia también el ZIP de Canica para RG35XX H junto al instalador, sin extraerlo.', 'Also copy the Canica ZIP for the RG35XX H next to the installer, without extracting it.'))
             stream = sibling.open('rb')
             expected = PACKAGES[sibling.name]
         with stream:
             if stream_digest(stream) != expected:
-                raise ValueError('El ZIP está incompleto o pertenece a otra versión. Vuelve a copiarlo.')
+                raise ValueError(say('El ZIP está incompleto o pertenece a otra versión. Vuelve a copiarlo.', 'The ZIP is incomplete or belongs to another version. Copy it again.'))
             stream.seek(0)
             with ZipFile(stream) as archive:
                 yield archive, adapter
@@ -1426,7 +1623,7 @@ def changes(root, kit, adapter):
         if old == new:
             continue
         if old is not None and old not in PREVIOUS.get((name, new), ()):
-            raise ValueError('Se conserva tu archivo modificado: ' + name)
+            raise ValueError(say('Se conserva tu archivo modificado: ', 'Your changed file is kept: ') + name)
         result.append((name, old, new, size))
     return result, custom_adapter
 
@@ -1435,17 +1632,17 @@ def recover(root, work, console):
     if not work.exists():
         return
     if work.is_symlink() or not work.is_dir():
-        raise ValueError('La ruta temporal de Canica ya está ocupada.')
+        raise ValueError(say('La ruta temporal de Canica ya está ocupada.', "Canica's temporary path is already taken."))
     # This reserved directory is ours only when empty or carrying the installer marker.
     if any(work.iterdir()) and not (work / 'installer-v1').is_file():
-        raise ValueError('Se conserva la carpeta temporal existente: ' + str(work))
+        raise ValueError(say('Se conserva la carpeta temporal existente: ', 'The existing temporary folder is kept: ') + str(work))
     owned = {'installer-v1', 'pending.json', 'plan.tmp', 'committed', 'restore'}
     extras = []
     for item in work.iterdir():
         if item.name not in owned and not re.fullmatch(r'(?:old|new)-[0-9]+', item.name):
             extras.append(item.name)
         elif item.is_symlink() or not item.is_file():
-            raise ValueError('Se conserva la entrada inesperada en la carpeta temporal: ' + item.name)
+            raise ValueError(say('Se conserva la entrada inesperada en la carpeta temporal: ', 'The unexpected entry in the temporary folder is kept: ') + item.name)
     journal = work / 'pending.json'
     if journal.exists():
         state = json.loads(journal.read_text())
@@ -1457,13 +1654,13 @@ def recover(root, work, console):
             if current == old:
                 continue
             if current != new:
-                raise ValueError('La recuperación conserva el cambio manual en ' + name)
+                raise ValueError(say('La recuperación conserva el cambio manual en ', 'The recovery keeps the manual change in ') + name)
             if old is None:
                 dest.unlink()
             else:
                 backup = work / ('old-' + str(index))
                 if file_digest(backup) != old:
-                    raise ValueError('Respaldo incompleto para ' + name)
+                    raise ValueError(say('Respaldo incompleto para ', 'Incomplete backup for ') + name)
                 temporary = work / 'restore'
                 shutil.copy2(backup, temporary)
                 os.replace(temporary, dest)
@@ -1476,7 +1673,7 @@ def recover(root, work, console):
         if item.name != 'installer-v1' and item.name not in extras:
             item.unlink()
     if extras:
-        raise ValueError('Se conserva el archivo inesperado en la carpeta temporal: ' + ', '.join(sorted(extras)))
+        raise ValueError(say('Se conserva el archivo inesperado en la carpeta temporal: ', 'The unexpected file in the temporary folder is kept: ') + ', '.join(sorted(extras)))
     (work / 'installer-v1').unlink(missing_ok=True)
     work.rmdir()
 
@@ -1487,7 +1684,7 @@ def apply(tool, root, console):
     root = root.resolve()
     work = root / 'system/.canica-installer-v1'
     if work.parent.resolve() != work.parent:
-        raise ValueError('Se conserva la ruta alternativa de configuración.')
+        raise ValueError(say('Se conserva la ruta alternativa de configuración.', 'The alternative configuration path is kept.'))
     recover(root, work, console)
     with read_package(tool) as (archive, adapter):
         files, custom_adapter = changes(root, archive, adapter)
@@ -1509,25 +1706,25 @@ def check(tool, root, console):
     root = root.resolve()
     work = root / 'system/.canica-installer-v1'
     if work.parent.resolve() != work.parent:
-        raise ValueError('Se conserva la ruta alternativa de configuración.')
+        raise ValueError(say('Se conserva la ruta alternativa de configuración.', 'The alternative configuration path is kept.'))
     if work.is_symlink() or (work.exists() and not work.is_dir()):
-        raise ValueError('La ruta temporal de Canica ya está ocupada.')
+        raise ValueError(say('La ruta temporal de Canica ya está ocupada.', "Canica's temporary path is already taken."))
     with read_package(tool) as (archive, adapter):
         if work.exists():
             return None
         files, _ = changes(root, archive, adapter)
     if shutil.disk_usage(work.parent).free < space_needed(root, files) + 1024 * 1024:
-        raise ValueError('Libera espacio en la tarjeta de datos y vuelve a intentarlo.')
+        raise ValueError(say('Libera espacio en la tarjeta de datos y vuelve a intentarlo.', 'Free some space on the data card and try again.'))
     return len(files)
 
 
 def install(tool, root, console):
     _, custom_adapter, cards_failed = apply(tool, root, console)
-    message = 'Canica está listo. Reinicia la consola y elige es-theme-canica en los ajustes de interfaz.'
+    message = say('Canica está listo. Reinicia la consola y elige es-theme-canica en los ajustes de interfaz.', 'Canica is ready. Restart the console and choose es-theme-canica in the UI settings.')
     if custom_adapter:
-        message += ' Se conservó tu adaptador de partidas.'
+        message += say(' Se conservó tu adaptador de partidas.', ' Your save adapter was kept.')
     if cards_failed:
-        message += ' No se pudieron preparar los fondos. Vuelve a abrir el instalador para reintentar.'
+        message += say(' No se pudieron preparar los fondos. Vuelve a abrir el instalador para reintentar.', ' The backgrounds could not be prepared. Open the installer again to retry.')
     return message
 
 
@@ -1539,7 +1736,7 @@ def commit_files(root, work, console, archive, adapter, files):
     enabled = 'canica' in console.services()
     if files or not enabled:
         if shutil.disk_usage(work.parent).free < space_needed(root, files) + 1024 * 1024:
-            raise ValueError('Libera espacio en la tarjeta de datos y vuelve a intentarlo.')
+            raise ValueError(say('Libera espacio en la tarjeta de datos y vuelve a intentarlo.', 'Free some space on the data card and try again.'))
         work.mkdir(mode=0o700)
         try:
             (work / 'installer-v1').touch()
@@ -1547,7 +1744,7 @@ def commit_files(root, work, console, archive, adapter, files):
                 dest = child(root, name)
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 if dest.parent.stat().st_dev != work.stat().st_dev:
-                    raise ValueError('El destino usa otro volumen: ' + name)
+                    raise ValueError(say('El destino usa otro volumen: ', 'The destination is on another volume: ') + name)
                 if old:
                     shutil.copy2(dest, work / ('old-' + str(index)))
                 staged = work / ('new-' + str(index))
@@ -1563,10 +1760,10 @@ def commit_files(root, work, console, archive, adapter, files):
             for index, (name, old, new, size) in enumerate(files):
                 dest = child(root, name)
                 if file_digest(dest) != old:
-                    raise ValueError('El archivo cambió durante la instalación: ' + name)
+                    raise ValueError(say('El archivo cambió durante la instalación: ', 'The file changed during the installation: ') + name)
                 os.replace(work / ('new-' + str(index)), dest)
                 if file_digest(dest) != new:
-                    raise OSError('Copia incompleta: ' + name)
+                    raise OSError(say('Copia incompleta: ', 'Incomplete copy: ') + name)
             if not enabled:
                 console.enable(True)
             os.sync()
@@ -1602,7 +1799,7 @@ def main():
     --recover  only undo an interrupted installation."""
     mode = sys.argv[1] if len(sys.argv) > 1 else ''
     if mode not in ('', '--ota', '--check', '--recover') or len(sys.argv) > 2:
-        print('uso: Instalar Canica.sh [--ota | --check | --recover]', file=sys.stderr)
+        print(say('uso: Instalar Canica.sh [--ota | --check | --recover]', 'usage: Instalar Canica.sh [--ota | --check | --recover]'), file=sys.stderr)
         return 2
     quiet = mode != ''
     try:
@@ -1612,7 +1809,7 @@ def main():
             except BlockingIOError:
                 if not quiet:
                     raise
-                print(json.dumps(dict(ok=False, busy=True, reason='Otra instalación de Canica está en curso.'),
+                print(json.dumps(dict(ok=False, busy=True, reason=say('Otra instalación de Canica está en curso.', 'Another Canica installation is under way.')),
                                  ensure_ascii=False), flush=True)
                 return 75
             if mode == '--recover':
@@ -1630,7 +1827,7 @@ def main():
         if quiet:
             print(json.dumps(dict(ok=False, reason=str(exc)), ensure_ascii=False), flush=True)
             return 1
-        report('Canica no se instaló. ' + str(exc))
+        report(say('Canica no se instaló. ', 'Canica was not installed. ') + str(exc))
         return 1
     if quiet:
         print(json.dumps(result, ensure_ascii=False), flush=True)

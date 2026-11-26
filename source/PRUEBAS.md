@@ -1,5 +1,13 @@
 # Pruebas del motor en Scarab
 
+## RC42 · Canica en inglés
+
+Ejecutable nuevo (parche 0136); mismo adaptador que RC41.2. Canica habla el idioma de la consola: español si `system.language` es `es` o `es_*`, inglés con cualquier otro. El tema lleva sus textos en `strings.py` y los aplica con bloques `<variables>` en inglés y en español (`lang="es"`); las posiciones que dependen del ancho de una palabra (título de la pestaña, pistas de L1/R1, botones) se calculan para cada idioma, y los logotipos con palabras tienen versión inglesa en `art/logos/` y la española en `art/logos/es/`. El motor, el actualizador (avisos, terminal, `detail_en` para START → Canica y la nota `note_en` del manifiesto), el vigía, el servicio, el aviso del vigilante y el instalador eligen igual.
+
+Comprobado fuera de la consola: el tema resuelto en español es idéntico al de RC41.3 salvo un candidato `logos/es/` en cuatro rutas de logotipo, con los logotipos españoles byte a byte iguales; `validate.py` revisa las 32 configuraciones en los dos idiomas y falla si queda español en inglés. Pruebas: actualizador y vigía 52 (cinco en inglés), instalador 43 (dos en inglés).
+
+En la consola, con tema y motor en tmpfs: en español, Inicio, Extras, Portátiles, la lista de Game Boy, Partidas, Buscar, START → Canica, Actividad y Continuar coinciden píxel a píxel con RC41.3 salvo la hora, la etiqueta de versión, vídeos, textos que se desplazan y el suavizado de letras acentuadas. En inglés (`en_US`), las mismas pantallas más las opciones del tema, Herramientas, Emuladores, Capturas, SUGGESTION con «Play», el aviso «Canica is up to date», la terminal de progreso y la pregunta «LATER / UPDATE NOW» con su nota, sin cortes ni solapes (recortes al doble). La consola quedó en `es_MX` con RC41.3.
+
 ## RC41.3 · Los vídeos de Game Boy, en verde también en las tarjetas
 
 Mismo ejecutable y mismo adaptador que RC41.2. En la vista de consolas, la columna de detalles ya mostraba la captura y el vídeo de un juego de Game Boy desaturados y teñidos de verde (`C9E23C`), y los de WonderSwan en tono crema (`F2EAD8`). En la lista de juegos de esas consolas, el vídeo de la tarjeta se reproducía en gris. Ahora la tarjeta usa el mismo tinte (`SCREEN_TINT` en `layout.py`, con `if="{system.theme} == …"` en `gridtile.video`). Las colecciones (Últimos jugados, Todos los juegos…) mezclan consolas y siguen mostrando el vídeo tal cual. Revisado en la consola: Balloon Kid se reproduce en verde en su tarjeta.

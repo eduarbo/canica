@@ -14,7 +14,7 @@ from layout import CAT, COL, HERE, HOME, KNULLI, PORTABLE_DESCRIPTIONS, RED
 from validate import validate
 
 PUBLIC = HERE / "release"
-ENGINE_SHA = "9004a0051146a68389c2b04ee46182281e9b3685ec112b6467b885f4dbf61e84"
+ENGINE_SHA = "bdb0cf47eaae6060b9f7716a7fc7e2543b23bbf4e862c7ccd9857a712d55cabc"
 WATCHDOG = KNULLI / "07-es-api-events/install/files/launcher.sh"
 LICENSES = ("LICENSE.md", "CREDITS.md", "external/id3v2lib/LICENSE",
             "external/libcheevos/rcheevos/LICENSE", "external/nanosvg/nanosvg_license.txt",
@@ -67,8 +67,8 @@ def license_headers(files):
 
 def theme_sources():
     paths = [HERE / f for f in ("build.py", "switcher.py", "card_screens.py", "Preparar fondos de Canica.sh", "release.py", "validate.py", "layout.py", "games.py", "artwork.py",
-             "utility_art.py", "theme_options.py", "check-word-completion.cpp", "check-time-centering.py", "README.md", "palettes.json", "gamesplash.xml")]
-    paths += list((HERE / "controls").glob("*/*.png")) + list((HERE / "fonts").glob("*")) + [HERE / "licencias" / n for n in OWN_LICENSES] + sorted((HERE / "logos").glob("*"))
+             "utility_art.py", "theme_options.py", "strings.py", "logo_words.py", "check-word-completion.cpp", "check-time-centering.py", "README.md", "palettes.json", "gamesplash.xml")]
+    paths += list((HERE / "controls").glob("*/*.png")) + list((HERE / "fonts").glob("*")) + [HERE / "licencias" / n for n in OWN_LICENSES] + sorted(p for p in (HERE / "logos").rglob("*") if p.is_file())
     paths += [p for p in PUBLIC.iterdir() if p.is_file()]
     paths += sorted((PUBLIC / "keys").glob("*.pub"))
     paths += sorted(p for p in (PUBLIC / "tests").iterdir() if p.suffix in {".py", ".sh"})
@@ -147,9 +147,18 @@ def package(native, theme, output, keys=PUBLIC / "keys"):
     payload[prefix + "avisos/licencias/MIT.txt"] = (HERE / "licencias/MIT.txt").read_bytes()
     payload[prefix + "bin/emulationstation"] = engine
     payload[prefix + "launcher"] = (PUBLIC / "launcher").read_bytes()
-    watchdog = WATCHDOG.read_text().replace(
-        "Patched EmulationStation failed $failures times in a row: running stock, fixes 07/14/15 are off. It is tried again at the next boot if it worked before on this firmware. Log: /userdata/system/logs/es-patched.log",
-        "Canica volvió al frontend de fábrica tras $failures fallos. Registro: /userdata/system/logs/canica.log")
+    # The watchdog's notice, in the console's language: Spanish on a Spanish one (es, es_*), else English
+    stock_notice = ('notify_when_up "Patched EmulationStation failed $failures times in a row: running stock, fixes 07/14/15 are off. '
+                    'It is tried again at the next boot if it worked before on this firmware. Log: /userdata/system/logs/es-patched.log"')
+    watchdog = WATCHDOG.read_text()
+    assert watchdog.count(stock_notice) == 1, "the watchdog's notice changed"
+    watchdog = watchdog.replace(stock_notice,
+        "if grep -qiE '^[[:space:]]*system\\.language[[:space:]]*=[[:space:]]*\"?es([_.-]|\"?[[:space:]]*$)' "
+        "/userdata/system/knulli.conf 2>/dev/null; then\n"
+        '\t\tnotify_when_up "Canica volvió al frontend de fábrica tras $failures fallos. Registro: /userdata/system/logs/canica.log"\n'
+        '\telse\n'
+        '\t\tnotify_when_up "Canica went back to the factory menu after $failures failures. Log: /userdata/system/logs/canica.log"\n'
+        '\tfi')
     payload[prefix + "watchdog.sh"] = watchdog.encode()
     payload[prefix + "manifest"] = b"VERSION=scarab 2026/05/11 00:09\n"
     # The updater: what this kit is, who may sign the next one, and the program itself.
@@ -170,7 +179,7 @@ def package(native, theme, output, keys=PUBLIC / "keys"):
     sources.update({"nativo/fuente/" + name: data for name, data in source.items()})
     for name in ("build-es.sh", "fat_extract.py", "es-sdl-knulli.h"):
         sources["nativo/herramientas/" + name] = (native / "herramientas" / name).read_bytes()
-    for number in range(111, 136):
+    for number in range(111, 137):
         patch, = (native / "herramientas").glob(f"{number:04d}-*.patch")
         sources["nativo/herramientas/" + patch.name] = patch.read_bytes()
     sources["LEEME.md"] = (PUBLIC / "FUENTES.md").read_bytes()

@@ -30,7 +30,8 @@ class Console:
                           'sys/class/power_supply/axp2202-battery/voltage_now': '3900000\n',
                           'sys/class/power_supply/axp2202-battery/status': 'Discharging\n',
                           'sys/class/power_supply/ac/type': 'Mains\n',
-                          'tmp/battery.percent': '70\n', 'proc/uptime': '600.0 600.0\n', 'services': 'canica\n'}.items():
+                          'tmp/battery.percent': '70\n', 'proc/uptime': '600.0 600.0\n', 'services': 'canica\n',
+                          'userdata/system/knulli.conf': 'system.language=es_MX\n'}.items():
             (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
             (self.root / rel).write_text(text)
         (self.root / 'var/run/canica').mkdir(parents=True)
@@ -200,6 +201,16 @@ class BatteryTest(unittest.TestCase):
         self.c.set('tmp/battery.percent', '4')
         self.b.check()
         self.assertEqual(len(self.c.notices), 2)    # charged in between: warned again
+
+    def test_an_english_console_reads_english_notices(self):
+        self.c.set('userdata/system/knulli.conf', 'system.language=en_US')
+        self.c.set('tmp/battery.percent', '5')
+        self.b.check()
+        self.c.set('tmp/battery.percent', '2')
+        for _ in range(3):
+            self.b.check()
+        self.assertEqual(self.c.notices, ['Battery at 5%: Canica will save your game and turn the console off before it runs out.',
+                                          'Battery empty: saving your game and turning off.'])
 
     def test_without_the_shown_percentage_the_gauge_is_used(self):
         (self.c.root / 'tmp/battery.percent').unlink()

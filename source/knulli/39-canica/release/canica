@@ -10,9 +10,17 @@ sha_stock=d02c1f349952151ba5cd5b67125e848e95279483230d1582203efd44cf37af64
 version='scarab 2026/05/11 00:09'
 api=http://127.0.0.1:1234
 log() { echo "Canica: $*" >&2; logger -t canica -- "$*" || true; }
+# The console's language: what reaches the screen is Spanish on a Spanish one (es, es_*), else English
+language() {
+    awk -F= '/^[[:space:]]*system\.language[[:space:]]*=/ { value = $2 } END { print tolower(value) }' \
+        /userdata/system/knulli.conf 2>/dev/null | tr -d "\"' \r"
+}
+say() { case "$(language)" in es|es_*|es-*|es.*) printf '%s' "$1" ;; *) printf '%s' "$2" ;; esac; }
+# die SPANISH ENGLISH: logged and said on the menu, then the service fails
 die() {
-    log "$*"
-    curl -fs -m 1 -o /dev/null -H 'Content-Type: text/plain' --data-binary "Canica: $*" "$api/notify" || true
+    message=$(say "$1" "$2")
+    log "$message"
+    curl -fs -m 1 -o /dev/null -H 'Content-Type: text/plain' --data-binary "Canica: $message" "$api/notify" || true
     exit 1
 }
 same() { test -e "$1" && test "$1" -ef "$2"; }
@@ -28,11 +36,12 @@ start() {
         [ -f "$pack/$job.py" ] || continue
         ( exec 9>&-; setsid python3 -I "$pack/$job.py" loop </dev/null >/dev/null 2>&1 & )
     done
-    [ "$(tr -d '\000' </proc/device-tree/model)" = "Anbernic RG35XX-H" ] || die "Modelo incompatible"
-    [ "$(cat /usr/share/knulli/knulli.version)" = "$version" ] || die "Versión de Scarab incompatible"
-    services=$(knulli-settings-get system.services) || die "No se pudieron leer los servicios de KNULLI"
+    [ "$(tr -d '\000' </proc/device-tree/model)" = "Anbernic RG35XX-H" ] || die "Modelo incompatible" "Incompatible model"
+    [ "$(cat /usr/share/knulli/knulli.version)" = "$version" ] || die "Versión de Scarab incompatible" "Incompatible Scarab version"
+    services=$(knulli-settings-get system.services) || die "No se pudieron leer los servicios de KNULLI" "KNULLI's services could not be read"
     case " $services " in
-        *" fosforo "*|*" es_patched "*) die "Otro servicio controla el menú. Desactívalo en Servicios y reinicia." ;;
+        *" fosforo "*|*" es_patched "*) die "Otro servicio controla el menú. Desactívalo en Servicios y reinicia." \
+            "Another service controls the menu. Turn it off in Services and restart." ;;
     esac
     mkdir -p "$run"
     if [ "$(knulli-settings-get system.quickresume || true)" = 0 ]; then
@@ -45,25 +54,25 @@ start() {
         log "Esta versión no arrancó en esta consola: sigue el menú de fábrica hasta la siguiente"
         return 0
     fi
-    [ "$(digest "$target")" = "$sha_stock" ] || die "El frontend de fábrica no coincide"
+    [ "$(digest "$target")" = "$sha_stock" ] || die "El frontend de fábrica no coincide" "The factory frontend does not match"
     # Check the whole transfer before taking over. Settings and library data stay outside this manifest.
-    [ "$(digest "$pack/SHA256SUMS")" = "@INVENTORY_SHA256@" ] || die "Índice de archivos incompleto"
-    (cd /userdata && sha256sum -c "$pack/SHA256SUMS" >/dev/null) || die "Copia incompleta o modificada"
+    [ "$(digest "$pack/SHA256SUMS")" = "@INVENTORY_SHA256@" ] || die "Índice de archivos incompleto" "Incomplete file index"
+    (cd /userdata && sha256sum -c "$pack/SHA256SUMS" >/dev/null) || die "Copia incompleta o modificada" "Incomplete or changed copy"
     mkdir -p "$run/bin" "$run/state"
     for file in bin/emulationstation launcher watchdog.sh manifest; do
         if [ -x "$run/$file" ] && cmp -s "$pack/$file" "$run/$file"; then continue; fi
         cp "$pack/$file" "$run/$file.new"
         chmod 755 "$run/$file.new"
-        cmp -s "$pack/$file" "$run/$file.new" || die "Error al copiar $file"
+        cmp -s "$pack/$file" "$run/$file.new" || die "Error al copiar $file" "Could not copy $file"
         mv -f "$run/$file.new" "$run/$file"
     done
     if ! grep -Fq " $stock " /proc/mounts; then
         touch "$stock"
-        mount --bind "$target" "$stock" || die "No se pudo conservar el frontend de fábrica"
+        mount --bind "$target" "$stock" || die "No se pudo conservar el frontend de fábrica" "Could not keep the factory frontend"
     fi
-    [ "$(digest "$stock")" = "$sha_stock" ] || die "La copia de recuperación no coincide"
+    [ "$(digest "$stock")" = "$sha_stock" ] || die "La copia de recuperación no coincide" "The recovery copy does not match"
     ticket=$(mktemp "$run/restart.XXXXXX")
-    mount --bind "$run/launcher" "$target" || die "No se pudo activar Canica"
+    mount --bind "$run/launcher" "$target" || die "No se pudo activar Canica" "Could not turn Canica on"
     log "Preparado para el siguiente arranque de EmulationStation"
     # A boot may start ES before user services. Wait for the stock menu before requesting a clean restart.
     # Its current process retains the original inode across the bind mount.

@@ -58,7 +58,11 @@ class InstallerTest(unittest.TestCase):
             app.writestr('resume-emulatorlauncher', b'adapter')
         self.kit = work / name
         self.kit.write_bytes(kit.getvalue())
-        stack.enter_context(patch.dict(namespace, {'PACKAGES': {name: MODULE['digest'](kit.getvalue())}, 'ADAPTER_SHA': MODULE['digest'](b'adapter')}))
+        # The console speaks Spanish unless a test says otherwise
+        self.conf = self.root / 'system/knulli.conf'
+        self.conf.write_text('system.language=es_MX\n')
+        stack.enter_context(patch.dict(namespace, {'PACKAGES': {name: MODULE['digest'](kit.getvalue())}, 'ADAPTER_SHA': MODULE['digest'](b'adapter'),
+                                                   'CONF': str(self.conf)}))
         stack.enter_context(patch.object(os, 'sync', create=True))
 
     def launch(self):
@@ -165,6 +169,30 @@ class InstallerTest(unittest.TestCase):
             self.kit.with_suffix('.off').rename(self.kit)
             self.launch()
         self.assertEqual(self.theme.read_bytes(), b'<theme/>')
+
+    def test_an_english_console_reads_english_messages(self):
+        self.conf.write_text('system.language=en_US\n')
+        self.assertEqual(self.launch(), 'Canica is ready. Restart the console and choose es-theme-canica in the UI settings.')
+        self.theme.write_bytes(b'custom')
+        status, result, _ = self.unattended('--check')
+        self.assertEqual((status, result['ok']), (1, False))
+        self.assertEqual(result['reason'], 'Your changed file is kept: themes/es-theme-canica/theme.xml')
+        self.interactive().assert_called_once_with('Canica was not installed. Your changed file is kept: themes/es-theme-canica/theme.xml')
+
+    def test_a_spanish_console_reads_the_messages_it_always_read(self):
+        self.assertEqual(self.launch(), 'Canica está listo. Reinicia la consola y elige es-theme-canica en los ajustes de interfaz.')
+        self.conf.write_text('#system.language=en_US\nsystem.language=es\n')
+        self.theme.write_bytes(b'custom')
+        self.interactive().assert_called_once_with('Canica no se instaló. Se conserva tu archivo modificado: themes/es-theme-canica/theme.xml')
+
+    def interactive(self):
+        """Run main() as the Tools entry does: the message boxes it shows."""
+        boxes = Mock()
+        lock = self.root.parent / 'installer.lock'
+        with patch.dict(namespace, {'ROOT': self.root, 'LOCK': str(lock), 'Console': lambda: self.console, 'report': boxes}):
+            with patch.object(sys, 'argv', [str(self.tool)]), redirect_stdout(StringIO()):
+                MODULE['main']()
+        return boxes
 
     def unattended(self, mode):
         """Run main() as the kit updater does: (exit status, parsed last output line, message boxes)."""

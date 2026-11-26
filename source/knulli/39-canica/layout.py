@@ -5,6 +5,8 @@ from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from utility_art import EXTRAS
+from strings import (DESCRIPTIONS, ENGINE, HEADINGS, LABELS, SPANISH, TEXT, written_date, geo, localized, t,
+                     word)
 
 HERE = Path(__file__).resolve().parent
 KNULLI = HERE.parent
@@ -29,8 +31,10 @@ KIT = {"label": ""}
 
 
 def logo_file(source):
-    """A system's logo: the owner's own PNG, else the one the kit carries."""
-    return 'firstfile("'+PERSONAL+'logos/" + '+source+' + ".png", "'+ART+'logos/" + '+source+' + ".png", "")'
+    """A system's logo: the owner's own PNG, else the one the kit carries. Logos that carry words have their
+    Spanish version in logos/es, which a Spanish console (${lang} es) reads first."""
+    return ('firstfile("'+PERSONAL+'logos/" + '+source+' + ".png", "'+ART+'logos/${lang}/" + '+source+' + ".png", "'
+            +ART+'logos/" + '+source+' + ".png", "")')
 
 
 def logo_exists(source):
@@ -114,49 +118,63 @@ def variables(parent, values, **attrs):
 
 
 def option(root,key,label,choices):
-    subset=ET.SubElement(root,"subset",name=key,displayName=label)
+    """A theme option; label and the choices' names are keys of strings.TEXT."""
+    subset=ET.SubElement(root,"subset",name=key,displayName=t(label))
     for k,v in choices:
-        ET.SubElement(subset,"include",name=k,displayName=v)
+        ET.SubElement(subset,"include",name=k,displayName=t(v))
 
 
 def system_data(root):
     data={**{k:v for k,v in CAT["grouped"].items() if isinstance(v,dict)},**CAT["systems"]}
-    tabs=[]
-    for tab in CAT["tabs"]:
+    names={"es":[],"en":[]}
+    systems_by_tab=[]
+    for i,tab in enumerate(CAT["tabs"]):
         systems=tab["systems"]
         if tab["name"]=="EXTRAS":
             # The game switcher first, then the recent games
             systems=["continue","recent"]+[system for system in systems if system not in ("continue","recent")]
-        tabs.append(tab["name"]+"="+",".join(systems))
-    if not tabs[-1].endswith(",*"):tabs[-1]+=",*"
-    variables(root,{"systemtabs":";".join(tabs),"esColumnPan":"0.3125","esColumnSlide":"0.6875",
-              "esColumnHeader":str(31/480),"esConsoleCycleSkipTab":"EXTRAS","esResumeChordMarker":"/var/run/canica/resume.enabled",
-              "esSingleNewGame":"true","esSearchTitle":"Buscar juegos","esSearchHint":"Título del juego",
-              "esSearchClear":"Limpiar","esSearchSubmit":"Buscar",
-              "esWordComplete":"Completar palabra","esWordStart":"Palabras frecuentes",
-              "esWordNext":"Siguiente palabra","esWordEmpty":"Sin sugerencias de palabra",
-              "esNoPickControls":"L1  Borrar letra     ·     X  Limpiar     ·     B  Volver     ·     START  Buscar",
-              "esWordControls":"← →  Elegir palabra     ·     A  Insertar     ·     B  Teclado     ·     START  Buscar",
-              "esSearchShortcuts":"L2  Completar     ·     R2  Elegir     ·     L1  Borrar     ·     X  Limpiar     ·     B  Volver     ·     START  Buscar",
-              "esSaveToday":"Hoy","esSaveYesterday":"Ayer","esSaveUnknownDate":"Sin fecha",
-              "esCardScreenshotDirectory":"/userdata/decorations/canica-capturas/juegos","esGameListXAction":"savestates","esGameLaunchTransition":"shortFade","esRandomCollectionPreview":"true","esRotateCollectionPreview":"true","esRotateConsolePreview":"true",
-              "previewHeadingPos":norm(653,190),"showPreviewPlatform":"0",
-              "previewHeading":"",
-              "esNoSaveStatesText":"Partidas\n\nEste emulador no ofrece estados rápidos en este menú. Si el juego guarda progreso, puedes cargarlo desde el propio juego.",
-              "esRenderOnChange":"true","esBindShownOnly":"true","esIdlePause":"60","sysDesc":"","sysLabel":"{system:fullName}"})
-    variables(root,{"sysDesc":PORTABLE_DESCRIPTIONS["continue"],"sysLabel":"Continuar"},**{"if":"{system.name} == 'continue'"})
-    for system,heading in (("continue","CONTINUAR"),("recent","ÚLTIMOS JUGADOS"),("all","DE TU BIBLIOTECA"),("favorites","SUGERENCIAS DEL CHEF")):
-        variables(root,{"previewHeading":heading,"previewHeadingPos":norm(653,178),"showPreviewPlatform":"1"},**{"if":"{system.name} == '"+system+"'"})
+        systems_by_tab.append(",".join(systems))
+        # The catalogue names the tabs in Spanish; the frontend shows the names systemtabs gives
+        assert tab["name"]==word("tab"+str(i),SPANISH), tab["name"]
+        for lang in names:
+            names[lang].append(word("tab"+str(i),lang))
+    def tabs(lang):
+        value=";".join(n+"="+systems for n,systems in zip(names[lang],systems_by_tab))
+        return value if value.endswith(",*") else value+",*"
+    common={"esColumnPan":"0.3125","esColumnSlide":"0.6875",
+            "esColumnHeader":str(31/480),"esConsoleCycleSkipTab":"EXTRAS","esResumeChordMarker":"/var/run/canica/resume.enabled",
+            "esSingleNewGame":"true",
+            "esCardScreenshotDirectory":"/userdata/decorations/canica-capturas/juegos","esGameListXAction":"savestates","esGameLaunchTransition":"shortFade","esRandomCollectionPreview":"true","esRotateCollectionPreview":"true","esRotateConsolePreview":"true",
+            "previewHeadingPos":norm(653,190),"showPreviewPlatform":"0",
+            "previewHeading":"",
+            "esRenderOnChange":"true","esBindShownOnly":"true","esIdlePause":"60","sysDesc":"","sysLabel":"{system:fullName}"}
+    localized(root,{"systemtabs":tabs(SPANISH),**{k:v[0] for k,v in ENGINE.items()},**common},
+              {"systemtabs":tabs("en"),**{k:v[1] for k,v in ENGINE.items()},**common})
+    assert word("continue",SPANISH)=="Continuar"
+    localized(root,{"sysDesc":PORTABLE_DESCRIPTIONS["continue"],"sysLabel":"Continuar"},
+              {"sysDesc":DESCRIPTIONS["continue"],"sysLabel":LABELS["continue"]},**{"if":"{system.name} == 'continue'"})
+    for system,(spanish,english) in HEADINGS.items():
+        fixed={"previewHeadingPos":norm(653,178),"showPreviewPlatform":"1"}
+        localized(root,{"previewHeading":spanish,**fixed},{"previewHeading":english,**fixed},**{"if":"{system.name} == '"+system+"'"})
     for k,d in data.items():
         desc=PORTABLE_DESCRIPTIONS.get(k,d.get("desc",""))
-        variables(root,{"sysDesc":desc,
-                       "sysLabel":d.get("label") or "{system:fullName}"},**{"if":"{system.name} == '"+k+"'"})
+        label=d.get("label") or "{system:fullName}"
+        assert not desc or k in DESCRIPTIONS, "no English description for "+k
+        localized(root,{"sysDesc":desc,"sysLabel":label},
+                  {"sysDesc":DESCRIPTIONS.get(k,""),"sysLabel":LABELS.get(k,label)},**{"if":"{system.name} == '"+k+"'"})
 
 
 def utility_icon(item):
     override='"'+PERSONAL+'utility-icons/${look}/" + stem({'+item+':image}) + ".png"'
     bundled='"'+LOOK+'tools/" + {'+item+':name} + ".png"'
     return 'firstfile('+override+', '+bundled+', "'+LOOK+'symbol-tool.png")'
+
+
+# The column home's words in the utility overview, and the variables that replace them
+UTILITY_WORDS=[('"1 herramienta"','"'+t("toolOne")+'"'),('" herramientas"','" '+t("toolMany")+'"'),
+               ('"1 emulador"','"'+t("emulatorOne")+'"'),('" emuladores"','" '+t("emulatorMany")+'"'),
+               ('"1 captura"','"'+t("shotOne")+'"'),('" capturas"','" '+t("shotMany")+'"'),
+               ("Disponibles",t("available")),("Última captura",t("latestShot")),("Aún no hay capturas",t("noShots"))]
 
 
 def tool_overview(v):
@@ -168,6 +186,9 @@ def tool_overview(v):
         for child in n.iter():
             if child.tag=="fontPath":child.text=FONT+"Bold.ttf"
             if child.tag=="color":child.text="${ink}"
+            if child.tag=="text" and child.text:
+                for spanish,key in UTILITY_WORDS:
+                    child.text=child.text.replace(spanish,key)
         if name.startswith("u38AppIcon"):
             item="system:recent"+str(int(name.removeprefix("u38AppIcon"))+1)
             n.find("path").text=utility_icon(item)
@@ -193,7 +214,7 @@ def header(v):
     image(v,"brandMark",11,6,19,19,LOOK+"canica.png",show=brand,z=62)
     text(v,"library",35,6,172,19,"CANICA",12,color="${accent}",weight="Black",show=brand,z=62)
     key(v,"Y",441,7)
-    text(v,"search",464,7,45,17,"Buscar",11,weight="Black",z=72)
+    text(v,"search",464,7,45,17,t("search"),11,weight="Black",z=72)
 
 
 def counter_cell(v, name, left, top, width, icon, value, label, show, *, inset=4, compact=False, scroll=True):
@@ -211,13 +232,13 @@ def counter_cell(v, name, left, top, width, icon, value, label, show, *, inset=4
 
 def metrics(v,x,y,show=None,compact=False):
     step=67 if compact else 62
-    for i,(binding,label,icon,inset) in enumerate((("total","juegos","games",5),("favorites","favs","favs",10),
-                                                   ("gamesPlayed","jugados","played",9))):
+    for i,(binding,label,icon,inset) in enumerate((("total",t("games"),"games",5),("favorites",t("favs"),"favs",10),
+                                                   ("gamesPlayed",t("played"),"played",9))):
         left=x+i*step
         count="{system:visibleGameCount}" if binding=="total" else "{system:"+binding+"}"
         if binding=="total":
             total="{system:libraryGameCount}"
-            label=(count+" == "+total+' ? "juegos" : "de " + tostring('+total+')')
+            label=(count+" == "+total+' ? "'+t("games")+'" : "'+t("of")+' " + tostring('+total+')')
         value=counter_cell(v,binding,left,y,step,icon,"tostring("+count+")",label,show,
                            inset=inset,compact=compact,scroll=False)
         if compact:
@@ -241,14 +262,22 @@ def metrics(v,x,y,show=None,compact=False):
 
 
 def cta(v,prefix,panel,y,show,choices,key_art="cta-x.png"):
+    """The action button: choices are (suffix, word key, condition); its key and word are centred together,
+    in each language."""
     image(v,prefix+"Action",panel+13,y,174,31,LOOK+"cta.png",show=show)
     for suffix,label,predicate in choices:
         visible="("+show+") && ("+predicate+")"
-        width=category_label_width(label,"ExtraBold",13)
-        x=panel+100-(16+5+width)/2
-        image(v,prefix+"Key"+suffix,x,y+7.5,16,16,LOOK+key_art,show=visible,z=33)
-        text(v,prefix+"Label"+suffix,x+21,y,panel+180-(x+21),31,label,13,weight="ExtraBold",
-             color="${ctaInk}",show=visible,z=33)
+        place={}
+        for lang in ("en",SPANISH):
+            width=category_label_width(word(label,lang),"ExtraBold",13)
+            place[lang]=panel+100-(16+5+width)/2
+        key_node=image(v,prefix+"Key"+suffix,place["en"],y+7.5,16,16,LOOK+key_art,show=visible,z=33)
+        node=text(v,prefix+"Label"+suffix,place["en"]+21,y,panel+180-(place["en"]+21),31,t(label),13,weight="ExtraBold",
+                  color="${ctaInk}",show=visible,z=33)
+        name="cta."+prefix+suffix+"."+label+"."
+        key_node.find("pos").text=geo(name+"key",{lang:norm(x,y+7.5) for lang,x in place.items()})
+        node.find("pos").text=geo(name+"label",{lang:norm(x+21,y) for lang,x in place.items()})
+        node.find("size").text=geo(name+"labelSize",{lang:norm(panel+180-(x+21),31) for lang,x in place.items()})
 
 
 def identity(v,panel,context=False,show=None):
@@ -364,7 +393,8 @@ def system_cards(v):
         prop(tile_img("extraSurface"+symbol,LOOK+"extra-"+theme+".png",12),"visible",show)
         element(tpl,"image","extraSymbol"+symbol,{"pos":".5 .36","origin":".5 .5","maxSize":".47 .47",
                 "path":LOOK+"symbol-"+symbol+".png","linearSmooth":"true","visible":show,"zIndex":13})
-        element(tpl,"text","extraTitle"+symbol,{"pos":".045 .64","size":".91 .31","text":title,
+        assert word("extra."+theme,SPANISH)==title, theme
+        element(tpl,"text","extraTitle"+symbol,{"pos":".045 .64","size":".91 .31","text":t("extra."+theme),
                 "fontPath":FONT+"ExtraBold.ttf","fontSize":font_size(14),"color":"${ink}","alignment":"center",
                 "verticalAlignment":"center","multiLine":"true","lineSpacing":"1.0","maxLines":"2","visible":show,"zIndex":14})
     ring(tpl)
@@ -377,28 +407,42 @@ def systems(root):
     image(v,"left",0,31,200,449,LOOK+"panel.png",z=2)
     image(v,"right",640,31,200,449,LOOK+"panel.png",z=2)
     header(v)
-    text(v,"tabTitle",16,45,170,27,"Biblioteca",19,weight="Black")
+    text(v,"tabTitle",16,45,170,27,t("library"),19,weight="Black")
     if KIT["label"]:
         text(v,"kitVersion",16,459,170,14,"Canica "+KIT["label"],10,color="${muted}",weight="Medium")
-    subtitles=("Colecciones y utilidades","1977 – 1985","1987 – 1991","1994 – 1998",
+    # Only the first tab's subtitle has words; the others are years and system names in either language
+    subtitles=(t("tabSubtitle0"),"1977 – 1985","1987 – 1991","1994 – 1998",
                "1989 – 2004","Arcade, vertical, MAME","MS-DOS, Doom, PICO-8")
-    for i,t in enumerate(CAT["tabs"]):
+    for i,_ in enumerate(CAT["tabs"]):
         y=86+i*51
         active="{system:tab} == "+str(i)
         image(v,"tabFocus"+str(i),9,y-2,182,44,LOOK+"category-selected.png",show=active)
         category_icon(v,"tabGlyph"+str(i),i,20,y+4,34)
-        text(v,"tab"+str(i),60,y,129,23,t["name"],16,weight="Black")
+        name=t("tab"+str(i))
+        text(v,"tab"+str(i),60,y,129,23,name,16,weight="Black")
         text(v,"tabSubtitle"+str(i),60,y+22,129,16,subtitles[i],11.5,color="${muted}")
-        name=t["name"]
-        title_width=category_label_width(name,"Black",16)
-        left=420-(24+3+title_width)//2
-        category_icon(v,"titleGlyph"+str(i),i,left,35,24,active)
-        text(v,"category"+str(i),left+27,35,title_width+16,25,name,16,weight="Black",show=active)
-        hint_width=category_label_width(name,"Bold",13)+3
-        for role,x in (("prevTab",243),("nextTab",597-hint_width-23)):
+        # The title over the cards and the neighbours' hints are placed by each language's word width
+        title_left,hint_x,hint_width={},{},{}
+        for lang in ("en",SPANISH):
+            title_width=category_label_width(word("tab"+str(i),lang),"Black",16)
+            title_left[lang]=(420-(24+3+title_width)//2,title_width)
+            hint_width[lang]=category_label_width(word("tab"+str(i),lang),"Bold",13)+3
+            hint_x[lang]={"prevTab":243,"nextTab":597-hint_width[lang]-23}
+        left,title_width=title_left["en"]
+        glyph=category_icon(v,"titleGlyph"+str(i),i,left,35,24,active)
+        glyph.find("pos").text=geo("titleGlyph"+str(i),{lang:norm(l+24/2,35+24/2) for lang,(l,_) in title_left.items()})
+        title=text(v,"category"+str(i),left+27,35,title_width+16,25,name,16,weight="Black",show=active)
+        title.find("pos").text=geo("category"+str(i),{lang:norm(l+27,35) for lang,(l,_) in title_left.items()})
+        title.find("size").text=geo("category"+str(i)+"Size",{lang:norm(w+16,25) for lang,(_,w) in title_left.items()})
+        for role in ("prevTab","nextTab"):
             visible="{system:"+role+"} == '"+name+"'"
-            category_icon(v,role+str(i),i,x,37,20,visible)
-            text(v,role+"Label"+str(i),x+23,36,hint_width,23,name,13,weight="Bold",show=visible)
+            x=hint_x["en"][role]
+            icon=category_icon(v,role+str(i),i,x,37,20,visible)
+            label=text(v,role+"Label"+str(i),x+23,36,hint_width["en"],23,name,13,weight="Bold",show=visible)
+            if role=="nextTab":
+                icon.find("pos").text=geo(role+str(i),{lang:norm(hint_x[lang][role]+20/2,37+20/2) for lang in hint_x})
+                label.find("pos").text=geo(role+"Label"+str(i),{lang:norm(hint_x[lang][role]+23,36) for lang in hint_x})
+            label.find("size").text=geo(role+"Label"+str(i)+"Size",{lang:norm(hint_width[lang],23) for lang in hint_x})
     key(v,"L1",208,37)
     key(v,"R1",602,37)
     system_cards(v)
@@ -408,7 +452,8 @@ def systems(root):
     recent="{system:hasContinue}"
     feature="("+GAMES+") && ("+recent+")"
     resume="!{system:randomCollectionPreview} && {system:continue:lastplayedDays} >= 0"
-    label='${showPreviewPlatform} ? "${previewHeading}" : ({system:previewIsLatest} ? "ÚLTIMO JUGADO" : ({system:continue:lastplayedDays} >= 0 ? "DEL HISTORIAL" : "SUGERENCIA"))'
+    label=('${showPreviewPlatform} ? "${previewHeading}" : ({system:previewIsLatest} ? "'+t("previewLatest")+'" : '
+           '({system:continue:lastplayedDays} >= 0 ? "'+t("previewHistory")+'" : "'+t("previewSuggestion")+'"))')
     heading=text(v,"lastLabel",653,190,174,17,label,10.5,color="${accent}",show=feature)
     heading.find("pos").text="${previewHeadingPos}"
     show_platform="("+feature+") && ${showPreviewPlatform}"
@@ -436,11 +481,11 @@ def systems(root):
     game_title(v,"last",653,350,174,"{system:continue:cleanName}",feature)
     game_credits(v,"last",653,397,174,"{system:continue:developer}","{system:continue:releaseyear}",feature,credit_icon=True)
     dated="("+feature+") && {system:continue:lastplayedDays} >= 0"
-    when=('{system:continue:lastplayedDays} == 0 ? "Hoy · " + {system:continue:lastplayedTime} : '
-          '({system:continue:lastplayedDays} == 1 ? "Ayer · " + {system:continue:lastplayedTime} : '
-          'day({system:continue:lastplayed}) + "/" + month({system:continue:lastplayed}) + "/" + year({system:continue:lastplayed}))')
+    when=('{system:continue:lastplayedDays} == 0 ? "'+t("today")+' · " + {system:continue:lastplayedTime} : '
+          '({system:continue:lastplayedDays} == 1 ? "'+t("yesterday")+' · " + {system:continue:lastplayedTime} : '
+          +written_date("{system:continue:lastplayed}")+')')
     image(v,"lastWhenIcon",653,416,11,11,ART+"played.png",show=dated)
     text(v,"lastWhen",668,414,159,15,when,11,color="${muted}",show=dated)
-    cta(v,"resume",640,438,feature,[("","Continuar",resume),("Suggested","Jugar","!("+resume+")")])
-    text(v,"emptyRecent",653,383,174,38,"Todavía no juegas nada aquí",12,color="${muted}",align="center",wrap=True,show="("+GAMES+") && !"+recent)
+    cta(v,"resume",640,438,feature,[("","continue",resume),("Suggested","play","!("+resume+")")])
+    text(v,"emptyRecent",653,383,174,38,t("nothingPlayed"),12,color="${muted}",align="center",wrap=True,show="("+GAMES+") && !"+recent)
     tool_overview(v)

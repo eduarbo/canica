@@ -88,7 +88,7 @@ def stamp(ago):
 class Console:
     """A console under a temporary root, its release server and its menu."""
 
-    def __init__(self, case, mode=None):
+    def __init__(self, case, mode=None, language='es_MX'):
         self.root = Path(tempfile.mkdtemp()).resolve()
         case.addCleanup(shutil.rmtree, self.root, True)
         self.rel = self.root / 'releases' / ('canica-' + SLUG)
@@ -107,7 +107,8 @@ class Console:
                 'proc/uptime': '100.0 100.0\n', 'proc/sys/kernel/random/boot_id': 'boot-1\n',
                 'sys/class/power_supply/battery/type': 'Battery\n', 'sys/class/power_supply/battery/capacity': '80\n',
                 'sys/class/power_supply/battery/status': 'Charging\n', 'var/run/emulationstation-standalone': '',
-                'services': 'canica\n', 'usr/bin/emulationstation': 'factory menu'}.items():
+                'services': 'canica\n', 'usr/bin/emulationstation': 'factory menu',
+                'userdata/system/knulli.conf': '#system.language=fr_FR\nsystem.language=%s\n' % language}.items():
             (r / rel).parent.mkdir(parents=True, exist_ok=True)
             (r / rel).write_text(text)
         self.seal(self.old)
@@ -536,6 +537,74 @@ class AskTest(unittest.TestCase):
         self.c.publish(20)
         self.assertIn('rejected: kit 20 is older than 30', self.c.run())
         self.assertEqual(self.c.notices, [])        # its owner already knows where updates come from
+
+
+EN_DISCLOSE = 'Canica checks for updates on GitHub (START > Canica).'
+EN_STEPS = [('progress 3', 'kit\tchecking'), ('progress 8', 'files\tcopying'), ('progress 15', 'cards\tpreparing'),
+            ('progress 15', 'cards\tconsole 1 of 2'), ('progress 52', 'cards\tconsole 2 of 2'),
+            ('progress 96', 'menu\trestarting')]
+
+
+class EnglishTest(unittest.TestCase):
+    """A console in any language but Spanish reads every notice, the update screen and START > Canica in
+    English; its release note is the manifest's note_en, none without one."""
+
+    def setUp(self):
+        self.c = Console(self, language='en_US')
+
+    def test_the_offer_the_install_and_the_status_are_english(self):
+        self.c.publish(20, note='Novedades: actualizaciones desde el menú.', note_en='New: updates from the menu.')
+        self.assertIn('kit RC36 (20) offered on the menu', self.c.run())
+        rows = self.c.screens[-1]
+        self.assertEqual(rows[:7], ['ask 20', 'Canica · Update', 'RC35 → RC36', 'It takes about a minute and restarts the menu.',
+                                    'LATER\tUPDATE NOW\tstart\tstarting the updater', '$ canica update --to rc36',
+                                    'signature\ted25519 · test\tok'])
+        self.assertRegex(rows[7], r'^download\t0\.0 MB · sha256 [0-9a-f]{4}…[0-9a-f]{4}\tok$')
+        self.assertEqual(rows[8:], ['check\tfits and keeps your changes\tok', 'New: updates from the menu.'])
+        # START > Canica: Spanish in detail for a menu that knows no other, English in detail_en
+        st = self.c.status()
+        self.assertEqual((st['detail'], st['detail_en']), ('RC36 disponible.', 'RC36 available.'))
+        self.assertIn('installed and running', self.c.run(request='install 20'))
+        self.assertEqual(self.c.steps(), EN_STEPS)
+        last = self.c.screens[-1]
+        self.assertEqual((last[1], last[3]), ('Canica · Update', 'Do not turn off the console.'))
+        self.assertEqual(last[-3:], ['files\tcopied\tok', 'cards\tready\tok', 'menu\trestarting'])
+        self.assertEqual(self.c.notices, [EN_DISCLOSE, 'Canica RC36 installed.', 'New: updates from the menu.'])
+        st = self.c.status()
+        self.assertTrue(st['detail_en'].startswith('Up to date. Last check: ') and st['detail'].startswith('Al día. Última búsqueda: '))
+        labels = {row.split('\t')[0] for rows in self.c.screens for row in rows[5:] if '\t' in row}
+        self.assertTrue(all(len(label) <= 10 for label in labels), labels)
+
+    def test_a_kit_without_an_english_note_says_nothing_new(self):
+        self.c.publish(20, note='Novedades: actualizaciones desde el menú.')
+        self.c.run()
+        self.assertEqual(self.c.screens[-1][8:], ['check\tfits and keeps your changes\tok'])
+        self.assertIn('installed and running', self.c.run(request='install 20'))
+        self.assertEqual(self.c.notices, [EN_DISCLOSE, 'Canica RC36 installed.'])
+
+    def test_a_yes_that_cannot_start_and_the_plain_notices_are_english(self):
+        self.c.publish(20)
+        self.c.run()
+        self.c.game = True
+        self.assertIn('waiting: a game is running', self.c.run(request='install 20'))
+        self.assertEqual(self.c.notices[-1], 'Canica RC36: not now, a game is open. It will install when the game closes.')
+        self.assertEqual(self.c.status()['detail_en'], 'RC36 will install when the game closes.')
+        self.c.game = False
+        self.c.has_console, self.c.has_notice = False, True
+        self.assertIn('installed and running', self.c.run(request='install 20'))
+        self.assertEqual(self.c.panel[0].split('\n'), ['3', 'Updating Canica RC36', 'Checking the kit. Do not turn off the console.'])
+        self.c.run(request='check')
+        self.assertEqual(self.c.notices[-1], 'Canica is up to date (RC36).')
+
+    def test_the_language_is_read_for_each_message(self):
+        self.c.publish(20)
+        self.c.run()
+        (self.c.root / 'userdata/system/knulli.conf').write_text('system.language=es_ES\n')
+        self.c.run(request='check')
+        self.assertEqual(self.c.screens[-1][1], 'Canica · Actualización')
+        (self.c.root / 'userdata/system/knulli.conf').write_text('system.language=pt_BR\n')
+        self.c.run(request='check')
+        self.assertEqual(self.c.screens[-1][1], 'Canica · Update')
 
 
 class AutoAndOffTest(unittest.TestCase):

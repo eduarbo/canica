@@ -35,6 +35,10 @@ A kit whose menu does not start is held, not removed: its inventory digest goes 
 canica-updates/hold, the service then leaves the factory menu alone for that kit, and this
 program stays on to bring the next one, which installs by itself. The service is never
 turned off from here. There is no downgrade. Log: logs/canica-updates.log.
+
+Language: what the owner reads (notices, the update screen, START > Canica) is Spanish on a console
+whose language is Spanish (system.language es or es_*), else English; the log stays English. The
+release note is the manifest's note in Spanish and its note_en in English, none without one.
 """
 import calendar
 import fcntl
@@ -97,17 +101,24 @@ VERSION = re.compile(r'^[0-9a-z][0-9a-z.+-]{0,39}$')
 NOTE = re.compile(r'^[^\x00-\x1f\x7f]{1,90}$')
 CREATED = '%Y-%m-%dT%H:%M:%SZ'
 MENU_EXE = re.compile(r'/emulationstation(\.stock)?( \(deleted\))?$')
-DISCLOSE = 'Canica busca actualizaciones en GitHub (START > Canica).'
-TITLE = 'Canica · Actualización'
-# why an install cannot start now: (for the log, for the owner who asked, when it goes ahead)
+CONF = ROOT + '/userdata/system/knulli.conf'
+DISCLOSE = ('Canica busca actualizaciones en GitHub (START > Canica).', 'Canica checks for updates on GitHub (START > Canica).')
+TITLE = ('Canica · Actualización', 'Canica · Update')
+# why an install cannot start now: (for the log, for the owner who asked, when it goes ahead), the
+# owner's in Spanish and English
 WHY = dict(
-    menu=('the menu does not answer', 'el menú no responde', 'cuando el menú responda'),
-    game=('a game is running', 'hay un juego abierto', 'al cerrar el juego'),
-    battery=('the battery is low', 'batería baja', 'al conectar el cargador'),
-    window=('not at boot and not charging', 'espera al cargador o al próximo arranque', 'al cargar o al arrancar'),
-    paused=('the menu is paused or its launcher is', 'la pantalla está apagada', 'al encender la pantalla'),
-    launcher=('the menu is not the one the system relaunches', 'el menú no se puede reiniciar ahora', 'en cuanto se pueda'),
-    other=('another updater is working', 'otra actualización está en curso', 'al terminar la otra actualización'),
+    menu=('the menu does not answer', ('el menú no responde', 'the menu does not answer'),
+          ('cuando el menú responda', 'when the menu answers')),
+    game=('a game is running', ('hay un juego abierto', 'a game is open'), ('al cerrar el juego', 'when the game closes')),
+    battery=('the battery is low', ('batería baja', 'the battery is low'), ('al conectar el cargador', 'when the charger is connected')),
+    window=('not at boot and not charging', ('espera al cargador o al próximo arranque', 'it waits for the charger or the next boot'),
+            ('al cargar o al arrancar', 'when charging or at boot')),
+    paused=('the menu is paused or its launcher is', ('la pantalla está apagada', 'the screen is off'),
+            ('al encender la pantalla', 'when the screen turns on')),
+    launcher=('the menu is not the one the system relaunches', ('el menú no se puede reiniciar ahora', 'the menu cannot restart now'),
+              ('en cuanto se pueda', 'as soon as it can')),
+    other=('another updater is working', ('otra actualización está en curso', 'another update is under way'),
+           ('al terminar la otra actualización', 'when the other update finishes')),
 )
 
 
@@ -151,6 +162,27 @@ def env_file(path):
 
 
 CFG = dict(DEFAULTS, **env_file(HOME + '/config.env'))
+
+
+def spanish():
+    """The console's language is Spanish (system.language es or es_*). Read for every message, so a
+    language changed in the menu applies to the next one."""
+    language = ''
+    for line in read(CONF).splitlines():
+        key, sep, value = line.partition('=')
+        if sep and key.strip() == 'system.language':
+            language = value.strip().strip('"').strip("'").lower()
+    return language == 'es' or language.startswith(('es_', 'es-', 'es.'))
+
+
+def say(pair):
+    """One of (Spanish, English) for the owner: Spanish on a Spanish console, English on any other."""
+    return pair[0] if spanish() else pair[1]
+
+
+def note(m):
+    """The kit's release note in the console's language; none when the manifest has none in it."""
+    return m.get('note', '') if spanish() else m.get('note_en', '')
 
 
 def num(key):
@@ -255,19 +287,27 @@ def save_state(st):
 
 
 def write_status(st, detail):
-    """What START > Canica shows: key=value lines, one value each."""
+    """What START > Canica shows: key=value lines, one value each. detail is (Spanish, English): the
+    menu shows detail on a Spanish console and detail_en on any other."""
     a = st.get('available') or {}
     rows = (('installed', kit_label() or (st.get('installed') or {}).get('label', '')),
             ('available', a.get('label', '')), ('serial', a.get('serial', '')),
             ('ready', '1' if a.get('ready') else '0'), ('note', a.get('note', '')),
-            ('detail', detail), ('mode', mode()), ('checked', st.get('checked', 0)))
+            ('detail', detail[0]), ('detail_en', detail[1]), ('mode', mode()), ('checked', st.get('checked', 0)))
     write(HOME + '/status', ''.join('%s=%s\n' % (k, re.sub(r'[\x00-\x1f\x7f]+', ' ', str(v))) for k, v in rows))
 
 
-def last_check(st):
+def last_check(st, english=False):
     if not st.get('checked'):
         return ''
+    if english:
+        return ' Last check: %s.' % time.strftime('%m/%d %H:%M', time.localtime(st['checked']))
     return ' Última búsqueda: %s.' % time.strftime('%d/%m %H:%M', time.localtime(st['checked']))
+
+
+def with_last_check(spanish_text, english_text, st):
+    """A status line followed by when the channel was last read, in both languages."""
+    return spanish_text + last_check(st), english_text + last_check(st, True)
 
 
 # --- HTTP ----------------------------------------------------------------------------------
@@ -334,6 +374,9 @@ def es(path, data=None):
 
 
 def notify(text, tries=20):
+    """A notice on the menu; text is one string, or (Spanish, English) for the console's language."""
+    if isinstance(text, tuple):
+        text = say(text)
     for _ in range(tries):
         if es('/notify', text.encode())[0] in (200, 201, 204):
             log('notified: ' + text)
@@ -505,8 +548,9 @@ def check_manifest(m, fw):
         raise Reject('bad kit name')
     if not SHA256.match(str(m.get('inventory_sha256', ''))):
         raise Reject('bad inventory digest')
-    if 'note' in m and not (isinstance(m['note'], str) and NOTE.match(m['note'])):
-        raise Reject('bad note')
+    for key in ('note', 'note_en'):
+        if key in m and not (isinstance(m[key], str) and NOTE.match(m[key])):
+            raise Reject('bad note')
     if 'created' in m:
         try:
             time.strptime(m['created'], CREATED)
@@ -597,17 +641,18 @@ def soak_left(m):
 def settled(m):
     """What is already known about a kit, as finished rows of the terminal screen."""
     p = m['payload']
-    rows = [('firma', 'ed25519 · %s' % m.get('_key', 'llave del kit')),
-            ('descarga', '%.1f MB · sha256 %s…%s' % (p['size'] / 1e6, p['sha256'][:4], p['sha256'][-4:]))]
+    spanish_now = spanish()
+    rows = [('firma' if spanish_now else 'signature', 'ed25519 · %s' % m.get('_key', 'llave del kit' if spanish_now else 'kit key')),
+            ('descarga' if spanish_now else 'download', '%.1f MB · sha256 %s…%s' % (p['size'] / 1e6, p['sha256'][:4], p['sha256'][-4:]))]
     if m.get('_checked'):
-        rows.append(('prueba', 'cabe y no pisa nada tuyo'))
+        rows.append(('prueba', 'cabe y no pisa nada tuyo') if spanish_now else ('check', 'fits and keeps your changes'))
     return rows
 
 
 def console(m, head, footer, rows, answers=''):
     """The update's terminal screen on the menu: a title bar, the command, the rows given and a
     footer. False when this menu or its theme has no such screen."""
-    body = '\n'.join([head, TITLE, '%s → %s' % (m.get('_from') or kit_label() or '?', m['label']), footer, answers,
+    body = '\n'.join([head, say(TITLE), '%s → %s' % (m.get('_from') or kit_label() or '?', m['label']), footer, answers,
                       '$ canica update --to %s' % m['label'].lower()] + rows)
     return es('/job-console', body.encode())[0] == 200
 
@@ -615,11 +660,12 @@ def console(m, head, footer, rows, answers=''):
 def panel(m, percent, now, done=(), plain=''):
     """The update's progress on the running menu, until the menu restarts: the terminal screen
     where the theme has one (the step under way after the finished ones), else a notice that
-    stays with the plain sentence. False when the menu has neither."""
+    stays with the plain sentence. False when the menu has neither. The steps (label, state)
+    and plain are already in the console's language."""
     rows = ['%s\t%s\tok' % step for step in settled(m) + list(done)] + ['%s\t%s' % now]
-    if console(m, 'progress %d' % percent, 'No apagues la consola.', rows):
+    if console(m, 'progress %d' % percent, say(('No apagues la consola.', 'Do not turn off the console.')), rows):
         return True
-    body = '%d\nActualizando Canica %s\n%s' % (percent, m['label'], plain)
+    body = '%d\n%s %s\n%s' % (percent, say(('Actualizando Canica', 'Updating Canica')), m['label'], plain)
     return es('/progress-notice', body.encode())[0] == 200
 
 
@@ -630,18 +676,24 @@ def panel_close():
 
 def follow(m):
     """Turn the installer's progress lines into the screen's rows and gauge."""
-    copied = [('archivos', 'copiados')]
+    spanish_now = spanish()
+    copied = [('archivos', 'copiados') if spanish_now else ('files', 'copied')]
+    cards = 'tarjetas' if spanish_now else 'cards'
+    off = 'No apagues la consola.' if spanish_now else 'Do not turn off the console.'
 
     def line(text):
         words = text.split()
         if words[:3] == ['@canica', 'step', 'files']:
-            panel(m, 8, ('archivos', 'copiando'), plain='Copiando archivos. No apagues la consola.')
+            panel(m, 8, ('archivos', 'copiando') if spanish_now else ('files', 'copying'),
+                  plain=('Copiando archivos. ' if spanish_now else 'Copying files. ') + off)
         elif words[:3] == ['@canica', 'step', 'cards']:
-            panel(m, 15, ('tarjetas', 'preparando'), copied, 'Preparando las tarjetas. No apagues la consola.')
+            panel(m, 15, (cards, 'preparando' if spanish_now else 'preparing'), copied,
+                  ('Preparando las tarjetas. ' if spanish_now else 'Preparing the cards. ') + off)
         elif words[:2] == ['@canica', 'cards'] and len(words) == 4 and words[2].isdigit() and words[3].isdigit() and int(words[3]):
             done, total = int(words[2]), int(words[3])
-            step = 'consola %d de %d' % (done + 1, total)
-            panel(m, 15 + min(75, 75 * done // total), ('tarjetas', step), copied, 'Tarjetas: %s. No apagues la consola.' % step)
+            step = ('consola %d de %d' if spanish_now else 'console %d of %d') % (done + 1, total)
+            panel(m, 15 + min(75, 75 * done // total), (cards, step), copied,
+                  ('Tarjetas: %s. ' if spanish_now else 'Cards: %s. ') % step + off)
     return line
 
 
@@ -691,8 +743,8 @@ def precheck(m):
     if status in (0, 2):
         return True, '', False, status == 0
     if status == 75:
-        return False, 'otra instalación de Canica está en curso', True, False
-    return False, str(result.get('reason') or 'el instalador no pudo comprobarlo'), False, False
+        return False, say(('otra instalación de Canica está en curso', 'another Canica installation is under way')), True, False
+    return False, str(result.get('reason') or say(('el instalador no pudo comprobarlo', 'the installer could not check it'))), False, False
 
 
 def service(action):
@@ -738,7 +790,8 @@ def give_up(st, m, why):
     st.pop('pending', None)
     st.pop('available', None)
     save_state(st)
-    notify('Canica %s no arrancó: volví al menú de fábrica.' % m['label'])
+    notify(('Canica %s no arrancó: volví al menú de fábrica.' % m['label'],
+            'Canica %s did not start: back to the factory menu.' % m['label']))
     return 'kit %s (%d): %s; held, the factory menu runs' % (m['label'], m['serial'], why)
 
 
@@ -754,9 +807,12 @@ def activate(st, m, restart=True):
         if pend.get('restarts', 0) < num('MAX_RESTARTS'):
             pend['restarts'] = pend.get('restarts', 0) + 1
             m['_from'] = pend.get('from')
-            if not (pend.get('panel') and panel(m, 96, ('menú', 'reiniciando'), [('archivos', 'copiados'), ('tarjetas', 'listas')],
-                                                 'Reiniciando el menú.')):
-                notify('Canica %s: reiniciando el menú.' % m['label'])
+            spanish_now = spanish()
+            if not (pend.get('panel') and panel(m, 96, ('menú', 'reiniciando') if spanish_now else ('menu', 'restarting'),
+                                                 [('archivos', 'copiados'), ('tarjetas', 'listas')] if spanish_now else
+                                                 [('files', 'copied'), ('cards', 'ready')],
+                                                 'Reiniciando el menú.' if spanish_now else 'Restarting the menu.')):
+                notify(('Canica %s: reiniciando el menú.' % m['label'], 'Canica %s: restarting the menu.' % m['label']))
             time.sleep(3)
             old = pend['menu'] = menu_pids()[0]
             save_state(st)
@@ -778,14 +834,14 @@ def activate(st, m, restart=True):
     st['failed'].pop(str(m['serial']), None)
     save_state(st)
     if verdict == 'ok':
-        notify('Canica %s instalada.' % m['label'])
-        if m.get('note'):          # one line about what is new, once the first notice has been read
+        notify(('Canica %s instalada.' % m['label'], 'Canica %s installed.' % m['label']))
+        if note(m):                # one line about what is new, once the first notice has been read
             time.sleep(num('NOTE_AFTER'))
-            notify(m['note'])
+            notify(note(m))
     for path in (payload_path(m), HOME + '/hold'):
         if os.path.exists(path):
             os.remove(path)
-    write_status(st, 'Al día.' + last_check(st))
+    write_status(st, with_last_check('Al día.', 'Up to date.', st))
     if verdict != 'ok':    # in place and sealed, and restarted: nothing more to do or to say
         return 'kit %s (%d) installed; its menu could not be confirmed' % (m['label'], m['serial']), num('CHECK_INTERVAL')
     return 'kit %s (%d) installed and running' % (m['label'], m['serial']), num('CHECK_INTERVAL')
@@ -796,13 +852,13 @@ def failed(st, m, reason, attempts):
     entry = st['failed'].setdefault(str(m['serial']), {})
     entry.update(reason=reason, attempts=attempts, at=now())
     st.pop('pending', None)
-    text = 'Canica %s no se instaló: %s' % (m['label'], reason)
+    text = ('%s no se instaló: %s' % (m['label'], reason), '%s was not installed: %s' % (m['label'], reason))
     if not entry.get('noticed'):
         entry['noticed'] = True
         save_state(st)
-        notify(text[:160])
+        notify(('Canica ' + say(text))[:160])
     save_state(st)
-    write_status(st, text[9:])
+    write_status(st, text)
     last = attempts >= num('MAX_ATTEMPTS')
     return 'kit %s (%d) not installed (%s); attempt %d' % (m['label'], m['serial'], reason, attempts), \
         num('CHECK_INTERVAL') if last else num('BUSY_RETRY')
@@ -813,8 +869,9 @@ def defer(st, m, why, quiet):
     (once, unless quiet), and try again soon."""
     st['wanted'] = dict(serial=m['serial'], label=m['label'], why=why, since=now())
     if not quiet:
-        notify('Canica %s: ahora no, %s. Se instalará %s.' % (m['label'], WHY[why][1], WHY[why][2]))
-    write_status(st, '%s se instalará %s.' % (m['label'], WHY[why][2]))
+        notify(('Canica %s: ahora no, %s. Se instalará %s.' % (m['label'], WHY[why][1][0], WHY[why][2][0]),
+                'Canica %s: not now, %s. It will install %s.' % (m['label'], WHY[why][1][1], WHY[why][2][1])))
+    write_status(st, ('%s se instalará %s.' % (m['label'], WHY[why][2][0]), '%s will install %s.' % (m['label'], WHY[why][2][1])))
     return 'waiting: %s; kit %s installs once it can, as the owner asked' % (WHY[why][0], m['label']), num('WANTED_RETRY')
 
 
@@ -850,10 +907,12 @@ def install(st, m, by_owner=False, resumed=False, quiet=False):
         if attempts > num('MAX_ATTEMPTS'):     # only put the previous kit back
             run_installer(m, '--recover')
             service('start')
-            return failed(st, m, 'no se pudo completar', attempts - 1)
-        shown = panel(m, 3, ('kit', 'comprobando'), plain='Comprobando el kit. No apagues la consola.')
+            return failed(st, m, say(('no se pudo completar', 'it could not be completed')), attempts - 1)
+        shown = panel(m, 3, ('kit', say(('comprobando', 'checking'))),
+                      plain=say(('Comprobando el kit. No apagues la consola.', 'Checking the kit. Do not turn off the console.')))
         if not shown and not resumed:      # the factory menu has no such notice: a plain one
-            notify('Canica %s: actualizando. No apagues la consola.' % m['label'])
+            notify(('Canica %s: actualizando. No apagues la consola.' % m['label'],
+                    'Canica %s: updating. Do not turn off the console.' % m['label']))
         st['pending']['panel'] = shown
         status, result = run_installer(m, '--ota', follow(m) if shown else None)
         if kit_digest() != m['inventory_sha256']:
@@ -868,7 +927,7 @@ def install(st, m, by_owner=False, resumed=False, quiet=False):
                 run_installer(m, '--recover')
             if resumed:
                 service('start')               # the previous kit, as it was
-            return failed(st, m, str(result.get('reason') or 'el instalador no terminó'), attempts)
+            return failed(st, m, str(result.get('reason') or say(('el instalador no terminó', 'the installer did not finish'))), attempts)
         st['pending']['phase'] = 'activate'
         save_state(st)
         return activate(st, m)
@@ -910,10 +969,15 @@ def offer(st, m):
     if es('/runningGame')[0] != 201:
         return False
     # 46 monospaced letters fit between the screen's indent and its «ok» column (640 × 480)
-    rows = ['%s\t%s\tok' % step for step in settled(m)] + textwrap.wrap(m.get('note', ''), 46)
-    asked = console(m, 'ask %d' % m['serial'], 'Tarda alrededor de un minuto y reinicia el menú.', rows,
-                    'MÁS TARDE\tACTUALIZAR AHORA\tinicio\tarrancando el actualizador')
-    if not asked and not notify('Canica %s disponible: START > Canica.' % m['label'], tries=2):
+    rows = ['%s\t%s\tok' % step for step in settled(m)] + textwrap.wrap(note(m), 46)
+    if spanish():
+        asked = console(m, 'ask %d' % m['serial'], 'Tarda alrededor de un minuto y reinicia el menú.', rows,
+                        'MÁS TARDE\tACTUALIZAR AHORA\tinicio\tarrancando el actualizador')
+    else:
+        asked = console(m, 'ask %d' % m['serial'], 'It takes about a minute and restarts the menu.', rows,
+                        'LATER\tUPDATE NOW\tstart\tstarting the updater')
+    if not asked and not notify(('Canica %s disponible: START > Canica.' % m['label'],
+                                 'Canica %s available: START > Canica.' % m['label']), tries=2):
         return False
     st['asked'] = dict(serial=m['serial'], boot=boot_id(), answered=not asked)
     log('offered kit %s (%d) on the menu' % (m['label'], m['serial']))
@@ -928,10 +992,10 @@ def cycle(st, fw, verb=None, arg=None):
     if on is None:
         return 'the services of this console could not be read', num('RETRY_MIN')
     if 'canica' not in on:
-        write_status(st, 'Canica está apagado en Servicios.')
+        write_status(st, ('Canica está apagado en Servicios.', 'Canica is off in Services.'))
         return 'Canica is off in Services: nothing done', num('CHECK_INTERVAL')
     if 'canica_updater' in on:
-        write_status(st, 'Las actualizaciones las lleva canica_updater.')
+        write_status(st, ('Las actualizaciones las lleva canica_updater.', 'Updates are handled by canica_updater.'))
         return 'the canica_updater add-on is on: standing down', num('CHECK_INTERVAL')
     os.makedirs(HOME + '/cache', exist_ok=True)
     if verb == 'later' and (st.get('asked') or {}).get('serial') == arg:
@@ -951,12 +1015,13 @@ def cycle(st, fw, verb=None, arg=None):
     how = mode()
     wanted = st.get('wanted')
     if how == 'off' and not owner and not held() and not wanted:
-        write_status(st, 'Actualizaciones desactivadas.')
+        write_status(st, ('Actualizaciones desactivadas.', 'Updates are off.'))
         return 'updates are off', num('CHECK_INTERVAL')
     if wanted and not owner:                    # waiting to say yes again: no download, no network
         why = busy(window=False)
         if why:
-            write_status(st, '%s se instalará %s.' % (wanted['label'], WHY[why][2]))
+            write_status(st, ('%s se instalará %s.' % (wanted['label'], WHY[why][2][0]),
+                              '%s will install %s.' % (wanted['label'], WHY[why][2][1])))
             return 'waiting: %s; kit %s installs once it can, as the owner asked' % (WHY[why][0], wanted['label']), num('WANTED_RETRY')
     if not st.get('disclosed'):         # say once, before the first request, where it looks
         if es('/runningGame')[0] != 201 or not notify(DISCLOSE, tries=2):
@@ -970,13 +1035,13 @@ def cycle(st, fw, verb=None, arg=None):
         forget_cache(manifest=True)
         st['checked'] = now()
         if verb == 'check':
-            notify('Canica: no hay ninguna actualización publicada.', tries=2)
-        write_status(st, 'Al día.' + last_check(st))
+            notify(('Canica: no hay ninguna actualización publicada.', 'Canica: no update is published.'), tries=2)
+        write_status(st, with_last_check('Al día.', 'Up to date.', st))
         return 'no kit published for %s' % slug(fw), num('CHECK_INTERVAL')
     except Reject as e:
         if owner:
-            notify('Canica: la actualización publicada no es válida.', tries=2)
-        write_status(st, 'Se rechazó la actualización publicada.' + last_check(st))
+            notify(('Canica: la actualización publicada no es válida.', 'Canica: the published update is not valid.'), tries=2)
+        write_status(st, with_last_check('Se rechazó la actualización publicada.', 'The published update was refused.', st))
         return 'rejected: %s' % e, num('CHECK_INTERVAL')
     except Offline as e:
         try:                                       # a kit downloaded earlier installs offline
@@ -985,8 +1050,8 @@ def cycle(st, fw, verb=None, arg=None):
                 raise Reject('no payload')
         except (Reject, OSError):
             if owner:
-                notify('Canica: sin conexión, no se pudo buscar.', tries=2)
-            write_status(st, 'Sin conexión.' + last_check(st))
+                notify(('Canica: sin conexión, no se pudo buscar.', 'Canica: offline, could not check.'), tries=2)
+            write_status(st, with_last_check('Sin conexión.', 'Offline.', st))
             return backoff('offline: %s' % e)
     else:
         st['checked'] = now()
@@ -999,7 +1064,8 @@ def cycle(st, fw, verb=None, arg=None):
         st.pop('wanted')                       # another kit is published now: the menu asks again
     if m['serial'] in st['bad']:
         st.pop('wanted', None)
-        write_status(st, '%s no arrancó aquí; se espera la siguiente.' % m['label'])
+        write_status(st, ('%s no arrancó aquí; se espera la siguiente.' % m['label'],
+                          '%s did not start here; waiting for the next one.' % m['label']))
         return 'kit %s did not start here before; waiting for a later one' % name, num('CHECK_INTERVAL')
     installed = kit_digest()
     if installed == m['inventory_sha256']:
@@ -1010,8 +1076,8 @@ def cycle(st, fw, verb=None, arg=None):
         if os.path.exists(payload_path(m)):
             os.remove(payload_path(m))
         if verb == 'check':
-            notify('Canica está al día (%s).' % m['label'], tries=2)
-        write_status(st, 'Al día.' + last_check(st))
+            notify(('Canica está al día (%s).' % m['label'], 'Canica is up to date (%s).' % m['label']), tries=2)
+        write_status(st, with_last_check('Al día.', 'Up to date.', st))
         return 'up to date (kit %s)' % name, num('CHECK_INTERVAL')
     log('manifest %d (kit %s) verified with %s' % (m['serial'], m['label'], key))
     if installed is None:
@@ -1019,20 +1085,23 @@ def cycle(st, fw, verb=None, arg=None):
     f = st['failed'].get(str(m['serial']))
     if f and f.get('attempts', 0) >= num('MAX_ATTEMPTS'):
         if verb != 'install' or arg != m['serial']:
-            write_status(st, '%s no se instaló: %s' % (m['label'], f.get('reason')))
+            write_status(st, ('%s no se instaló: %s' % (m['label'], f.get('reason')),
+                              '%s was not installed: %s' % (m['label'], f.get('reason'))))
             if verb == 'check':
-                notify('Canica %s no se instaló: %s' % (m['label'], f.get('reason')), tries=2)
+                notify(('Canica %s no se instaló: %s' % (m['label'], f.get('reason')),
+                        'Canica %s was not installed: %s' % (m['label'], f.get('reason'))), tries=2)
             return 'kit %s was refused %d times (%s)' % (name, f['attempts'], f.get('reason')), num('CHECK_INTERVAL')
         st['failed'].pop(str(m['serial']))          # the owner asks again: one more round
     try:
         get_payload(fw, m)
     except Offline as e:
         if owner:
-            notify('Canica: sin conexión, no se pudo descargar %s.' % m['label'], tries=2)
-        write_status(st, 'Sin conexión.' + last_check(st))
+            notify(('Canica: sin conexión, no se pudo descargar %s.' % m['label'],
+                    'Canica: offline, could not download %s.' % m['label']), tries=2)
+        write_status(st, with_last_check('Sin conexión.', 'Offline.', st))
         return backoff('offline: %s' % e)
     except (Reject, NotFound) as e:
-        write_status(st, 'Se rechazó la actualización publicada.' + last_check(st))
+        write_status(st, with_last_check('Se rechazó la actualización publicada.', 'The published update was refused.', st))
         return 'rejected: %s' % e, num('CHECK_INTERVAL')
     a = st.get('available') or {}
     if a.get('serial') != m['serial'] or not a.get('ready') or owner:
@@ -1041,9 +1110,9 @@ def cycle(st, fw, verb=None, arg=None):
                                    checked=checked)
         save_state(st)
         if not ok:
-            text = '%s no se puede instalar aquí: %s' % (m['label'], reason)
+            text = ('%s no se puede instalar aquí: %s' % (m['label'], reason), '%s cannot be installed here: %s' % (m['label'], reason))
             if owner:
-                notify(('Canica ' + text)[:160], tries=2)
+                notify(('Canica ' + say(text))[:160], tries=2)
             write_status(st, text)
             return 'kit %s cannot be installed here (%s)' % (name, reason), num('BUSY_RETRY' if soon else 'CHECK_INTERVAL')
     m['_checked'] = bool(a.get('checked'))
@@ -1056,12 +1125,13 @@ def cycle(st, fw, verb=None, arg=None):
     if held() or (how == 'auto' and verb != 'check'):
         left = 0 if held() else soak_left(m)
         if left > 0:
-            write_status(st, '%s se instalará sola desde el %s.' % (
-                m['label'], time.strftime('%d/%m %H:%M', time.localtime(now() + left))))
+            moment = time.localtime(now() + left)
+            write_status(st, ('%s se instalará sola desde el %s.' % (m['label'], time.strftime('%d/%m %H:%M', moment)),
+                              '%s installs by itself from %s.' % (m['label'], time.strftime('%m/%d %H:%M', moment))))
             return 'waiting: kit %s installs by itself in %d h' % (name, (left + 3599) // 3600), min(left, num('CHECK_INTERVAL'))
-        write_status(st, '%s se instalará al cargar o al arrancar.' % m['label'])
+        write_status(st, ('%s se instalará al cargar o al arrancar.' % m['label'], '%s installs when charging or at boot.' % m['label']))
         return install(st, m)
-    write_status(st, '%s disponible.' % m['label'])
+    write_status(st, ('%s disponible.' % m['label'], '%s available.' % m['label']))
     asked = st.get('asked') or {}
     again = asked.get('serial') != m['serial'] or (not asked.get('answered') and asked.get('boot') != boot_id())
     if verb == 'check' or again:

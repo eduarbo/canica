@@ -1,4 +1,4 @@
-"""The game switcher (FN + SELECT, or Extras > Continuar): the custom view «switcher».
+"""The game switcher (FN + SELECT, or Extras > Continue): the custom view «switcher».
 
 Its left column is the game list's own (games.details_column), bound to the game shown, with
 A to continue in place of X. On the right, the picture of the game's automatic save inside
@@ -10,6 +10,7 @@ from xml.etree import ElementTree as ET
 
 from games import details_column
 from layout import ART, LOOK, element, image, prop, text
+from strings import t
 
 
 def data_only(node):
@@ -24,9 +25,9 @@ def game_switcher(root):
     # The header of the home screen, with this screen's name where the brand is
     image(v, "headerBand", 0, 0, 640, 31, LOOK + "top.png", z=51)
     image(v, "brandMark", 11, 6, 19, 19, LOOK + "canica.png", z=62)
-    text(v, "library", 35, 6, 172, 19, "CONTINUAR", 12, color="${accent}", weight="Black", z=62)
+    text(v, "library", 35, 6, 172, 19, t("switcherTitle"), 12, color="${accent}", weight="Black", z=62)
     # Without the keys that change console: here L1 and R1 turn the games, under the picture
-    details_column(v, None, [("", "Continuar", "!{game:folder}")], action_key="a.png")
+    details_column(v, None, [("", "continue", "!{game:folder}")], action_key="a.png")
 
     data_only(text(v, "switcherState", 214, 36, 412, 24, "", 11.5, weight="Bold", align="center", z=40))
     shot = data_only(image(v, "switcherShot", 214, 70, 412, 376, ART + "empty.png", z=30))

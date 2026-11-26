@@ -18,7 +18,8 @@ console down the system's way (knulli-shutdown): a running game is closed first,
 its automatic state, and the system's quick resume brings it back at the next start. Before
 that, at WARN_PERCENT, one notice on the menu.
 
-A new kit replaces this file: the running guard starts its new version by itself.
+Its notices are Spanish on a console whose language is Spanish (system.language es or es_*),
+else English. A new kit replaces this file: the running guard starts its new version by itself.
 Log: logs/canica-guard.log.
 """
 import fcntl
@@ -38,6 +39,7 @@ AUTOSAVES = RUN + '/game-autosaves'
 REQUEST = RUN + '/switcher-request'
 LOCK = ROOT + '/var/run/canica-guard.lock'
 LOG = ROOT + '/userdata/system/logs/canica-guard.log'
+CONF = ROOT + '/userdata/system/knulli.conf'
 POWER = ROOT + '/sys/class/power_supply'
 SHOWN = ROOT + '/tmp/battery.percent'          # the percentage the system shows (batteryplus)
 INPUT = ROOT + '/dev/input'
@@ -83,6 +85,16 @@ def read(path, default=''):
             return f.read()
     except (OSError, ValueError):
         return default
+
+
+def spanish():
+    """The console's language is Spanish (system.language es or es_*); read for each notice."""
+    language = ''
+    for line in read(CONF).splitlines():
+        key, sep, value = line.partition('=')
+        if sep and key.strip() == 'system.language':
+            language = value.strip().strip('"').strip("'").lower()
+    return language == 'es' or language.startswith(('es_', 'es-', 'es.'))
 
 
 def write(path, text):
@@ -239,7 +251,9 @@ class Battery:
             return None
         if shown <= WARN_PERCENT and not self.warned and uptime() > SETTLE:
             self.warned = True
-            es('/notify', ('Batería al %d %%: Canica guardará la partida y apagará la consola antes de que se agote.' % shown).encode())
+            es('/notify', (('Batería al %d %%: Canica guardará la partida y apagará la consola antes de que se agote.'
+                            if spanish() else 'Battery at %d%%: Canica will save your game and turn the console off before it runs out.')
+                           % shown).encode())
         empty = (shown <= LOW_PERCENT or (physical is not None and physical <= LOW_PERCENT)
                  or (volts is not None and volts < LOW_VOLTS))
         self.low = self.low + 1 if empty else 0
@@ -247,7 +261,8 @@ class Battery:
             return None
         self.done = True
         log('battery empty (shown %s %%, gauge %s %%, %s V): saving and shutting down' % (shown, physical, volts))
-        es('/notify', 'Batería agotada: guardando la partida y apagando.'.encode())
+        es('/notify', ('Batería agotada: guardando la partida y apagando.' if spanish()
+                       else 'Battery empty: saving your game and turning off.').encode())
         time.sleep(3)
         run('knulli-shutdown', '--shutdown')
         return 'shutdown'

@@ -4,7 +4,7 @@ Canica es el tema de mi RG35XX H y usa mi fork de EmulationStation. La configura
 
 ## Instalar Canica
 
-Copia el instalador completo de RC41.3 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc41.3-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
+Copia el instalador completo de RC42 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc42-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
 
 ## Ajustes
 
@@ -17,6 +17,10 @@ Copia el instalador completo de RC41.3 a `roms/tools` dentro de la unidad compar
 | Vistas previas de consolas | Animadas, Solo imágenes fijas | Controla la rotación de capturas en las tarjetas y el vídeo de la última partida en el panel de consola. |
 
 KNULLI también ofrece **Tamaño pred. de cuadrícula**. Déjalo en **Automático** para respetar el tamaño de tarjetas del tema y las tres columnas de PICO-8. Una cuadrícula manual global o por sistema tiene prioridad.
+
+## Idioma
+
+Canica habla el idioma de la consola (**START → Ajustes del sistema → Idioma**): español si es español (es_MX, es_ES…) e inglés con cualquier otro. Eso incluye las pantallas del tema y sus logotipos con palabras, START → Canica, Continuar y Actividad, los avisos de actualización y de batería y los mensajes del instalador. Al cambiar el idioma, KNULLI reinicia el menú y Canica cambia con él. Los menús de KNULLI conservan sus propias traducciones. La nota de cada versión aparece en inglés sólo cuando el canal la publica también en inglés.
 
 ## Actualizaciones
 

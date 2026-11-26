@@ -14,10 +14,11 @@ import theme_options as setting
 from artwork import generate
 from games import card_sizes, games, save_cards, tile_badge_geometry
 from switcher import game_switcher
+from strings import SPANISH, add_text_variables, word
 from layout import (ART, CAT, COL, FONT, HERE, HOME, KIT, LOOK, MONO_FONT, RED, element, option, prop,
                     system_data, systems, variables, view)
 
-VERSION="1.0.1-rc41.3"
+VERSION="1.0.1-rc42"
 KIT["label"]=VERSION.rsplit("-",1)[-1].upper()
 # The theme and its art are CC BY-SA 4.0; the project's own code is MIT.
 LICENSES=("CC-BY-SA-4.0.txt","MIT.txt")
@@ -163,11 +164,13 @@ def build(dest):
     root=ET.Element("theme",defaultView="grid",defaultTransition="slide")
     prop(root,"formatVersion","7")
     # Subset IDs are the saved preferences of existing installations.
-    option(root,setting.STYLE,"Variante",[(k,p["label"]) for k,p in palettes.items()])
-    option(root,setting.DENSITY,"Tarjetas de juegos",[("grandes","Grandes"),("compacta","Compactas")])
-    option(root,setting.VIDEO,"Vídeo en la tarjeta seleccionada",[("si","Reproducir"),("no","Solo imagen")])
-    option(root,setting.ART,"Imagen de la ficha",[("portada","Carátula primero"),("captura","Captura primero")])
-    option(root,setting.MOTION,"Vistas previas de consolas",[("animadas","Animadas"),("fijas","Solo imágenes fijas")])
+    # Option names are words of strings.TEXT, shown in the console's language
+    assert all(word("look."+k,SPANISH)==p["label"] for k,p in palettes.items())
+    option(root,setting.STYLE,"optStyle",[(k,"look."+k) for k in palettes])
+    option(root,setting.DENSITY,"optDensity",[("grandes","densityLarge"),("compacta","densityCompact")])
+    option(root,setting.VIDEO,"optVideo",[("si","videoOn"),("no","videoOff")])
+    option(root,setting.ART,"optArt",[("portada","artBox"),("captura","artShot")])
+    option(root,setting.MOTION,"optMotion",[("animadas","motionOn"),("fijas","motionOff")])
     variables(root,{"detailPrimary":"thumbnail","detailFallback":"image","animateSystems":"1","stillSystems":"0"})
     variables(root,{"detailPrimary":"image","detailFallback":"thumbnail"},ifSubset=f"{setting.ART}:captura")
     variables(root,{"animateSystems":"0","stillSystems":"1"},ifSubset=f"{setting.MOTION}:fijas")
@@ -198,6 +201,7 @@ def build(dest):
         bindings.append(block)
     root.insert(list(root).index(root.find("view")),ET.Element("include"))
     root.find("include").text="./bindings.xml"
+    add_text_variables(root)
     shutil.copyfile(HERE/"card_screens.py",dest/"card_screens.py")
     shutil.copyfile(HERE/"Preparar fondos de Canica.sh",dest/"Preparar fondos de Canica.sh")
     xml(bindings,dest/"bindings.xml")

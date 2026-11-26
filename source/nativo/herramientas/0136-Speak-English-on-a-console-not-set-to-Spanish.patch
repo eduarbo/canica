@@ -1,0 +1,354 @@
+From 3de82c3454dff5f6e90bc3d400598ceb7a9eedbe Mon Sep 17 00:00:00 2001
+From: Eduardo Ruiz <335073+eduarbo@users.noreply.github.com>
+Date: Wed, 25 Nov 2026 20:37:14 -0800
+Subject: [PATCH] Speak English on a console not set to Spanish
+
+Canica's own words in the menu were Spanish literals, because the
+firmware's translation catalogues cannot carry new strings. They now
+follow system.language: Spanish when it is es or es_*, English on any
+other console (CanicaText.h, read at every use, so a changed language
+applies without a stale cache).
+
+That covers START > Canica (its entries, the update modes and the
+update row, which takes the updater's detail_en in English), the
+activity page (labels, weekdays, the 7-day list, thousands as 12,345),
+the game switcher's dates and auto-save line, the Continue collection's
+name, the update terminal's percent and a screenshot's date
+(month/day/year in English). A Spanish console reads exactly what it
+read before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ es-app/src/CollectionSystemManager.cpp |  3 ++-
+ es-app/src/guis/GuiActivity.cpp        | 37 +++++++++++++++++---------
+ es-app/src/guis/GuiGameSwitcher.cpp    | 15 ++++++-----
+ es-app/src/guis/GuiMenu.cpp            | 32 ++++++++++++----------
+ es-core/src/CanicaText.h               | 25 +++++++++++++++++
+ es-core/src/guis/GuiJobConsole.cpp     |  3 ++-
+ es-core/src/utils/StringUtil.cpp       |  5 +++-
+ 7 files changed, 84 insertions(+), 36 deletions(-)
+ create mode 100644 es-core/src/CanicaText.h
+
+diff --git a/es-app/src/CollectionSystemManager.cpp b/es-app/src/CollectionSystemManager.cpp
+index 972c8e3..e3a22e9 100644
+--- a/es-app/src/CollectionSystemManager.cpp
++++ b/es-app/src/CollectionSystemManager.cpp
+@@ -23,6 +23,7 @@
+ #include "Genres.h"
+ #include "Paths.h"
+ #include "Scripting.h"
++#include "CanicaText.h"
+ #include "CanicaUpdates.h"
+ 
+ std::string myCollectionsName = "collections";
+@@ -41,7 +42,7 @@ std::vector<CollectionSystemDecl> CollectionSystemManager::getSystemDecls()
+ 		//type						name            long name                 default sort					  theme folder               isCustom     displayIfEmpty
+ 		{ AUTO_ALL_GAMES,			"all",				_("all games"),         FileSorts::FILENAME_ASCENDING,    "auto-allgames",           false,       true },
+ 		{ AUTO_LAST_PLAYED,			"recent",			_("last played"),       FileSorts::LASTPLAYED_ASCENDING,  "auto-lastplayed",         false,       true },
+-		{ AUTO_CONTINUE,			"continue",			"Continuar",            FileSorts::LASTPLAYED_ASCENDING,  "auto-continue",           false,       false },
++		{ AUTO_CONTINUE,			"continue",			Canica::text("Continuar", "Continue"), FileSorts::LASTPLAYED_ASCENDING,  "auto-continue",           false,       false },
+ 		{ AUTO_FAVORITES,			"favorites",		_("favorites"),         FileSorts::FILENAME_ASCENDING,    "auto-favorites",          false,       true },
+ 		{ AUTO_AT2PLAYERS,			"2players",			_("2 players"),         FileSorts::FILENAME_ASCENDING,    "auto-at2players",         false,       true }, 
+ 		{ AUTO_AT4PLAYERS,			"4players",			_("4 players"),         FileSorts::FILENAME_ASCENDING,    "auto-at4players",         false,       true }, 
+diff --git a/es-app/src/guis/GuiActivity.cpp b/es-app/src/guis/GuiActivity.cpp
+index b96f028..e5c269d 100644
+--- a/es-app/src/guis/GuiActivity.cpp
++++ b/es-app/src/guis/GuiActivity.cpp
+@@ -3,19 +3,24 @@
+ #include "components/TextComponent.h"
+ #include "guis/GuiSettings.h"
+ #include "CanicaActivity.h"
++#include "CanicaText.h"
+ #include "ThemeData.h"
+ #include "Window.h"
+ 
+ static const char* WEEKDAYS[] = { "DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO" };
+ static const char* WEEKDAY_NAMES[] = { "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado" };
++static const char* WEEKDAYS_EN[] = { "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY" };
++static const char* WEEKDAY_NAMES_EN[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+ 
++// 12 345 in Spanish, 12,345 in English
+ static std::string thousands(long value)
+ {
++	const std::string separator = Canica::spanish() ? " " : ",";
+ 	std::string digits = std::to_string(value), out;
+ 	for (size_t i = 0; i < digits.size(); i++)
+ 	{
+ 		if (i > 0 && (digits.size() - i) % 3 == 0)
+-			out += " ";
++			out += separator;
+ 
+ 		out += digits[i];
+ 	}
+@@ -27,30 +32,35 @@ void GuiActivity::open(Window* window)
+ {
+ 	auto data = CanicaActivity::summarize(7);
+ 	auto theme = ThemeData::getMenuTheme();
+-	GuiSettings* s = new GuiSettings(window, "ACTIVIDAD");
++	const bool es = Canica::spanish();
++	GuiSettings* s = new GuiSettings(window, es ? "ACTIVIDAD" : "ACTIVITY");
+ 
+ 	auto value = [window, theme](const std::string& text)
+ 	{
+ 		return std::make_shared<TextComponent>(window, text, theme->Text.font, theme->Text.color, ALIGN_RIGHT);
+ 	};
+ 
+-	s->addGroup("RESUMEN");
+-	s->addWithLabel("TIEMPO DE JUEGO", value(data.totalSeconds > 0 ? CanicaActivity::duration(data.totalSeconds, true) : "—"));
+-	s->addWithLabel("JUEGOS JUGADOS", value(thousands(data.gamesPlayed)));
+-	s->addWithLabel("PARTIDAS", value(thousands(data.plays)));
++	s->addGroup(es ? "RESUMEN" : "SUMMARY");
++	s->addWithLabel(es ? "TIEMPO DE JUEGO" : "PLAY TIME", value(data.totalSeconds > 0 ? CanicaActivity::duration(data.totalSeconds, true) : "—"));
++	s->addWithLabel(es ? "JUEGOS JUGADOS" : "GAMES PLAYED", value(thousands(data.gamesPlayed)));
++	s->addWithLabel(es ? "PARTIDAS" : "PLAYS", value(thousands(data.plays)));
+ 
+ 	if (data.bestStreak > 0)
+-		s->addWithLabel("RACHA", value(std::to_string(data.streak) + (data.streak == 1 ? " día" : " días") +
+-			" · mejor " + std::to_string(data.bestStreak)));
++	{
++		const char* days = es ? (data.streak == 1 ? " día" : " días") : (data.streak == 1 ? " day" : " days");
++		s->addWithLabel(es ? "RACHA" : "STREAK", value(std::to_string(data.streak) + days +
++			(es ? " · mejor " : " · best ") + std::to_string(data.bestStreak)));
++	}
+ 
+ 	if (data.sessions > 0)
+ 	{
+-		s->addWithLabel("HORA FAVORITA", value((data.favoriteHour < 10 ? "0" : "") + std::to_string(data.favoriteHour) + ":00"));
+-		s->addWithLabel("DÍA FAVORITO", value(WEEKDAY_NAMES[data.favoriteWeekday]));
++		s->addWithLabel(es ? "HORA FAVORITA" : "FAVORITE HOUR", value((data.favoriteHour < 10 ? "0" : "") + std::to_string(data.favoriteHour) + ":00"));
++		s->addWithLabel(es ? "DÍA FAVORITO" : "FAVORITE DAY", value((es ? WEEKDAY_NAMES : WEEKDAY_NAMES_EN)[data.favoriteWeekday]));
+ 	}
+ 
+ 	// Today first; the log starts with this version, so a new console says so
+-	s->addGroup(data.sessions > 0 ? "ÚLTIMOS 7 DÍAS" : "ÚLTIMOS 7 DÍAS · SE CUENTAN DESDE HOY");
++	s->addGroup(es ? (data.sessions > 0 ? "ÚLTIMOS 7 DÍAS" : "ÚLTIMOS 7 DÍAS · SE CUENTAN DESDE HOY")
++		: (data.sessions > 0 ? "LAST 7 DAYS" : "LAST 7 DAYS · COUNTED FROM TODAY"));
+ 	time_t now = time(NULL);
+ 	for (int i = 6; i >= 0; i--)
+ 	{
+@@ -58,13 +68,14 @@ void GuiActivity::open(Window* window)
+ 		struct tm local;
+ 		localtime_r(&when, &local);
+ 
+-		std::string day = i == 6 ? "HOY" : (i == 5 ? "AYER" : std::string(WEEKDAYS[local.tm_wday]) + " " + std::to_string(local.tm_mday));
++		std::string day = i == 6 ? (es ? "HOY" : "TODAY") : (i == 5 ? (es ? "AYER" : "YESTERDAY") :
++			std::string((es ? WEEKDAYS : WEEKDAYS_EN)[local.tm_wday]) + " " + std::to_string(local.tm_mday));
+ 		s->addWithLabel(day, value(data.days[i] > 0 ? CanicaActivity::duration(data.days[i]) : "—"));
+ 	}
+ 
+ 	if (!data.top.empty())
+ 	{
+-		s->addGroup("MÁS JUGADOS");
++		s->addGroup(es ? "MÁS JUGADOS" : "MOST PLAYED");
+ 		for (size_t i = 0; i < data.top.size(); i++)
+ 			s->addWithLabel(std::to_string(i + 1) + ". " + data.top[i].name, value(CanicaActivity::duration(data.top[i].seconds)));
+ 	}
+diff --git a/es-app/src/guis/GuiGameSwitcher.cpp b/es-app/src/guis/GuiGameSwitcher.cpp
+index e99998d..fe9f3b1 100644
+--- a/es-app/src/guis/GuiGameSwitcher.cpp
++++ b/es-app/src/guis/GuiGameSwitcher.cpp
+@@ -11,6 +11,7 @@
+ #include "BindingManager.h"
+ #include "ThemeData.h"
+ #include "CanicaActivity.h"
++#include "CanicaText.h"
+ #include "FileData.h"
+ #include "InputConfig.h"
+ #include "LocaleES.h"
+@@ -40,16 +41,17 @@ static std::string when(time_t moment)
+ 	char clock[8];
+ 	strftime(clock, sizeof(clock), "%H:%M", &local);
+ 
++	const bool es = Canica::spanish();
+ 	long days = (long)((now - moment) / 86400);
+ 	if (local.tm_yday == today.tm_yday && local.tm_year == today.tm_year)
+-		return std::string("hoy ") + clock;
++		return std::string(es ? "hoy " : "today ") + clock;
+ 	if (days <= 1)
+-		return std::string("ayer ") + clock;
++		return std::string(es ? "ayer " : "yesterday ") + clock;
+ 	if (days < 30)
+-		return "hace " + std::to_string(days) + " días";
++		return es ? "hace " + std::to_string(days) + " días" : std::to_string(days) + " days ago";
+ 
+ 	char date[16];
+-	strftime(date, sizeof(date), "%d/%m/%Y", &local);
++	strftime(date, sizeof(date), es ? "%d/%m/%Y" : "%m/%d/%Y", &local);
+ 	return date;
+ }
+ 
+@@ -231,8 +233,9 @@ void GuiGameSwitcher::select(int index)
+ 		BindingManager::updateBindings(extra, game);
+ 
+ 	if (mState)
+-		std::static_pointer_cast<TextComponent>(mState)->setText(entry.resumes ? "Partida automática · " + when(entry.saved) :
+-			"Sin partida automática: abre desde su guardado");
++		std::static_pointer_cast<TextComponent>(mState)->setText(entry.resumes ?
++			Canica::text("Partida automática · ", "Auto save · ") + when(entry.saved) :
++			Canica::text("Sin partida automática: abre desde su guardado", "No auto save: load it from its own save"));
+ 
+ 	// The picture: the automatic state's screenshot, else the game's image. Pixel art grows by whole steps,
+ 	// sharp; anything else fits the area.
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index 03ba1eb..23cb863 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -1,4 +1,5 @@
+ #include "guis/GuiMenu.h"
++#include "CanicaText.h"
+ #include "CanicaUpdates.h"
+ #include "guis/GuiActivity.h"
+ #include "guis/GuiGameSwitcher.h"
+@@ -1252,16 +1253,17 @@ void GuiMenu::openDeveloperSettings()
+ }
+ 
+ // The kit's version and how it updates. The updater is a program outside the menu: this page shows what it
+-// last found and leaves it requests. Its words are Spanish, as the kit's theme: the firmware's catalogue of
+-// translations cannot carry new ones.
++// last found and leaves it requests. Its words follow the console's language, Spanish or English, like the
++// kit's theme: the firmware's catalogue of translations cannot carry new ones.
+ void GuiMenu::openCanicaSettings()
+ {
+ 	auto status = CanicaUpdates::status();
+ 	auto theme = ThemeData::getMenuTheme();
+ 	Window* window = mWindow;
++	const bool es = Canica::spanish();
+ 	GuiSettings* s = new GuiSettings(mWindow, "CANICA");
+ 
+-	s->addEntry("CONTINUAR UN JUEGO", true, [window]
++	s->addEntry(es ? "CONTINUAR UN JUEGO" : "CONTINUE A GAME", true, [window]
+ 	{
+ 		// From the main screen: a game started from it returns there
+ 		while (window->peekGui() && window->peekGui() != ViewController::get())
+@@ -1269,7 +1271,7 @@ void GuiMenu::openCanicaSettings()
+ 
+ 		GuiGameSwitcher::open(window);
+ 	});
+-	s->addEntry("ACTIVIDAD", true, [window] { GuiActivity::open(window); });
++	s->addEntry(es ? "ACTIVIDAD" : "ACTIVITY", true, [window] { GuiActivity::open(window); });
+ 
+ 	// What follows needs the kit's updater
+ 	if (status.empty())
+@@ -1278,15 +1280,17 @@ void GuiMenu::openCanicaSettings()
+ 		return;
+ 	}
+ 
+-	s->addGroup("ACTUALIZACIONES");
+-	s->addWithLabel("VERSIÓN", std::make_shared<TextComponent>(mWindow, status["installed"], theme->Text.font, theme->Text.color));
++	s->addGroup(es ? "ACTUALIZACIONES" : "UPDATES");
++	s->addWithLabel(es ? "VERSIÓN" : "VERSION", std::make_shared<TextComponent>(mWindow, status["installed"], theme->Text.font, theme->Text.color));
+ 
+ 	std::string mode = CanicaUpdates::mode();
+-	auto modes = std::make_shared<OptionListComponent<std::string>>(mWindow, "ACTUALIZACIONES", false);
+-	modes->add("PREGUNTAR", "ask", mode == "ask");
+-	modes->add("AUTOMÁTICAS", "auto", mode == "auto");
+-	modes->add("DESACTIVADAS", "off", mode == "off");
+-	s->addWithDescription("ACTUALIZACIONES", status["detail"], modes);
++	auto modes = std::make_shared<OptionListComponent<std::string>>(mWindow, es ? "ACTUALIZACIONES" : "UPDATES", false);
++	modes->add(es ? "PREGUNTAR" : "ASK", "ask", mode == "ask");
++	modes->add(es ? "AUTOMÁTICAS" : "AUTOMATIC", "auto", mode == "auto");
++	modes->add(es ? "DESACTIVADAS" : "OFF", "off", mode == "off");
++	// The updater says its state in both languages; an older one only in Spanish
++	std::string detail = !es && !status["detail_en"].empty() ? status["detail_en"] : status["detail"];
++	s->addWithDescription(es ? "ACTUALIZACIONES" : "UPDATES", detail, modes);
+ 	s->addSaveFunc([modes]
+ 	{
+ 		if (modes->changed())
+@@ -1312,17 +1316,17 @@ void GuiMenu::openCanicaSettings()
+ 	std::string serial = status["serial"];
+ 	if (!status["available"].empty() && status["ready"] == "1" && !serial.empty() && serial.find_first_not_of("0123456789") == std::string::npos)
+ 	{
+-		s->addEntry("ACTUALIZAR A " + status["available"], false, [window, modes, serial, leave]
++		s->addEntry((es ? "ACTUALIZAR A " : "UPDATE TO ") + status["available"], false, [window, modes, serial, leave]
+ 		{
+ 			leave(window, modes, "install " + serial);
+ 		});
+ 	}
+ 
+-	s->addEntry("BUSCAR ACTUALIZACIÓN", false, [window, modes, leave]
++	s->addEntry(es ? "BUSCAR ACTUALIZACIÓN" : "CHECK FOR UPDATE", false, [window, modes, leave, es]
+ 	{
+ 		Window* w = window;
+ 		leave(w, modes, "check");
+-		w->displayNotificationMessage("Buscando actualizaciones de Canica…");
++		w->displayNotificationMessage(es ? "Buscando actualizaciones de Canica…" : "Checking for Canica updates…");
+ 	});
+ 
+ 	mWindow->pushGui(s);
+diff --git a/es-core/src/CanicaText.h b/es-core/src/CanicaText.h
+new file mode 100644
+index 0000000..d9ad975
+--- /dev/null
++++ b/es-core/src/CanicaText.h
+@@ -0,0 +1,25 @@
++#pragma once
++#ifndef ES_CORE_CANICA_TEXT_H
++#define ES_CORE_CANICA_TEXT_H
++
++#include "SystemConf.h"
++#include <string>
++
++// Canica's own words, which the firmware's translation catalogues cannot carry: Spanish on a console whose
++// language is Spanish (system.language es or es_*), English on any other. The stock menus keep gettext.
++namespace Canica
++{
++	inline bool spanish()
++	{
++		const std::string language = SystemConf::getInstance()->get("system.language");
++		return language.size() >= 2 && (language[0] == 'e' || language[0] == 'E') && (language[1] == 's' || language[1] == 'S') &&
++			(language.size() == 2 || language[2] == '_' || language[2] == '-' || language[2] == '.');
++	}
++
++	inline std::string text(const char* es, const char* en)
++	{
++		return spanish() ? es : en;
++	}
++}
++
++#endif // ES_CORE_CANICA_TEXT_H
+diff --git a/es-core/src/guis/GuiJobConsole.cpp b/es-core/src/guis/GuiJobConsole.cpp
+index 6873b6e..5d7177b 100644
+--- a/es-core/src/guis/GuiJobConsole.cpp
++++ b/es-core/src/guis/GuiJobConsole.cpp
+@@ -4,6 +4,7 @@
+ #include "renderers/Renderer.h"
+ #include "resources/Font.h"
+ #include "utils/StringUtil.h"
++#include "CanicaText.h"
+ #include "InputConfig.h"
+ #include "LocaleES.h"
+ #include "PowerSaver.h"
+@@ -152,7 +153,7 @@ void GuiJobConsole::layout()
+ 	}
+ 	else if (mScreen.percent >= 0)
+ 	{
+-		std::string percent = std::to_string(Math::min(mScreen.percent, 100)) + " %";
++		std::string percent = std::to_string(Math::min(mScreen.percent, 100)) + (Canica::spanish() ? " %" : "%");
+ 		float cell = (float)(int)((w - pad * 2 - ch * 2 - ch * 7) / CELLS);
+ 
+ 		mGauge = Vector4f(label, gy, Math::max(3.0f, cell), Math::round(row * 0.6f));
+diff --git a/es-core/src/utils/StringUtil.cpp b/es-core/src/utils/StringUtil.cpp
+index 767d747..3d1f61d 100644
+--- a/es-core/src/utils/StringUtil.cpp
++++ b/es-core/src/utils/StringUtil.cpp
+@@ -1,4 +1,5 @@
+ #include "utils/StringUtil.h"
++#include "CanicaText.h"
+ 
+ #include <algorithm>
+ #include <cctype>
+@@ -564,8 +565,10 @@ namespace Utils
+ 				game[0] = game[0] - 'a' + 'A';
+ 
+ 			const std::string date = name.substr(n - 13, 6), time = name.substr(n - 6, 6);
++			const std::string day = date.substr(4, 2), month = date.substr(2, 2);
+ 			_game = game;
+-			_when = date.substr(4, 2) + "/" + date.substr(2, 2) + "/20" + date.substr(0, 2) + " \xC2\xB7 " + time.substr(0, 2) + ":" + time.substr(2, 2);
++			// Day first in Spanish, month first in English, like the theme's dates
++			_when = (Canica::spanish() ? day + "/" + month : month + "/" + day) + "/20" + date.substr(0, 2) + " \xC2\xB7 " + time.substr(0, 2) + ":" + time.substr(2, 2);
+ 			return true;
+ 		}
+ 
+-- 
+2.55.0
+
