@@ -509,6 +509,29 @@ class WarmLauncher(unittest.TestCase):
             time.sleep(0.01)
         self.assertFalse(os.path.exists(self.sock))
 
+    def test_it_runs_under_a_name_no_game_check_sees(self):
+        import sys
+        calls = []
+        argv = sys.argv
+        sys.argv = ["/userdata/system/configs/emulationstation/resume/emulatorlauncher", "--serve"]
+        try:
+            self.assertTrue(module["as_warm_launcher"](self.sock, str(self.me), lambda *a: calls.append(a)))
+        finally:
+            sys.argv = argv
+        link = str(self.root / "canica-warm")
+        self.assertEqual(os.path.realpath(link), os.path.realpath(self.me))
+        self.assertEqual(calls, [(sys.executable, [sys.executable, "-IS", link, "--serve"])])
+        self.assertNotIn("emulatorlauncher", " ".join(calls[0][1]).replace(str(self.root), ""))
+        sys.argv = [link, "--serve"]
+        try:
+            self.assertTrue(module["as_warm_launcher"](self.sock, str(self.me), lambda *a: calls.append(a)))
+        finally:
+            sys.argv = argv
+        self.assertEqual(len(calls), 1)            # already under that name: serves as it is
+        blocked = self.root / "file"
+        blocked.write_text("")
+        self.assertFalse(module["as_warm_launcher"](str(blocked / "launcher.sock"), str(self.me), lambda *a: calls.append(a)))
+
     def test_start_warm_starts_one_with_the_menus_environment_unless_one_answers(self):
         import socket
         import time

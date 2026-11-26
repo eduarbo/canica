@@ -1,6 +1,6 @@
 # Reconstruir Canica
 
-El directorio `knulli/39-canica` contiene el generador del tema. Los directorios vecinos sólo contienen los recursos que consume. La carpeta `nativo/fuente` contiene el código de EmulationStation que utiliza la candidata RC41, con los parches específicos ya aplicados. El binario incluido se identifica por SHA-256 `9004a0051146a68389c2b04ee46182281e9b3685ec112b6467b885f4dbf61e84`.
+El directorio `knulli/39-canica` contiene el generador del tema. Los directorios vecinos sólo contienen los recursos que consume. La carpeta `nativo/fuente` contiene el código de EmulationStation que utiliza la candidata RC41.1, con los parches específicos ya aplicados. El binario incluido se identifica por SHA-256 `9004a0051146a68389c2b04ee46182281e9b3685ec112b6467b885f4dbf61e84`.
 
 ## Origen del frontend
 
@@ -14,7 +14,7 @@ Con Python 3.9 o posterior, ImageMagick 7 y librsvg instalados, ejecuta desde la
 
 ```sh
 python3 -B knulli/39-canica/build.py salida
-python3 -B knulli/39-canica/validate.py salida/canica-1.0.1-rc41.zip
+python3 -B knulli/39-canica/validate.py salida/canica-1.0.1-rc41.1.zip
 ```
 
 ## Frontend
@@ -38,10 +38,10 @@ El binario incorpora la hora de compilación. La comparación del ZIP del tema s
 Para reproducir los dos ZIP con el ejecutable cualificado, recupera ese archivo del instalable y ejecuta el empaquetador desde la raíz de estas fuentes:
 
 ```sh
-unzip -p /ruta/canica-1.0.1-rc41-rg35xx-h.zip share/system/canica/bin/emulationstation > nativo/emulationstation
-python3 -B knulli/39-canica/release.py nativo salida/canica-1.0.1-rc41.zip distribucion
+unzip -p /ruta/canica-1.0.1-rc41.1-rg35xx-h.zip share/system/canica/bin/emulationstation > nativo/emulationstation
+python3 -B knulli/39-canica/release.py nativo salida/canica-1.0.1-rc41.1.zip distribucion
 ```
 
 ## Probar el instalable
 
-Desde la raíz de estas fuentes, ejecuta en la computadora `bash knulli/39-canica/release/tests/probar-servicio.sh /ruta/knulli-h700-rg35xx-h-scarab-20260511.img.gz /ruta/canica-1.0.1-rc41-rg35xx-h.zip nativo/herramientas/fat_extract.py`. El ensayo crea un entorno Linux ARM64 descartable, comprueba el cambio de ejecutable y prueba la decisión de reiniciar con respuestas HTTP simuladas.
+Desde la raíz de estas fuentes, ejecuta en la computadora `bash knulli/39-canica/release/tests/probar-servicio.sh /ruta/knulli-h700-rg35xx-h-scarab-20260511.img.gz /ruta/canica-1.0.1-rc41.1-rg35xx-h.zip nativo/herramientas/fat_extract.py`. El ensayo crea un entorno Linux ARM64 descartable, comprueba el cambio de ejecutable y prueba la decisión de reiniciar con respuestas HTTP simuladas.

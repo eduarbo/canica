@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC41.1 · El lanzador precalentado no parece un juego
+
+Mismo ejecutable que RC41. El lanzador precalentado de RC41, arrancado por el menú, se llamaba `emulatorlaunche` y llevaba `emulatorlauncher` en su línea de órdenes, como un juego en curso. Las comprobaciones de la consola lo tomaban por un juego abierto todo el tiempo: el actualizador no habría vuelto a instalar nada, y la copia de la tarjeta, la sincronización periódica y el aligerado de vídeos esperaban sin fin. Ahora se vuelve a ejecutar como `canica-warm` (un enlace al adaptador en `/var/run/canica`); sólo los juegos que lanza conservan el nombre del lanzador. Probado en la consola con una copia aislada: ninguna comprobación lo ve. RC41 no llegó a instalarse en ninguna consola.
+
 ## RC41 · Abrir y cerrar juegos más rápido
 
 Ejecutable nuevo (parche 0135) y adaptador de partidas nuevo. El menú arranca el lanzador mientras suelta la pantalla y el sonido, y el lanzador espera a que termine antes de abrir el emulador. El adaptador se queda precalentado: configgen queda cargado y cada juego corre en una copia de ese proceso, con los cinco archivos que configgen lee ya analizados mientras no cambien. Sin él, el juego arranca como antes y deja uno listo. Los scripts del juego corren a la vez, evmapy arranca junto con el emulador y desaparece la espera fija de medio segundo. El menú vuelve en cuanto el emulador termina, mientras siguen los scripts de salida, y sus fuentes se recargan de una sola vez (de 0,5–0,7 s a menos de 0,01 s). Los juegos sin estados guardados también pasan por el adaptador, sin la reanudación. Medido en la consola con Metroid: Zero Mission por FN + START, tres pruebas espaciadas 60 s: abrir tarda 2,73–2,90 s de la pulsación a la imagen (antes 6,1 s) y cerrar 1,63–1,69 s hasta ver el menú (antes 2,5 s). Lo que queda es sobre todo RetroArch: 1,2–1,4 s hasta su primera imagen y ~0,7 s en cerrar.

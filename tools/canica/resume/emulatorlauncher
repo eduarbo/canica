@@ -629,6 +629,31 @@ def start_warm(path=WARM, me=None, env=None):
         pass
 
 
+def warm_name(path=WARM):
+    """The name the warm launcher runs under: none of the console's checks for a running game
+    (the process name emulatorlaunche, emulatorlauncher in a command line) may see it, only the
+    launches it runs."""
+    return os.path.join(os.path.dirname(path), "canica-warm")
+
+
+def as_warm_launcher(path=WARM, me=None, execv=os.execv):
+    """Run again under warm_name (a link to this file), not as emulatorlauncher. False when the
+    link cannot be made: then no warm launcher, rather than one that looks like a game."""
+    me = os.path.realpath(me or __file__)
+    link = warm_name(path)
+    if os.path.abspath(sys.argv[0]) == link:
+        return True
+    try:
+        os.makedirs(os.path.dirname(link), exist_ok=True)
+        temporary = "%s.%d" % (link, os.getpid())
+        os.symlink(me, temporary)
+        os.replace(temporary, link)
+    except OSError:
+        return False
+    execv(sys.executable, [sys.executable, "-IS", link, "--serve"])
+    return True
+
+
 def serve(path=WARM, me=None, preload=True, detach=True):
     """The warm launcher: configgen loaded once, each launch run in a fork of this process. A new
     version of this file, or a launch from another environment, ends it (the next launch then runs
@@ -647,6 +672,11 @@ def serve(path=WARM, me=None, preload=True, detach=True):
         for target in (0, 1, 2):
             os.dup2(null, target)
         os.close(null)
+        try:
+            with open("/proc/self/comm", "w") as comm:
+                comm.write("canica-warm")
+        except OSError:
+            pass
     if preload:
         own = os.getpriority(os.PRIO_PROCESS, 0)
         lower = os.geteuid() == 0             # only root gets its priority back for the launches
@@ -833,7 +863,7 @@ def supervise(conn, env, cache=None):
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--serve"]:
-        sys.exit(serve())
+        sys.exit(serve() if as_warm_launcher() else 0)
     menu_env = dict(os.environ)               # configgen may change this process's own
     code = run_here()
     start_warm(env=menu_env)
