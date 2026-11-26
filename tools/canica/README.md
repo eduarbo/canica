@@ -1,6 +1,6 @@
 # Build the Canica frontend
 
-[Install the RC40 kit](../../docs/canica-rg35xx-h.md) · [Watch it on the handheld](../../docs/canica-en-accion.md)
+[Install the RC41 kit](../../docs/canica-rg35xx-h.md) · [Watch it on the handheld](../../docs/canica-en-accion.md)
 
 Use Git, Python 3, Bash and Docker with Linux ARM64 support. Start in an empty directory containing the original RG35XX H Scarab image. The commands check its digest, build the pinned frontend with the four firmware patches and assemble the manual installation kit. [Download the May 11 image](https://github.com/knulli-cfw/knulli-linux/releases/download/20260511/knulli-h700-rg35xx-h-scarab-20260511.img.gz)
 
@@ -41,7 +41,7 @@ bash firmware/tools/canica/prepare-kit.sh tools bin/emulationstation canica-kit
 )
 ```
 
-The resulting frontend is `canica-kit/payload/emulationstation`. The build writes a manifest. The same four patches are applied by Buildroot for the full H700 firmware. The handheld kit uses a separate, sealed binary identified in the [RC40 inventory](../../docs/canica-rg35xx-h.md#reproduce-this-build).
+The resulting frontend is `canica-kit/payload/emulationstation`. The build writes a manifest. The same four patches are applied by Buildroot for the full H700 firmware. The handheld kit uses a separate, sealed binary identified in the [RC41 inventory](../../docs/canica-rg35xx-h.md#reproduce-this-build).
 
 ## Install or remove a manual build
 
@@ -54,7 +54,7 @@ src=/userdata/system/canica-kit/resume-emulatorlauncher
 (
   set -eu
   dest=/userdata/system/configs/emulationstation/resume/emulatorlauncher
-  printf '%s  %s\n' 4e36929f93928371f3d151fa7cd71b3198b9246b2fd74a0bd0d5870874613b8e "$src" | sha256sum -c -
+  printf '%s  %s\n' 784a3a2d4317c73faa2cb486be087083971cbddcc55d226d8d395bafec8ba225 "$src" | sha256sum -c -
   mkdir -p "$(dirname "$dest")"
   if [ -e "$dest" ] || [ -L "$dest" ]; then
     cmp -s "$src" "$dest" || { echo 'Existing adapter preserved. Compare the two versions.'; exit 1; }
@@ -70,22 +70,22 @@ To restore the previous frontend, select your previous theme, run `cd /userdata/
 
 ## Rebuild the theme and sealed archives
 
-The RC40 source archive from the [release](https://github.com/eduarbo/canica/releases/latest) reproduces the theme without a game library. The qualifying build used ImageMagick 7.1.2-29 and librsvg 2.62.3. Extract `canica-1.0.1-rc40-fuentes.zip` into a new directory. Run these commands from that directory with Python 3.9 or newer. Set `kit` to your original, checksum-verified handheld ZIP.
+The RC41 source archive from the [release](https://github.com/eduarbo/canica/releases/latest) reproduces the theme without a game library. The qualifying build used ImageMagick 7.1.2-29 and librsvg 2.62.3. Extract `canica-1.0.1-rc41-fuentes.zip` into a new directory. Run these commands from that directory with Python 3.9 or newer. Set `kit` to your original, checksum-verified handheld ZIP.
 
 ```sh
-kit=/path/to/canica-1.0.1-rc40-rg35xx-h.zip
+kit=/path/to/canica-1.0.1-rc41-rg35xx-h.zip
 python3 -B knulli/39-canica/build.py output
-python3 -B knulli/39-canica/validate.py output/canica-1.0.1-rc40.zip
+python3 -B knulli/39-canica/validate.py output/canica-1.0.1-rc41.zip
 unzip -p "$kit" share/system/canica/bin/emulationstation > nativo/emulationstation
-python3 -B knulli/39-canica/release.py nativo output/canica-1.0.1-rc40.zip dist
+python3 -B knulli/39-canica/release.py nativo output/canica-1.0.1-rc41.zip dist
 ```
 
-The RC40 check reproduced all three archives byte for byte. Repackaging uses the qualified ARM64 executable from the kit because the native compiler embeds a build timestamp. Expected SHA-256 values:
+The RC41 check reproduced all three archives byte for byte. Repackaging uses the qualified ARM64 executable from the kit because the native compiler embeds a build timestamp. Expected SHA-256 values:
 
 ```text
-f730d23d470a63960159dae145f6f648081a1da45f8894cb0868e9f498dc8d48  canica-1.0.1-rc40.zip
-8262a16a54e7b6d736fa1342ed81d2b2cc84dda6b95918b05580ea4aa15b2390  canica-1.0.1-rc40-rg35xx-h.zip
-9eeca51e870dbd721fda61e4d644beb1182c8102ff8adb52b855aeef1e071acd  canica-1.0.1-rc40-fuentes.zip
+13c13a8316ef38a578e921c101630d2075ddea624f93dbaa64c5d7220fbc86b0  canica-1.0.1-rc41.zip
+3530a11c98e7919f262462bc5d786703362c98482d8e0e15a7f53e07bec389e3  canica-1.0.1-rc41-rg35xx-h.zip
+3cfc43ddb47ea25a2e422afe1cf3aef50e784b37e5bc511dbe61fb1b1494342c  canica-1.0.1-rc41-fuentes.zip
 ```
 
 ## Build the installer for Tools
@@ -96,6 +96,6 @@ From this repository:
 python3 -B tools/canica/installer/build.py 'Instalar Canica.sh'
 ```
 
-This constructs the lightweight installer with its save adapter. To embed a privately supplied kit, add `--kit /path/to/canica-1.0.1-rc40-rg35xx-h.zip`. The packager recognizes RC27.1 through RC40 by SHA-256.
+This constructs the lightweight installer with its save adapter. To embed a privately supplied kit, add `--kit /path/to/canica-1.0.1-rc41-rg35xx-h.zip`. The packager recognizes RC27.1 through RC41 by SHA-256.
 
 The installer checks the device model, firmware and original executable, stages files on the data partition, verifies them and enables Canica for the next boot. Running the installer again recovers an interrupted transaction. ROMs, saves and theme preferences stay in place. Physical testing used an existing RG35XX H card; first boot on a freshly flashed card remains unverified.

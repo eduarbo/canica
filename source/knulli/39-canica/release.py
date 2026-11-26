@@ -14,7 +14,7 @@ from layout import CAT, COL, HERE, HOME, KNULLI, PORTABLE_DESCRIPTIONS, RED
 from validate import validate
 
 PUBLIC = HERE / "release"
-ENGINE_SHA = "ff8eb0b23b3989cd7777f9461e5aba303a8d492bbcc3c908da914f682590153c"
+ENGINE_SHA = "9004a0051146a68389c2b04ee46182281e9b3685ec112b6467b885f4dbf61e84"
 WATCHDOG = KNULLI / "07-es-api-events/install/files/launcher.sh"
 LICENSES = ("LICENSE.md", "CREDITS.md", "external/id3v2lib/LICENSE",
             "external/libcheevos/rcheevos/LICENSE", "external/nanosvg/nanosvg_license.txt",
@@ -170,7 +170,7 @@ def package(native, theme, output, keys=PUBLIC / "keys"):
     sources.update({"nativo/fuente/" + name: data for name, data in source.items()})
     for name in ("build-es.sh", "fat_extract.py", "es-sdl-knulli.h"):
         sources["nativo/herramientas/" + name] = (native / "herramientas" / name).read_bytes()
-    for number in range(111, 135):
+    for number in range(111, 136):
         patch, = (native / "herramientas").glob(f"{number:04d}-*.patch")
         sources["nativo/herramientas/" + patch.name] = patch.read_bytes()
     sources["LEEME.md"] = (PUBLIC / "FUENTES.md").read_bytes()

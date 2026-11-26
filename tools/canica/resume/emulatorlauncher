@@ -1,5 +1,62 @@
-#!/usr/bin/python3 -I
-"""Use configgen's normal launch and choose a resume point after its gameStart hooks."""
+#!/usr/bin/python3 -IS
+"""Use configgen's normal launch and choose a resume point after its gameStart hooks.
+
+The launch also waits less (speed_up): the game's hook scripts run side by side, evmapy starts
+while RetroArch does, configgen's fixed half second after the game is dropped, and the emulator
+waits only for the menu (started at the same time) to let go of the screen.
+
+And it skips loading configgen: this file with --serve stays loaded after a launch (the warm
+launcher), and the next launches run in forks of it. Without one, a launch runs here as before
+and starts one for the next."""
+import os
+import sys
+
+WARM = "/var/run/canica/launcher.sock"
+
+
+def warm_launch(argv, path=WARM):
+    """Hand this launch to the warm launcher: its arguments, folder, environment and standard
+    streams. Returns the launch's exit code, or None when there is no warm launcher or it declined
+    (the launch then runs here). Kept to built-in modules: Python starts in a tenth of a second."""
+    import _socket
+    conn = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+    try:
+        try:
+            conn.settimeout(0.5)
+            conn.connect(path)
+            import marshal
+            payload = marshal.dumps((os.getcwd(), list(argv), dict(os.environ)))
+            streams = b"".join(fd.to_bytes(4, sys.byteorder) for fd in (0, 1, 2))
+            conn.sendmsg([len(payload).to_bytes(4, "big") + payload],
+                         [(_socket.SOL_SOCKET, _socket.SCM_RIGHTS, streams)])
+            if conn.recv(1) != b"A":
+                return None
+        except OSError:
+            return None
+        conn.settimeout(None)
+        status = b""
+        while len(status) < 4:
+            try:
+                chunk = conn.recv(4 - len(status))
+            except InterruptedError:
+                continue
+            if not chunk:
+                return 1      # the warm launcher went away during the game
+            status += chunk
+        return int.from_bytes(status, "big", signed=True)
+    finally:
+        conn.close()
+
+
+if __name__ == "__main__" and sys.argv[1:2] != ["--serve"]:
+    code = warm_launch(sys.argv)
+    if code is not None:
+        sys.exit(code)
+
+if sys.flags.no_site:        # -S above: the system site-packages, where configgen lives
+    import site
+    site.main()
+
 import hashlib
 import json
 import os
@@ -8,6 +65,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from xml.etree import ElementTree as ET
 
 GR_DB = Path("/userdata/roms/tools/Grout/.cache/grout.db")
@@ -16,6 +74,23 @@ SAVES = Path("/userdata/saves")
 STATES = Path("/userdata/states")
 SAVE_TYPES = (".srm", ".sav", ".rtc", ".dsv", ".eep", ".sra", ".fla", ".hi", ".nv")
 NATIVE = {"mupen64plus", "ppsspp", "pcsx2", "dolphin"}
+# Canica's menu starts the launcher before it lets go of the screen and sound; this exists until it has.
+MENU_BUSY = Path("/var/run/canica/menu-busy")
+# ...and brings its window and sound back once this exists: the emulator is gone, gameStop is next.
+GAME_ENDED = Path("/var/run/canica/game-ended")
+# The menu sends the games it keeps no saved states for with this: only the faster launch applies.
+# (The menu looks for this text in the file before it uses it.)
+NO_RESUME = "--es-no-resume"
+# Canica's menu writes the steps of a launch here while the file exists (create it to measure).
+TIMING = "/var/run/canica-launch-timing.log"
+# The warm launcher rereads what launches parse every REFRESH seconds while idle, but not in the
+# first QUIET seconds of a launch.
+REFRESH = 10.0
+QUIET = 15.0
+# Set by the shell that runs each of the menu's commands, or new with each menu session (its D-Bus
+# session bus): each launch still gets them as the menu gave them, and the warm launcher loads
+# nothing that depends on them.
+SHELL_SET = {"_", "SHLVL", "PWD", "OLDPWD", "DBUS_SESSION_BUS_ADDRESS"}
 
 
 def settings(path):
@@ -192,8 +267,142 @@ def set_ra_entry(command, overlay, slot):
         command.extend(["-e", str(slot)])
 
 
+def run_scripts_together(log, ended=GAME_ENDED):
+    """configgen's callExternalScripts, with every script of the folder started at once and all of
+    them waited for, so the game still starts (or the menu comes back) only once they are done.
+    Before the first gameStop script the menu is told the emulator is gone (ended)."""
+    def run(folder, event, args):
+        if event == "gameStop" and not run.ended:
+            run.ended = True
+            try:
+                ended.parent.mkdir(parents=True, exist_ok=True)
+                ended.write_text("")
+            except OSError:
+                pass
+        scripts = []
+
+        def collect(path):
+            if not path.is_dir():
+                return
+            for entry in sorted(path.iterdir()):
+                if entry.is_dir():
+                    collect(entry)
+                elif os.access(entry, os.X_OK):
+                    scripts.append(entry)
+
+        collect(Path(folder))
+        running = []
+        start = time.monotonic()
+        for script in scripts:
+            log.debug(f"calling external script: {[script, event, *args]!s}")
+            try:
+                running.append((script, subprocess.Popen([script, event, *args])))
+            except OSError as exc:
+                log.error(f"external script {script}: {exc}")
+        slowest = (0.0, "")
+        for script, proc in running:
+            proc.wait()
+            took = time.monotonic() - start
+            slowest = max(slowest, (took, script.name))
+            log.debug(f"external script {script.name} {event} done after {took:.3f} s")
+        if running:
+            timing(f"hooks: {event} {Path(folder).name} {len(running)} scripts, slowest {slowest[1]} {slowest[0]:.3f} s")
+    run.ended = False
+    return run
+
+
+def timing(step, path=TIMING):
+    """One line in the menu's launch timing log (wall clock), only while that file exists."""
+    try:
+        with open(path, "r+") as log:     # never creates it
+            log.seek(0, os.SEEK_END)
+            log.write(f"{time.time():.3f} {step}\n")
+    except OSError:
+        pass
+
+
+class EvmapyInBackground:
+    """configgen's evmapy waits for evmapy to say it is ready before the emulator starts (most of a
+    second). RetroArch's udev input finds evmapy's keyboard when it appears, so it starts meanwhile;
+    the stop at the end of the game first waits for that start, so no evmapy outlives the game."""
+
+    def __init__(self, real):
+        self.real, self.starting = real, []
+
+    def __getattr__(self, name):
+        return getattr(self.real, name)
+
+    def call(self, args, *rest, **kwargs):
+        words = [str(word) for word in args]
+        if words == ["batocera-evmapy", "start"]:
+            self.starting.append(self.real.Popen(args))
+            return 0
+        if words == ["batocera-evmapy", "stop"]:
+            while self.starting:
+                try:
+                    self.starting.pop().wait(timeout=6)
+                except self.real.TimeoutExpired:
+                    pass
+        return self.real.call(args, *rest, **kwargs)
+
+
+class NoGrace:
+    """configgen's time module: its one use is a fixed half second after the game, before the
+    menu may start again; the menu now comes back at once."""
+
+    def __getattr__(self, name):
+        return getattr(time, name)
+
+    @staticmethod
+    def sleep(seconds):
+        return None
+
+
+def after_the_menu(run, busy=MENU_BUSY, limit=3.0):
+    """configgen's runCommand, once the menu has let go of the screen (at most limit s)."""
+    def run_command(command):
+        timing("launcher: emulator ready to start")
+        deadline = time.monotonic() + limit
+        while busy.exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        timing("launcher: emulator starts")
+        try:
+            return run(command)
+        finally:
+            timing("launcher: emulator ended")
+    return run_command
+
+
+def faster_settings(unix_settings):
+    """configgen's setting lookups (load_all, eight per launch) redo two substitutions for every
+    key of knulli.conf on each call: remember them. The same function, so the same results."""
+    import functools
+    protect = unix_settings._protect_string
+    if not hasattr(protect, "cache_info"):
+        unix_settings._protect_string = functools.lru_cache(maxsize=8192)(protect)
+
+
+def speed_up(stock):
+    from configgen.utils import evmapy as mapping
+    stock.callExternalScripts = run_scripts_together(stock.eslog)
+    mapping.subprocess = EvmapyInBackground(subprocess)
+    stock.runCommand = after_the_menu(stock.runCommand)
+    stock.time = NoGrace()
+
+
 def launch():
+    timing("launcher: running")
     from configgen import emulatorlauncher as stock
+    try:
+        speed_up(stock)
+        from configgen.settings import unixSettings
+        faster_settings(unixSettings)
+    except (ImportError, AttributeError) as exc:     # another configgen: its own, slower path
+        print("Fast launch unavailable:", type(exc).__name__)
+    if sys.argv[1:2] == [NO_RESUME]:          # a game without saved states: configgen as it is
+        del sys.argv[1]
+        stock.launch()
+        return
     explicit = None
     if len(sys.argv) > 1 and sys.argv[1].startswith("--es-resume-slot="):
         explicit = int(sys.argv.pop(1).split("=", 1)[1])
@@ -259,5 +468,373 @@ def launch():
         temp.cleanup()
 
 
+class Preparsed:
+    """Files every launch parses, parsed ahead by the warm launcher. A launch gets a parsed copy
+    only while the file reads exactly as it did when it was parsed, and each copy once (a launch
+    may change what it parsed): anything else is parsed as before."""
+
+    def __init__(self, files, parse):
+        self.files = files            # path -> kind
+        self.parse = parse            # (kind, text) -> parsed
+        self.ready = {}               # path -> (text, [parsed])
+
+    @staticmethod
+    def read(path, kind):
+        # As configgen opens them: settings files with a byte order mark allowed
+        return Path(path).read_text(encoding="utf_8_sig" if kind == "settings" else None)
+
+    def refresh(self):
+        for path, kind in self.files.items():
+            try:
+                text = self.read(path, kind)
+            except (OSError, ValueError):
+                self.ready.pop(path, None)
+                continue
+            current = self.ready.get(path)
+            if current and current[0] == text and current[1]:
+                continue
+            try:
+                self.ready[path] = (text, [self.parse(kind, text)])
+            except Exception:         # whatever configgen makes of it, it makes in the launch
+                self.ready.pop(path, None)
+
+    def take(self, path, text):
+        entry = self.ready.get(path)
+        if entry is None or entry[0] != text or not entry[1]:
+            return None
+        return entry[1].pop()
+
+
+def configgen_files():
+    """What a libretro launch parses: configgen's defaults, knulli.conf and RetroArch's two
+    settings files that configgen rewrites."""
+    from configgen.batoceraPaths import BATOCERA_CONF, DEFAULTS_DIR
+    from configgen.generators.libretro.libretroPaths import RETROARCH_CORE_CUSTOM, RETROARCH_CUSTOM
+    return {str(DEFAULTS_DIR / "configgen-defaults.yml"): "yaml",
+            str(DEFAULTS_DIR / "configgen-defaults-arch.yml"): "yaml",
+            str(BATOCERA_CONF): "settings",
+            str(RETROARCH_CUSTOM): "settings",
+            str(RETROARCH_CORE_CUSTOM): "settings"}
+
+
+def configgen_parse(kind, text):
+    """The parse configgen does (Emulator.get_generic_config and UnixSettings)."""
+    import io
+    if kind == "yaml":
+        import yaml
+        return yaml.load(text, Loader=yaml.CLoader)
+    from configgen.utils.configparser import CaseSensitiveConfigParser
+    parser = CaseSensitiveConfigParser(interpolation=None, strict=False)
+    parser.read_file(io.StringIO("[DEFAULT]\n" + text))
+    return parser
+
+
+class CachedYaml:
+    """configgen's yaml, with the defaults files from Preparsed."""
+
+    def __init__(self, real, cache):
+        self.real = real
+        self.cache = cache
+
+    def load(self, stream, Loader=None):
+        name = getattr(stream, "name", None)
+        if isinstance(name, str) and name in self.cache.ready:
+            text = stream.read()
+            parsed = self.cache.take(name, text)
+            return parsed if parsed is not None else self.real.load(text, Loader=Loader)
+        return self.real.load(stream, Loader=Loader)
+
+    def __getattr__(self, name):
+        return getattr(self.real, name)
+
+
+def use_preparsed(cache, emulator, settings):
+    """In a launch: configgen's Emulator module and UnixSettings class take from the cache."""
+    emulator.yaml = CachedYaml(emulator.yaml, cache)
+    original = settings.__post_init__
+
+    def post_init(self, filename_or_path):
+        name = str(filename_or_path)
+        if name in cache.ready:
+            try:
+                parsed = cache.take(name, Preparsed.read(name, "settings"))
+            except (OSError, ValueError):
+                parsed = None
+            if parsed is not None:
+                self.settings_path = Path(filename_or_path)
+                self.config = parsed
+                return
+        original(self, filename_or_path)
+    settings.__post_init__ = post_init
+
+
+def end_like_python(code):
+    """What Python does before it exits (a fork's own exit skips it): threads, the exit handlers
+    this launch registered, logs, buffered output. Returns the code for os._exit."""
+    import atexit
+    import threading
+    for thread in threading.enumerate():
+        if thread is not threading.current_thread() and not thread.daemon:
+            thread.join()
+    atexit._run_exitfuncs()
+    if "logging" in sys.modules:
+        sys.modules["logging"].shutdown()
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except (OSError, ValueError):
+            pass
+    return code & 0xFF
+
+
+def run_here():
+    """This launch, in this process: the exit code configgen gives."""
+    try:
+        launch()
+    except SystemExit as result:
+        code = result.code
+        return code if isinstance(code, int) else (0 if code is None else 1)
+    finally:
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.flush()
+            except (OSError, ValueError):
+                pass
+    return 0
+
+
+def same_environment(one, other):
+    """The menu's environment, apart from what the shell running each command sets for it."""
+    return ({k: v for k, v in one.items() if k not in SHELL_SET}
+            == {k: v for k, v in other.items() if k not in SHELL_SET})
+
+
+def start_warm(path=WARM, me=None, env=None):
+    """Start the warm launcher for the next launches (with this launch's environment, as the menu
+    gave it), unless one answers already. Nothing of it stays tied to this launch: the menu sees
+    this one end at once."""
+    import socket
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+            probe.settimeout(0.2)
+            probe.connect(path)
+            return
+    except OSError:
+        pass
+    try:
+        subprocess.Popen([sys.executable, "-IS", me or os.path.abspath(__file__), "--serve"],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True, close_fds=True, env=env)
+    except OSError:
+        pass
+
+
+def serve(path=WARM, me=None, preload=True, detach=True):
+    """The warm launcher: configgen loaded once, each launch run in a fork of this process. A new
+    version of this file, or a launch from another environment, ends it (the next launch then runs
+    by itself and starts a new one). It detaches from whoever started it: the menu's own command
+    ends at once, and the menu's output files stay closed."""
+    import fcntl
+    import signal
+    import socket
+    import time
+    me = me or os.path.abspath(__file__)
+    if detach:
+        if os.fork():
+            os._exit(0)
+        os.setsid()
+        null = os.open(os.devnull, os.O_RDWR)
+        for target in (0, 1, 2):
+            os.dup2(null, target)
+        os.close(null)
+    if preload:
+        own = os.getpriority(os.PRIO_PROCESS, 0)
+        lower = os.geteuid() == 0             # only root gets its priority back for the launches
+        if lower:
+            os.setpriority(os.PRIO_PROCESS, 0, own + 10)    # while the menu comes back
+        from configgen import emulatorlauncher  # noqa: F401  what every launch used to load
+        from configgen.utils import evmapy  # noqa: F401
+        try:
+            cache = Preparsed(configgen_files(), configgen_parse)
+            cache.refresh()
+        except (ImportError, AttributeError):
+            cache = None                      # another configgen: it parses as it always did
+        if lower:
+            os.setpriority(os.PRIO_PROCESS, 0, own)
+    else:
+        cache = None
+        lower = False
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    lock = open(path + ".lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        lock.close()
+        return 0                              # another one serves
+    version = os.stat(me).st_mtime_ns
+    env = dict(os.environ)
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(path)
+    os.chmod(path, 0o600)
+    server.listen(4)
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)   # supervisors reap themselves
+    server.settimeout(REFRESH)
+    quiet_until = 0.0
+    while True:
+        try:
+            conn, _ = server.accept()
+        except InterruptedError:
+            continue
+        except socket.timeout:
+            # Idle: pick up what changed (settings, what the last launch wrote), unless a launch
+            # is still starting; at a low priority
+            if cache is not None and time.monotonic() >= quiet_until:
+                if lower:
+                    os.setpriority(os.PRIO_PROCESS, 0, own + 10)
+                cache.refresh()
+                if lower:
+                    os.setpriority(os.PRIO_PROCESS, 0, own)
+            continue
+        conn.setblocking(True)
+        try:
+            current = os.stat(me).st_mtime_ns
+        except OSError:
+            current = None
+        if current != version:
+            conn.close()                      # the client launches by itself
+            os.unlink(path)
+            return 0
+        quiet_until = time.monotonic() + QUIET
+        if os.fork() == 0:
+            server.close()
+            lock.close()
+            code = 0
+            try:
+                if not supervise(conn, env, cache):
+                    os.kill(os.getppid(), signal.SIGTERM)   # another environment: make way
+            except BaseException:
+                code = 1
+            os._exit(code)
+        conn.close()
+
+
+def supervise(conn, env, cache=None):
+    """One launch: take the client's streams, run the launch in a child with them, give back its
+    exit code. A client that goes away takes its launch with it. False: another environment."""
+    import array
+    import marshal
+    import select
+    import signal
+    import socket
+    import time
+    signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+    fds = array.array("i")
+    head, ancillary, _, _ = conn.recvmsg(4, socket.CMSG_SPACE(3 * fds.itemsize))
+    for level, kind, data in ancillary:
+        if level == socket.SOL_SOCKET and kind == socket.SCM_RIGHTS:
+            fds.frombytes(data[:len(data) - len(data) % fds.itemsize])
+    size = int.from_bytes(head, "big") if len(head) == 4 else 0
+    payload = b""
+    while len(payload) < size:
+        chunk = conn.recv(size - len(payload))
+        if not chunk:
+            break
+        payload += chunk
+    if len(payload) != size or len(fds) != 3:
+        for fd in fds:
+            os.close(fd)
+        conn.sendall(b"D")
+        return True
+    cwd, argv, client_env = marshal.loads(payload)
+    if not same_environment(client_env, env):
+        changed = sorted(k for k in set(client_env) | set(env)
+                         if k not in SHELL_SET and client_env.get(k) != env.get(k))
+        message = "Warm launcher: another environment (%s), launching without it\n" % " ".join(changed)
+        try:
+            os.write(fds[2], message.encode())
+        except OSError:
+            pass
+        try:                                  # the menu's log is rewritten each launch: keep it
+            with open(os.path.join(os.path.dirname(WARM), "warm-launcher.log"), "a") as log:
+                log.write(time.strftime("%Y-%m-%d %H:%M:%S ") + message)
+        except OSError:
+            pass
+        for fd in fds:
+            os.close(fd)
+        conn.sendall(b"D")
+        return False
+    wake_r, wake_w = os.pipe()
+    os.set_blocking(wake_r, False)
+    os.set_blocking(wake_w, False)
+    signal.set_wakeup_fd(wake_w)
+    signal.signal(signal.SIGCHLD, lambda *_: None)
+    for stream in (sys.stdout, sys.stderr):
+        stream.flush()
+    child = os.fork()
+    if child == 0:
+        import atexit
+        atexit._clear()                       # the warm launcher's own: not this launch's to run
+        signal.set_wakeup_fd(-1)
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+        os.close(wake_r)
+        os.close(wake_w)
+        conn.close()
+        os.setpgid(0, 0)
+        for target, fd in zip((0, 1, 2), fds):
+            os.dup2(fd, target)
+        for fd in fds:
+            if fd > 2:
+                os.close(fd)
+        os.chdir(cwd)
+        sys.argv = list(argv)
+        os.environ.clear()
+        os.environ.update(client_env)
+        if cache is not None:
+            try:
+                from configgen import Emulator as emulator
+                from configgen.settings.unixSettings import UnixSettings
+                use_preparsed(cache, emulator, UnixSettings)
+            except (ImportError, AttributeError):
+                pass
+        try:
+            with open("/proc/self/comm", "w") as comm:
+                comm.write("emulatorlaunche")    # what tools look for while a game runs
+        except OSError:
+            pass
+        os._exit(end_like_python(run_here()))
+    for fd in fds:
+        os.close(fd)
+    conn.sendall(b"A")
+    while True:
+        pid, status = os.waitpid(child, os.WNOHANG)
+        if pid:
+            break
+        ready, _, _ = select.select([conn, wake_r], [], [])
+        if wake_r in ready:
+            try:
+                os.read(wake_r, 64)
+            except BlockingIOError:
+                pass
+        if conn in ready and not conn.recv(1):
+            try:
+                os.killpg(child, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            os.waitpid(child, 0)
+            return True
+    code = os.waitstatus_to_exitcode(status)
+    conn.sendall((code if code >= 0 else 128 - code).to_bytes(4, "big", signed=True))
+    return True
+
+
 if __name__ == "__main__":
-    launch()
+    if sys.argv[1:2] == ["--serve"]:
+        sys.exit(serve())
+    menu_env = dict(os.environ)               # configgen may change this process's own
+    code = run_here()
+    start_warm(env=menu_env)
+    sys.exit(code)
