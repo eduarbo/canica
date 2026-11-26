@@ -190,6 +190,11 @@ class FastLaunch(unittest.TestCase):
         module["after_the_menu"](lambda command: 0, busy, 0.2)("retroarch")
         self.assertLess(time.monotonic() - start, 1.0)     # a menu that never lets go: bounded
 
+    def test_an_emulator_closed_by_its_exit_hotkey_exits_normally(self):
+        busy = self.root / "never"
+        for code, reported in ((-9, 0), (-15, 0), (-11, -11), (-6, -6), (1, 1), (0, 0)):
+            self.assertEqual(module["after_the_menu"](lambda command: code, busy)("eduke32"), reported)
+
     def test_speed_up_patches_configgen(self):
         import sys
         import types

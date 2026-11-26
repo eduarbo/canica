@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC41.2 · Salir con el atajo no es un error
+
+Mismo ejecutable que RC41. El atajo de salida de eduke32, GZDoom, Flycast, PPSSPP y otros emuladores independientes los cierra con `killall` (señal 9 o 15); configgen devolvía ese −9 y el menú mostraba «ERROR DESCONOCIDO : 247» (igual en el lanzador de fábrica). El adaptador cuenta ahora esas dos señales como una salida normal; un fallo real (otra señal o código) conserva su aviso. Probado en la consola con Duke Nukem 3D: FN + START, «Emulator ended by signal 9 (its exit hotkey): a normal exit», configgen sale con 0 y el menú vuelve sin aviso.
+
 ## RC41.1 · El lanzador precalentado no parece un juego
 
 Mismo ejecutable que RC41. El lanzador precalentado de RC41, arrancado por el menú, se llamaba `emulatorlaunche` y llevaba `emulatorlauncher` en su línea de órdenes, como un juego en curso. Las comprobaciones de la consola lo tomaban por un juego abierto todo el tiempo: el actualizador no habría vuelto a instalar nada, y la copia de la tarjeta, la sincronización periódica y el aligerado de vídeos esperaban sin fin. Ahora se vuelve a ejecutar como `canica-warm` (un enlace al adaptador en `/var/run/canica`); sólo los juegos que lanza conservan el nombre del lanzador. Probado en la consola con una copia aislada: ninguna comprobación lo ve. RC41 no llegó a instalarse en ninguna consola.

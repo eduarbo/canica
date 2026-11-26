@@ -2,12 +2,12 @@
 
 [Home](../README.md) · [Feature gallery](canica-en-accion.md) · [Build from source](../tools/canica/README.md)
 
-Use an **Anbernic RG35XX H**, **KNULLI Scarab for May 11, 2026**, and the **Canica RC41.1 kit**. Canica runs locally with your own EmulationStation library. The kit supplies the patched frontend, theme and service; the installer adds the save adapter. [Download the kit](https://github.com/eduarbo/canica/releases/latest). Its theme and artwork are licensed under CC BY-SA 4.0 and its own code under the MIT License.
+Use an **Anbernic RG35XX H**, **KNULLI Scarab for May 11, 2026**, and the **Canica RC41.2 kit**. Canica runs locally with your own EmulationStation library. The kit supplies the patched frontend, theme and service; the installer adds the save adapter. [Download the kit](https://github.com/eduarbo/canica/releases/latest). Its theme and artwork are licensed under CC BY-SA 4.0 and its own code under the MIT License.
 
 ## Install
 
 1. **Prepare the card.** An RG35XX H already running this Scarab release can keep its installation. For a new card, follow KNULLI’s flashing instructions for this exact model. RC41 opens a game in under 3 s and returns to the menu in under 2 s on the reference handheld (Game Boy Advance, from the button press), and darkens the game screen behind console cards so their logos and consoles stand out. An update’s progress shows as one of the theme’s notices, with a gauge. RC33 keeps each shelf’s suggestions for the whole day and shows its version under the library list. RC32 carries the console logos, RC31 rounded the focused card’s video in Iris, and RC30.1 added the license texts. RC30 is a release candidate tested on an existing handheld installation. A first cold boot on a freshly flashed microSD is still unverified. [RG35XX H image](https://github.com/knulli-cfw/knulli-linux/releases/download/20260511/knulli-h700-rg35xx-h-scarab-20260511.img.gz) · [KNULLI installation](https://knulli.org/play/install/)
-2. **Copy the installer.** Download `canica-1.0.1-rc41.1-instalador.sh` from the [latest release](https://github.com/eduarbo/canica/releases/latest) and rename it `Instalar Canica.sh`: that single file holds everything. Or download `canica-1.0.1-rc41.1-rg35xx-h.zip` and copy it unopened beside the [lightweight installer](https://raw.githubusercontent.com/eduarbo/canica/main/tools/canica/Instalar%20Canica.sh), keeping both filenames.
+2. **Copy the installer.** Download `canica-1.0.1-rc41.2-instalador.sh` from the [latest release](https://github.com/eduarbo/canica/releases/latest) and rename it `Instalar Canica.sh`: that single file holds everything. Or download `canica-1.0.1-rc41.2-rg35xx-h.zip` and copy it unopened beside the [lightweight installer](https://raw.githubusercontent.com/eduarbo/canica/main/tools/canica/Instalar%20Canica.sh), keeping both filenames.
 3. **Put the file(s) in `share/roms/tools/`.** You can use the card’s data partition or enable **System Settings → Services → SAMBA** and connect to `smb://KNULLI/share` on a Mac or `\\KNULLI\share` on Windows. In that share, open `roms/tools`. [Transfer files to KNULLI](https://knulli.org/play/add-games/network-transfer/)
 4. **Open Tools → Instalar Canica** and press **A**. If the tool is missing, open **START → Game Settings → Update Games Lists**. Wait for **“Canica está listo”** (Canica is ready), then restart. A message naming an existing conflicting file or frontend service means it was preserved. After an interruption, run the same installer again.
 5. **Select the theme.** In **START → User Interface Settings → Theme Set**, choose **es-theme-canica**. Under Theme Configuration, pick **Iris** or **Ámbar** (Amber). Leave the default grid size on **Automatic** to retain the system-specific layouts. The other settings control card size, video in the selected card, cover or screenshot priority, and animated or static console previews.
@@ -56,22 +56,22 @@ I use RomM as the shared library for my Anbernic and my TVs. Grout on the handhe
 | Base system | RG35XX H Scarab `20260511` image, SHA-256 `c28a96f88b07e3adb4ea76b9874cd18ae177ec216bec2dac87c68795fb81291c` |
 | Frontend | [EmulationStation `ce57da3`](https://github.com/eduarbo/batocera-emulationstation/tree/ce57da3) with the [four Scarab packaging patches](https://github.com/eduarbo/knulli-linux/tree/1f16d1a77df3c8f3432f0176117561f9c30c066d/package/emulationstation/knulli-emulationstation) |
 | ARM64 build tools | [Bundle tools `5942f8a`](https://github.com/eduarbo/knulli-console-bundles/tree/5942f8a9681d0cfcb52f4658f56d32b367bdcd69) |
-| Installer and save adapter | [RC41.1 recipe](https://github.com/eduarbo/canica/tree/v1.0.1-rc41.1/tools/canica) |
-| Theme, artwork, engine and service | `canica-1.0.1-rc41.1-rg35xx-h.zip` · SHA-256 `3228985b42b09b3a302ab962f54e1e8bbb9024d695eaa58d3c101013f73d493f` |
+| Installer and save adapter | [RC41.2 recipe](https://github.com/eduarbo/canica/tree/v1.0.1-rc41.2/tools/canica) |
+| Theme, artwork, engine and service | `canica-1.0.1-rc41.2-rg35xx-h.zip` · SHA-256 `a25bd693782f7204eee81a74e5ec04b6ab923f725e4e0913940d7deca0d298ec` |
 
-To compare the installed files over SSH, run the commands below. The manifest covers the frontend and packaged theme files. The last command checks the separately installed save adapter against the RC41.1 version, new in RC41 (it keeps configgen loaded between launches) and renamed while it waits in RC41.1. If you deliberately kept a custom adapter, its hash will differ.
+To compare the installed files over SSH, run the commands below. The manifest covers the frontend and packaged theme files. The last command checks the separately installed save adapter against the RC41.2 version, new in RC41 (it keeps configgen loaded between launches), renamed while it waits in RC41.1 and in RC41.2 treating an exit hotkey's kill as a normal exit. If you deliberately kept a custom adapter, its hash will differ.
 
 ```sh
 cd /userdata && sha256sum -c system/canica/SHA256SUMS
 sha256sum /userdata/system/configs/emulationstation/resume/emulatorlauncher
-# RC41.1 adapter: 207848401b30f8896cc8bf20662df9c20e1590a8ddb773322a8ed94baa26030a
+# RC41.2 adapter: cc43ab2aff9a156e1942cf02990110f5b0b005b030cceca1838828b649b67079
 ```
 
 On the reference RG35XX H, all 382 installed RC30 kit and adapter files matched their packaged hashes, including the running frontend. An isolated test on the handheld used a small Game Boy program, restored a chosen slot, preserved a newer in-game save and generated a card from a separate test screenshot. These checks used no owner ROMs or RomM account.
 
 RC30.1 keeps 377 of RC30’s 381 packaged files byte for byte, including the frontend, the launcher and every theme asset. It replaces the notices, the theme guide, the inventory and the checksum the service seals, and adds three license files. On a computer, the public installer placed it on an empty card folder and over RC27.1, RC27.2, RC28, RC29.1 and RC30, and every file matched the new inventory. The service checks passed in a disposable ARM64 Linux environment built from the Scarab image. On the reference RG35XX H, the installer then upgraded RC30 to RC30.1. After a restart the service started Canica, and all 385 installed kit and adapter files matched their packaged hashes, including the running frontend. RC31 reached that handheld through the signed update channel: its updater verified the manifest and ran the installer by itself, and afterwards all 385 files matched again.
 
-The compiled frontend in this kit was built for RC41 from the revision above and unchanged in RC41.1, SHA-256 `9004a0051146a68389c2b04ee46182281e9b3685ec112b6467b885f4dbf61e84`. The [source build guide](../tools/canica/README.md#rebuild-the-theme-and-sealed-archives) includes the verified commands and all three archive digests.
+The compiled frontend in this kit was built for RC41 from the revision above and unchanged in RC41.1 and RC41.2, SHA-256 `9004a0051146a68389c2b04ee46182281e9b3685ec112b6467b885f4dbf61e84`. The [source build guide](../tools/canica/README.md#rebuild-the-theme-and-sealed-archives) includes the verified commands and all three archive digests.
 
 ## Update
 

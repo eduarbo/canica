@@ -81,6 +81,8 @@ GAME_ENDED = Path("/var/run/canica/game-ended")
 # The menu sends the games it keeps no saved states for with this: only the faster launch applies.
 # (The menu looks for this text in the file before it uses it.)
 NO_RESUME = "--es-no-resume"
+# How the exit hotkeys of standalone emulators end them (killall -9 or -15), as runCommand reports it.
+CLOSED_ON_PURPOSE = {-9, -15}
 # Canica's menu writes the steps of a launch here while the file exists (create it to measure).
 TIMING = "/var/run/canica-launch-timing.log"
 # The warm launcher rereads what launches parse every REFRESH seconds while idle, but not in the
@@ -359,7 +361,10 @@ class NoGrace:
 
 
 def after_the_menu(run, busy=MENU_BUSY, limit=3.0):
-    """configgen's runCommand, once the menu has let go of the screen (at most limit s)."""
+    """configgen's runCommand, once the menu has let go of the screen (at most limit s). An
+    emulator ended by SIGKILL or SIGTERM was closed on purpose: that is how the exit hotkey of
+    eduke32, GZDoom, Flycast, PPSSPP and other standalone emulators works (killall), so it is a
+    normal exit, not the menu's «unknown error». A crash keeps its code."""
     def run_command(command):
         timing("launcher: emulator ready to start")
         deadline = time.monotonic() + limit
@@ -367,9 +372,13 @@ def after_the_menu(run, busy=MENU_BUSY, limit=3.0):
             time.sleep(0.02)
         timing("launcher: emulator starts")
         try:
-            return run(command)
+            code = run(command)
         finally:
             timing("launcher: emulator ended")
+        if code in CLOSED_ON_PURPOSE:
+            print("Emulator ended by signal %d (its exit hotkey): a normal exit" % -code)
+            return 0
+        return code
     return run_command
 
 

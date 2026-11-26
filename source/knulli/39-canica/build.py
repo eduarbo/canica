@@ -17,7 +17,7 @@ from switcher import game_switcher
 from layout import (ART, CAT, COL, FONT, HERE, HOME, KIT, LOOK, MONO_FONT, RED, element, option, prop,
                     system_data, systems, variables, view)
 
-VERSION="1.0.1-rc41.1"
+VERSION="1.0.1-rc41.2"
 KIT["label"]=VERSION.rsplit("-",1)[-1].upper()
 # The theme and its art are CC BY-SA 4.0; the project's own code is MIT.
 LICENSES=("CC-BY-SA-4.0.txt","MIT.txt")
