@@ -25,7 +25,7 @@ ROOT = Path('/userdata')
 LOCK = '/var/run/canica-installer.lock'
 CONF = '/userdata/system/knulli.conf'
 PACKAGES = {
-    'canica-1.0.1-rc42-rg35xx-h.zip': '75b03b337578d551ba4ea5971e18ac7cb6d586b13149525b87ce92d10beeabbe',
+    'canica-1.0.1-rc42-rg35xx-h.zip': '6f1f741e220170c3ba50948c55fa4dde8b62f2d0c8625c6b4b80fc20d3c309d1',
     'canica-1.0.1-rc41.3-rg35xx-h.zip': '4d8eb9df585706eb00e7b468f7cbfd1553768e244ea9dc6bd79a585820dcb857',
     'canica-1.0.1-rc41.2-rg35xx-h.zip': 'a25bd693782f7204eee81a74e5ec04b6ab923f725e4e0913940d7deca0d298ec',
     'canica-1.0.1-rc41.1-rg35xx-h.zip': '3228985b42b09b3a302ab962f54e1e8bbb9024d695eaa58d3c101013f73d493f',

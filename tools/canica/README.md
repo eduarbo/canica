@@ -84,8 +84,8 @@ The RC42 check reproduced all three archives byte for byte. Repackaging uses the
 
 ```text
 36edf9b164fc98bd60ed0f9de59f21ce6212aba0ce5d5667bdd20ff5b6c755c4  canica-1.0.1-rc42.zip
-75b03b337578d551ba4ea5971e18ac7cb6d586b13149525b87ce92d10beeabbe  canica-1.0.1-rc42-rg35xx-h.zip
-b6613609c1138f9ab8e12b8da1812ecc9ae2ad39d7367dbd5cd19a0a2e6d0d7c  canica-1.0.1-rc42-fuentes.zip
+6f1f741e220170c3ba50948c55fa4dde8b62f2d0c8625c6b4b80fc20d3c309d1  canica-1.0.1-rc42-rg35xx-h.zip
+cd69be04a2d8826573b54afaf0fbdfbeee3c0005c2ad7216bd4b5e692334a3cc  canica-1.0.1-rc42-fuentes.zip
 ```
 
 ## Build the installer for Tools

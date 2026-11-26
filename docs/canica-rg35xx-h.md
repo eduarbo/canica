@@ -57,7 +57,7 @@ I use RomM as the shared library for my Anbernic and my TVs. Grout on the handhe
 | Frontend | [EmulationStation `3de82c3`](https://github.com/eduarbo/batocera-emulationstation/tree/3de82c3) with the [four Scarab packaging patches](https://github.com/eduarbo/knulli-linux/tree/1f16d1a77df3c8f3432f0176117561f9c30c066d/package/emulationstation/knulli-emulationstation) |
 | ARM64 build tools | [Bundle tools `5942f8a`](https://github.com/eduarbo/knulli-console-bundles/tree/5942f8a9681d0cfcb52f4658f56d32b367bdcd69) |
 | Installer and save adapter | [RC42 recipe](https://github.com/eduarbo/canica/tree/v1.0.1-rc42/tools/canica) |
-| Theme, artwork, engine and service | `canica-1.0.1-rc42-rg35xx-h.zip` · SHA-256 `75b03b337578d551ba4ea5971e18ac7cb6d586b13149525b87ce92d10beeabbe` |
+| Theme, artwork, engine and service | `canica-1.0.1-rc42-rg35xx-h.zip` · SHA-256 `6f1f741e220170c3ba50948c55fa4dde8b62f2d0c8625c6b4b80fc20d3c309d1` |
 
 To compare the installed files over SSH, run the commands below. The manifest covers the frontend and packaged theme files. The last command checks the separately installed save adapter against the RC42 version (the same as RC41.2), new in RC41 (it keeps configgen loaded between launches), renamed while it waits in RC41.1 and in RC41.2 treating an exit hotkey's kill as a normal exit. If you deliberately kept a custom adapter, its hash will differ.
 
