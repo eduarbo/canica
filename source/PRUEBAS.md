@@ -1,5 +1,9 @@
 # Pruebas del motor en Scarab
 
+## RC41.3 · Los vídeos de Game Boy, en verde también en las tarjetas
+
+Mismo ejecutable y mismo adaptador que RC41.2. En la vista de consolas, la columna de detalles ya mostraba la captura y el vídeo de un juego de Game Boy desaturados y teñidos de verde (`C9E23C`), y los de WonderSwan en tono crema (`F2EAD8`). En la lista de juegos de esas consolas, el vídeo de la tarjeta se reproducía en gris. Ahora la tarjeta usa el mismo tinte (`SCREEN_TINT` en `layout.py`, con `if="{system.theme} == …"` en `gridtile.video`). Las colecciones (Últimos jugados, Todos los juegos…) mezclan consolas y siguen mostrando el vídeo tal cual. Revisado en la consola: Balloon Kid se reproduce en verde en su tarjeta.
+
 ## RC41.2 · Salir con el atajo no es un error
 
 Mismo ejecutable que RC41. El atajo de salida de eduke32, GZDoom, Flycast, PPSSPP y otros emuladores independientes los cierra con `killall` (señal 9 o 15); configgen devolvía ese −9 y el menú mostraba «ERROR DESCONOCIDO : 247» (igual en el lanzador de fábrica). El adaptador cuenta ahora esas dos señales como una salida normal; un fallo real (otra señal o código) conserva su aviso. Probado en la consola con Duke Nukem 3D: FN + START, «Emulator ended by signal 9 (its exit hotkey): a normal exit», configgen sale con 0 y el menú vuelve sin aviso.

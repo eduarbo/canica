@@ -4,7 +4,7 @@ Canica es el tema de mi RG35XX H y usa mi fork de EmulationStation. La configura
 
 ## Instalar Canica
 
-Copia el instalador completo de RC41.2 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc41.2-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
+Copia el instalador completo de RC41.3 a `roms/tools` dentro de la unidad compartida `share`. Si recibiste el instalador ligero, coloca a su lado `canica-1.0.1-rc41.3-rg35xx-h.zip` sin extraerlo. Abre **Herramientas → Instalar Canica**, espera su confirmación y reinicia. Elige **es-theme-canica** en los ajustes de interfaz. Al entrar a una consola, pulsa **Y** para comprobar que aparece el teclado de palabras. [Guía para replicar la configuración y volver al menú anterior](https://github.com/eduarbo/canica/blob/main/docs/canica-rg35xx-h.md)
 
 ## Ajustes
 

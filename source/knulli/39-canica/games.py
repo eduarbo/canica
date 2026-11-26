@@ -2,7 +2,7 @@
 from copy import deepcopy
 
 import theme_options as setting
-from layout import (ART, LOOK, FONT, DISPLAY_FONT, COL, GAMES, UTILITY, ET,
+from layout import (ART, LOOK, FONT, DISPLAY_FONT, COL, GAMES, SCREEN_TINT, UTILITY, ET,
                     element, game_title, game_credits, identity, utility_icon, image, key, cta, counter_cell, metrics, norm, prop, ring, text, view, header, font_size)
 
 
@@ -192,6 +192,10 @@ def grid(v):
     ring(tile,duration=0)
     element(v,"image","gridtile.image",{"roundCorners":"${tileRadius}"},extra=False)
     element(v,"video","gridtile.video",{"effect":"none","fadeTime":"0.25","exclusiveSnapshot":"true","roundCorners":"${tileRadius}"},extra=False)
+    # The same tint as the console's preview in the console view, on these systems' own lists
+    for theme,tint in SCREEN_TINT.items():
+        tinted=element(v,"video","gridtile.video",{"color":tint,"saturation":"0"},extra=False)
+        tinted.set("if","{system.theme} == '"+theme+"'")
     element(v,"gridtile","selected",{"padding":"0 0","imageColor":"ffffffff",
             "backgroundEdgeColor":"ffffffff","backgroundCenterColor":"ffffffff"},extra=False)
     element(v,"text","gridtile.label",{"visible":"false"},extra=False)

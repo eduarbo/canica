@@ -18,6 +18,8 @@ LOOK = ART + "${look}/"
 FONT = ROOT + "/fonts/Roboto-"
 DISPLAY_FONT = ROOT + "/fonts/D-DINCondensed-Bold.ttf"
 MONO_FONT = ROOT + "/fonts/IBMPlexMono-Medium.otf"
+# Single-colour handhelds: their captures and videos are shown desaturated and tinted like their screen
+SCREEN_TINT = {"gb": "C9E23CFF", "wonderswan": "F2EAD8FF"}
 UTILS = ("tools", "emulators", "imageviewer")
 UTILITY = " || ".join("{system.name} == '" + name + "'" for name in UTILS)
 GAMES = "!({system:theme} == 'tools' || {system:theme} == 'emulators' || {system:theme} == 'imageviewer')"
@@ -418,7 +420,7 @@ def systems(root):
     dmg = platform + " == 'gb'"
     mono = platform + " == 'wonderswan'"
     for suffix, condition, tint in (("", "!("+dmg+" || "+mono+")", None),
-                                    ("Dmg", dmg, "C9E23CFF"), ("Mono", mono, "F2EAD8FF")):
+                                    ("Dmg", dmg, SCREEN_TINT["gb"]), ("Mono", mono, SCREEN_TINT["wonderswan"])):
         show = "("+feature+") && ("+condition+")"
         still = image(v,"lastPicture"+suffix,653,215,174,131,snapshot,
                       show="${stillSystems} && "+show,contain=True)
