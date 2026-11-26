@@ -329,6 +329,9 @@ def system_cards(v):
             "zIndex":"3","visible":"${animateSystems} && !"+cached})
     texture = 'firstfile("' + ART + 'display/" + {system:theme} + ".png", "")'
     tile_img("displaySurface", texture, 4)
+    # A game screen behind the card darkens, so the logo and the console stay legible on it
+    screenshot = cached + " || !empty({system:slides}) || !empty({system:continue:image})"
+    prop(tile_img("cardDim", LOOK+"card-dim.png", 4), "visible", "(" + plain + ") && (" + screenshot + ")")
     private='firstfile("'+PERSONAL+'cards/" + {system:theme} + ".png", "")'
     prop(tile_img("localIllustration",private,7),"visible",has_native)
     # Without a local card, compose the same layout from separate artwork for both palettes.

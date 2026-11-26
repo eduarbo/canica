@@ -24,7 +24,7 @@ ADAPTER_SHA = '784a3a2d4317c73faa2cb486be087083971cbddcc55d226d8d395bafec8ba225'
 ROOT = Path('/userdata')
 LOCK = '/var/run/canica-installer.lock'
 PACKAGES = {
-    'canica-1.0.1-rc41-rg35xx-h.zip': '3530a11c98e7919f262462bc5d786703362c98482d8e0e15a7f53e07bec389e3',
+    'canica-1.0.1-rc41-rg35xx-h.zip': '3b3c20c5051079215a8de432121353d66915463c73cc4a0a7c25305ba877aca8',
     'canica-1.0.1-rc40-rg35xx-h.zip': '8262a16a54e7b6d736fa1342ed81d2b2cc84dda6b95918b05580ea4aa15b2390',
     'canica-1.0.1-rc39-rg35xx-h.zip': '6d8fd7137c117cb4c31763b424a1dec4ce2eb3255ac79d7f5d6434502e14e902',
     'canica-1.0.1-rc38-rg35xx-h.zip': 'a373ca43ab2549993571d73a0812a2a7e7379470521fefb66eaa7ba49e65f0a2',
@@ -46,9 +46,9 @@ PACKAGES = {
 # An upgrade may replace an untouched file from a known earlier kit.
 # Each destination digest is paired with its permitted predecessors.
 PREVIOUS = {
-    # RC41 opens and closes games sooner (a new frontend).
+    # RC41 opens and closes games sooner and darkens console cards (a new frontend).
     ('system/canica/SHA256SUMS',
-     '716e7f8eeff1a81e760a25543efc210f15ebd3d4f4ec7c9f16685e8c643ad652'): {
+     '97fc1b701e5e7a066b82c9c13734cf5abc437cf9ba765d77a230243814050fd7'): {
         '2534d448237a741768b6022f691c8c161b698603d649c81746b5199693ade708',
         '2996245ed9597511764a974667a6d7ff722963ec2b6fe26efc0ab9fa478f85e4',
         '2b311fdffadd2e464101d2bbf40cc4fc2548f1aa62bc239bac68a3dcbf050107',
@@ -87,7 +87,7 @@ PREVIOUS = {
         'a9c7703b1741348a6dc3283afea14716f9d1f0ef48fc46133e96241b197f3b09',
     },
     ('system/services/canica',
-     '6d166735e895d841f4ad57edb61bda8590db51905d5f7ec02dcab0d05c92a746'): {
+     'a6469093ae926920cdd9761839e69cecb4b3a877ecd9074555a3d1a08e5922f9'): {
         '251ef74893151c75de854d8b46bccb23d5f8fb4c4fb3073f2c89236279928d7d',
         '27928228e36e2db417cf46ac11d674580a7c12efa95ed7e728c986e1cbbc8794',
         '2d834b0414ff1fca8378a617ac6a2b50f8589ea3dec5baa573d48900e148c7cd',
@@ -125,7 +125,7 @@ PREVIOUS = {
         'ffdc7da73ac53f78922b132c9428d2155f08093fbbf5c1307003bcb17a46deea',
     },
     ('themes/es-theme-canica/theme.xml',
-     '86f089482cd3552e5b50d7b876b1ec7469388e45fb70728580138ece745a3ca9'): {
+     'bb3e6542a8d59341c8ce7166f0927d473a7ad1e55945d94f0e85de07da194b3d'): {
         '020c13cbd8de6c67e46a412fb62b208bcb9128b64b6e8f80836b7917c4b1ef7f',
         '0a5b3bcb84b9150e50520e961b6eb301ff449ae75355a8b7a68bb0d0d6374f2a',
         '19840ccbfd7e03d882b55f1093d7004ae52ecf5e715c1a422a6687b6cbd2bbc2',

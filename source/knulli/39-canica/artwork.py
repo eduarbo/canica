@@ -180,6 +180,9 @@ def generate(out, palettes):
               +rect(0,0,136,131,4,"url(#w)")+
               ''.join(f'<path d="M0 {y}h136" stroke="#07070b" opacity=".07"/>' for y in range(0,131,4)))
         draw(d,"card-wash",136,131,wash)
+        # Over a console card's game screen, under its logo and console: both read on any capture
+        dim=.35 if amber else .5
+        draw(d,"card-dim",136,131,f'<rect width="136" height="131" fill="#{p["canvas"]}" fill-opacity="{dim}"/>')
         draw(d,"year",32,15,rect(0,0,32,15,2,"#17130f"))
         for name in ["handheld","pad","arcade","monitor","tools","image","grid","favs","played","games"]:
             # Console covers are drawn here. Library snapshots can replace the backdrop at runtime.

@@ -83,9 +83,9 @@ python3 -B knulli/39-canica/release.py nativo output/canica-1.0.1-rc41.zip dist
 The RC41 check reproduced all three archives byte for byte. Repackaging uses the qualified ARM64 executable from the kit because the native compiler embeds a build timestamp. Expected SHA-256 values:
 
 ```text
-13c13a8316ef38a578e921c101630d2075ddea624f93dbaa64c5d7220fbc86b0  canica-1.0.1-rc41.zip
-3530a11c98e7919f262462bc5d786703362c98482d8e0e15a7f53e07bec389e3  canica-1.0.1-rc41-rg35xx-h.zip
-3cfc43ddb47ea25a2e422afe1cf3aef50e784b37e5bc511dbe61fb1b1494342c  canica-1.0.1-rc41-fuentes.zip
+01f18b715cc87873b0344558f9f15ae6e9600e6e4cbcd489d4aefc12956c5c86  canica-1.0.1-rc41.zip
+3b3c20c5051079215a8de432121353d66915463c73cc4a0a7c25305ba877aca8  canica-1.0.1-rc41-rg35xx-h.zip
+d95fa99f2ecb7a280e67af6003abfa2c19ced7c76234a69e8e60e9d0c0046db3  canica-1.0.1-rc41-fuentes.zip
 ```
 
 ## Build the installer for Tools
